@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline": "#757684", "surface-container-highest": "#d3e4fe", "primary-fixed": "#dde1ff", "primary-container": "#1e40af", "secondary-fixed-dim": "#bec6e0", "on-primary-fixed": "#001453", "surface-tint": "#3755c3", "on-background": "#0b1c30", "outline-variant": "#c4c5d5", "surface-dim": "#cbdbf5", "secondary": "#565e74", "on-secondary-fixed-variant": "#3f465c", "surface-variant": "#d3e4fe", "surface-bright": "#f8f9ff", "on-primary-container": "#a8b8ff", "secondary-fixed": "#dae2fd", "surface-container-lowest": "#ffffff", "error": "#ba1a1a", "primary": "#00288e", "tertiary-container": "#00563a", "surface-container-high": "#dce9ff", "on-secondary-container": "#5c647a", "surface": "#f8f9ff", "secondary-container": "#dae2fd", "on-tertiary-fixed": "#002114", "on-surface": "#0b1c30", "on-error-container": "#93000a", "surface-container-low": "#eff4ff", "inverse-surface": "#213145", "on-secondary-fixed": "#131b2e", "on-tertiary-fixed-variant": "#005137", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "on-primary": "#ffffff", "tertiary": "#003d28", "tertiary-fixed": "#85f8c4", "on-surface-variant": "#444653", "background": "#f8f9ff", "inverse-on-surface": "#eaf1ff", "tertiary-fixed-dim": "#68dba9", "on-tertiary-container": "#5bcf9e", "on-secondary": "#ffffff", "surface-container": "#e5eeff", "primary-fixed-dim": "#b8c4ff", "on-primary-fixed-variant": "#173bab", "on-error": "#ffffff", "inverse-primary": "#b8c4ff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter": "1rem", "space-lg": "1rem", "margin": "1.5rem", "space-2xl": "2rem", "space-xl": "1.5rem", "gutter-lg": "1.5rem", "margin-mobile": "1rem", "gutter-sm": "0.75rem", "space-md": "0.75rem" }, "fontFamily": { "body-lg": [ "Inter" ], "headline-lg": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "body-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "label-caps": [ "Inter" ], "body-xs": [ "Inter" ], "headline-xl": [ "Inter" ], "metric-display": [ "Inter" ], "headline-md": [ "Inter" ], "body-sm": [ "Inter" ], "code-xs": [ "JetBrains Mono" ] }, "fontSize": { "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-xl-mobile": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "headline-sm": [ "16px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "label-caps": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" } ], "body-xs": [ "11px", { "lineHeight": "16px", "fontWeight": "500" } ], "headline-xl": [ "32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "metric-display": [ "36px", { "lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "code-xs": [ "11px", { "lineHeight": "14px", "fontWeight": "500" } ] } } } }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface"><aside class="fixed left-0 top-0 h-screen w-72 bg-inverse-surface z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm bg-inverse-surface"><img alt="Apex Ops Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WwCGE3jgd8oJh2SRylkRsCk2z2RLTJaal9S8uBTtQD5LoIjadhxPmyM8vixHpQSxMwdQDA02_8fapQLvTJaoTMNa3ir0H86gfpTnfp9KiJZArQpq1OvvD4Es4ffC90KheoPealjyr_chJM96CPDLrUIPQK1f6lY5S01VIodLSbuXp-FXCg6DvcglyrrWcA339Nl-t__VFBGdwKsZ2OSFyugSGnZQpSUvGoqSq82y0YG-y3VXrqKj3R6Jov"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface leading-tight tracking-tight">Apex Ops</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim uppercase tracking-wider">Enterprise CMMS</span></div></div><div class="px-gutter-sm pt-space-md pb-space-sm"><div class="px-space-sm py-space-xs rounded-lg bg-surface-container-high/10 flex items-center justify-between"><span class="font-code-xs text-code-xs text-tertiary-fixed flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>Live Sync Active</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim">v4.18-p3</span></div></div><nav class="px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-headline-sm rounded-lg"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Core Operations</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="operations-dashboard" href="#"><span class="font-body-sm text-body-sm">Operations Dashboard</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="work-orders" href="#"><span class="font-body-sm text-body-sm">Work Orders</span><span class="px-space-xs py-0.5 rounded-full bg-primary-container text-on-primary font-code-xs text-code-xs font-semibold">14</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="service-requests" href="#"><span class="font-body-sm text-body-sm">Service Requests</span><span class="px-space-xs py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-code-xs font-semibold">5</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="preventive-maintenance" href="#"><span class="font-body-sm text-body-sm">Preventive Maintenance</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="field-inspections" href="#"><span class="font-body-sm text-body-sm">Field Inspections</span></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Asset &amp; Resource</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="asset-registry" href="#"><span class="font-body-sm text-body-sm">Asset Registry</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="facility-locations" href="#"><span class="font-body-sm text-body-sm">Facility Locations</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="inventory-and-parts-ledger" href="#"><span class="font-body-sm text-body-sm">Inventory &amp; Parts Ledger</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="purchasing-and-pos" href="#"><span class="font-body-sm text-body-sm">Purchasing &amp; POs</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="vendors-and-contractors" href="#"><span class="font-body-sm text-body-sm">Vendors &amp; Contractors</span></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Governance &amp; System</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="reports-and-analytics" href="#"><span class="font-body-sm text-body-sm">Reports &amp; Analytics</span></a><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary font-headline-sm rounded-lg" data-path="audit-trail-and-logs" href="#"><span class="font-body-sm text-body-sm">Audit Trail &amp; Logs</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="notifications-and-sla-alerts" href="#"><span class="font-body-sm text-body-sm">Notifications &amp; SLA Alerts</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="organization-and-rbac" href="#"><span class="font-body-sm text-body-sm">Organization &amp; RBAC</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="settings-and-system-config" href="#"><span class="font-body-sm text-body-sm">Settings &amp; System Config</span></a></nav></div><div class="p-space-md bg-inverse-surface/80"><div class="p-space-sm rounded-lg bg-surface-container-high/10 flex items-center justify-between"><div class="flex flex-col"><span class="font-label-caps text-label-caps text-secondary-fixed-dim">Telemetry Bus</span><span class="font-code-xs text-code-xs text-tertiary-fixed">Broker: 10.14.0.8</span></div><span class="font-code-xs text-code-xs px-space-xs py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-semibold">HEALTHY</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-gutter flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md flex-1 max-w-2xl"><div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-base text-primary">corporate_fare</span><div class="flex flex-col text-left"><span class="font-label-caps text-label-caps text-secondary uppercase">Facility Scope</span><span class="font-body-sm text-body-sm text-on-surface font-semibold truncate max-w-xs">HQ Campus - East Wing (Nusantara Tower)</span></div><span class="material-symbols-outlined text-base text-outline">arrow_drop_down</span></div><div class="relative flex-1"><span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span><input class="w-full h-9 pl-9 pr-space-md bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-sm font-body-sm rounded-lg outline-none focus:ring-2 focus:ring-primary-container shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all" placeholder="Search Work Orders (WO-#), Assets (AST-#), or Parts..." type="text"/></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span><span class="font-code-xs text-code-xs text-on-surface-variant font-medium">HTMX Server: <span class="text-tertiary-container font-semibold">Connected</span> | Sync: <span class="text-tertiary-container font-semibold">Realtime</span></span></div><button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary transition-colors shadow-[0_1px_3px_rgba(30,64,175,0.2)]" type="button"><span class="material-symbols-outlined text-base font-bold">add</span><span>New Dispatch / Request</span></button><div class="relative"><button class="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative" type="button"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error ring-2 ring-surface"></span></button></div><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUrbFrKd_a9q8FNQ6e-DTVYDzTmV3i2C6GQPftdhK5gwDaAQqywkJ3q55WCb6AH7YfWTmRyaNwiN1sMoJcw6YvkowVfo4iggzuvj2taz4_SzKlgmuCbZJqmXfb0xJ-xdz97L9kz9F_cnXRLay5SyU64_dBjvclcpybzg5U7v4WgUQlLaL8lM8U2yM-xu6sd-thediR-oG0f5rcqo0notuxmKhU29Grazp-PURqitTE0QfQSp8nVur1vw"/><div class="hidden md:flex flex-col text-left"><span class="font-body-sm text-body-sm text-on-surface font-semibold leading-tight">Marcus Vance</span><span class="font-label-caps text-label-caps text-secondary leading-tight">VP Operations &amp; Facilities</span></div></div></div></header><main class="relative pt-16 w-full bg-surface min-h-screen px-gutter py-margin"><div class="flex flex-col w-full">
+<!-- Breadcrumb & Operational Viewport Header -->
+<div class="flex flex-wrap items-center justify-between gap-space-md mb-space-lg">
+<div class="flex flex-col gap-space-xs">
+<nav aria-label="Breadcrumb" class="flex items-center gap-space-xs text-secondary font-body-sm text-body-sm">
+<a class="hover:text-primary transition-colors" href="#">Home</a>
+<span class="text-outline-variant">/</span>
+<a class="hover:text-primary transition-colors" href="#">Governance &amp; System</a>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface font-semibold">Notifications &amp; SLA Alerts</span>
+</nav>
+<div class="flex items-baseline gap-space-md">
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Notifications &amp; SLA Alerts Hub</h1>
+<span class="font-code-xs text-code-xs px-space-sm py-0.5 rounded-full bg-surface-container-high text-primary font-semibold uppercase tracking-wider">Station AST-ENG-HUB-04</span>
+</div>
+</div>
+<!-- Quick Global Utilities -->
+<div class="flex items-center gap-space-sm">
+<button class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-all" onclick="markAllRead()" type="button">
+<span class="material-symbols-outlined text-lg text-primary">done_all</span>
+<span>Mark All Read</span>
+</button>
+<div class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs shadow-sm">
+<span class="material-symbols-outlined text-lg text-secondary">nightlight</span>
+<span class="text-secondary font-medium">Quiet Hours:</span>
+<span class="font-code-xs text-code-xs text-on-surface font-semibold bg-surface-container-low px-1.5 py-0.5 rounded">00:00 - 06:00</span>
+</div>
+<button class="h-9 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-all" type="button">
+<span class="material-symbols-outlined text-lg text-primary">download</span>
+<span>Export Log (CSV)</span>
+</button>
+</div>
+</div>
+<!-- Section 1: Executive Top Bar / KPI Summary Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md mb-space-xl">
+<!-- Card 1: Total Active Alerts -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Active Unread Alerts</span>
+<span class="p-1 rounded bg-primary-fixed/40 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-base">notifications_active</span>
+</span>
+</div>
+<div class="flex items-baseline gap-space-sm mb-space-sm">
+<span class="font-metric-display text-metric-display text-on-surface" id="kpi-unread-count">38</span>
+<span class="font-body-xs text-body-xs text-secondary">Awaiting triage</span>
+</div>
+<div class="flex items-center gap-space-xs text-code-xs font-code-xs pt-space-xs">
+<span class="px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-semibold">8 P1 Critical</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant">14 Ops</span>
+<span class="px-1.5 py-0.5 rounded bg-surface-container-low text-secondary">16 Info</span>
+</div>
+</div>
+<!-- Card 2: SLA Threat Index -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-caps text-label-caps text-secondary uppercase">SLA Breach Threats</span>
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-error-container text-error font-code-xs text-code-xs font-semibold">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+<span>IMMEDIATE</span>
+</div>
+</div>
+<div class="flex items-baseline gap-space-sm mb-space-sm">
+<span class="font-metric-display text-metric-display text-error">3</span>
+<span class="font-body-xs text-body-xs text-on-surface font-medium">Under 60m to Breach</span>
+</div>
+<div class="flex items-center justify-between pt-space-xs text-code-xs font-code-xs text-secondary">
+<span>Highest: <span class="font-semibold text-on-surface">WO-2026-0894</span></span>
+<span class="text-error font-semibold">-42m Margin</span>
+</div>
+</div>
+<!-- Card 3: Pending Approvals -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Pending Sign-Offs</span>
+<span class="p-1 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-base">assignment_turned_in</span>
+</span>
+</div>
+<div class="flex items-baseline gap-space-sm mb-space-sm">
+<span class="font-metric-display text-metric-display text-on-surface">5</span>
+<span class="font-body-xs text-body-xs text-secondary">Requires VP Auth</span>
+</div>
+<div class="flex items-center gap-space-xs text-code-xs font-code-xs text-on-surface-variant truncate">
+<span class="px-1.5 py-0.5 rounded bg-surface-container-high font-semibold text-on-surface">PR-2026-0314</span>
+<span class="text-secondary truncate">+ Hot Work Permit Plant B</span>
+</div>
+</div>
+<!-- Card 4: Notification Channels Telemetry -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Channel Telemetry</span>
+<span class="font-code-xs text-code-xs text-tertiary font-semibold flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> 99.98%
+        </span>
+</div>
+<div class="flex flex-col gap-1 my-space-xs">
+<div class="flex justify-between items-center text-body-xs font-body-xs">
+<span class="text-secondary">In-App Live Bus</span>
+<span class="font-code-xs text-code-xs text-tertiary font-semibold">100% Active</span>
+</div>
+<div class="flex justify-between items-center text-body-xs font-body-xs">
+<span class="text-secondary">Email SMTP Gateway</span>
+<span class="font-code-xs text-code-xs text-tertiary font-semibold">Operational</span>
+</div>
+<div class="flex justify-between items-center text-body-xs font-body-xs">
+<span class="text-secondary">Push / Twilio SMS</span>
+<span class="font-code-xs text-code-xs text-secondary font-semibold">Standby (0 q)</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-1">
+<div class="bg-primary-container h-full rounded-full" style="width: 96%;"></div>
+</div>
+</div>
+</div>
+<!-- Section 2: Two-Column Master Interface -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- LEFT MAIN COLUMN: Master Notification Center & Real-Time Alert Feed (65% ~ col-span-8) -->
+<div class="lg:col-span-8 flex flex-col gap-space-md">
+<!-- Filter Controls & Segmented Tab Navigation -->
+<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex flex-col gap-space-md">
+<!-- Segmented Tab Pills -->
+<div class="flex items-center gap-space-xs overflow-x-auto pb-1 text-body-sm font-body-sm" id="category-filter-bar">
+<button class="tab-pill px-space-md py-1.5 rounded-full bg-primary-container text-on-primary font-semibold shadow-sm flex items-center gap-space-xs whitespace-nowrap transition-colors" data-filter="all" type="button">
+<span>All Alerts</span>
+<span class="px-1.5 py-0.2 rounded-full bg-on-primary/20 text-on-primary text-code-xs font-code-xs">38</span>
+</button>
+<button class="tab-pill px-space-md py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container font-medium whitespace-nowrap transition-colors" data-filter="critical" type="button">
+<span class="text-error font-semibold">Critical Breaches</span>
+<span class="px-1.5 py-0.2 rounded-full bg-error-container text-on-error-container text-code-xs font-code-xs font-semibold">8</span>
+</button>
+<button class="tab-pill px-space-md py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container font-medium whitespace-nowrap transition-colors" data-filter="wo" type="button">
+<span>Work Orders</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface text-code-xs font-code-xs">12</span>
+</button>
+<button class="tab-pill px-space-md py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container font-medium whitespace-nowrap transition-colors" data-filter="inventory" type="button">
+<span>Stock &amp; Crib</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface text-code-xs font-code-xs">6</span>
+</button>
+<button class="tab-pill px-space-md py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container font-medium whitespace-nowrap transition-colors" data-filter="approvals" type="button">
+<span>PO Approvals</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface text-code-xs font-code-xs">5</span>
+</button>
+<button class="tab-pill px-space-md py-1.5 rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container font-medium whitespace-nowrap transition-colors" data-filter="security" type="button">
+<span>System &amp; Security</span>
+<span class="px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface text-code-xs font-code-xs">7</span>
+</button>
+</div>
+<!-- Toolbar: Search Input + Direct Refinements -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="relative flex-1 min-w-[240px]">
+<span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">filter_list</span>
+<input class="w-full h-8 pl-9 pr-16 bg-surface-container-low text-on-surface placeholder:text-outline text-body-sm font-body-sm rounded-lg outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary-container transition-all" id="alert-search-input" placeholder="Quick search alert body, tags, codes... [Ctrl + /]" type="text"/>
+<span class="absolute right-2 top-1/2 -translate-y-1/2 font-code-xs text-code-xs text-secondary bg-surface-container px-1 rounded">⌘/</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<div class="relative">
+<select class="h-8 pl-space-sm pr-8 bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg outline-none cursor-pointer appearance-none">
+<option value="all">Severity: All Levels</option>
+<option value="p1">P1 Critical Alert</option>
+<option value="p2">P2 Urgent Warning</option>
+<option value="p3">P3 Operational Info</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-outline text-sm pointer-events-none">expand_more</span>
+</div>
+<button class="h-8 px-space-sm rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container font-body-sm text-body-sm flex items-center gap-1 transition-colors" title="Toggle Compact View" type="button">
+<span class="material-symbols-outlined text-lg">density_medium</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Live Stream Feed Container -->
+<div class="flex flex-col gap-space-md" id="notification-feed-list">
+<!-- CARD 1: CRITICAL SLA BREACH -->
+<div class="relative rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-md overflow-hidden transition-all hover:shadow-md" data-category="critical">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-error"></div>
+<div class="flex items-start justify-between gap-space-md pl-space-xs">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-error-container text-on-error-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-xl">warning</span>
+</div>
+<div class="flex flex-col">
+<div class="flex flex-wrap items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-error text-on-error font-code-xs text-code-xs font-semibold tracking-wide flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-on-error animate-ping"></span>
+                    CRITICAL SLA AT RISK
+                  </span>
+<span class="font-code-xs text-code-xs font-semibold text-primary">WO-2026-0894</span>
+<span class="text-secondary text-code-xs font-code-xs">• Priority 1</span>
+<span class="text-outline text-code-xs font-code-xs">• 6 mins ago</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Chiller #04 Compressor Seal Repair</h2>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 text-body-xs font-body-xs text-secondary mt-1">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-error">timer</span>
+<strong class="text-error font-semibold">42m remaining</strong> until 4h SLA breach
+                  </span>
+<span>• Assigned: <strong class="text-on-surface">Marcus Kowalski</strong></span>
+<span>• Zone: <span class="font-code-xs text-code-xs text-on-surface font-medium">Plant Room B-204 (CUP)</span></span>
+</div>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container" title="Dismiss Alert" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<!-- Snippet & Telemetry Sub-panel -->
+<div class="pl-space-xs ml-11 p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              Refrigerant leak detected at <span class="font-code-xs text-code-xs font-bold text-error bg-error-container px-1 py-0.2 rounded">18.4 ppm</span> (threshold: 10.0 ppm). Ultrasonic sensor <span class="font-code-xs text-code-xs font-semibold text-on-surface">AST-HVAC-004</span> triggered automated dispatch escalation sequence.
+            </p>
+<div class="flex items-center gap-space-md text-code-xs font-code-xs text-secondary pt-1">
+<span>Telemetry Telemetry Node: <span class="text-on-surface font-medium">10.14.8.22</span></span>
+<span>• Sensor Model: <span class="text-on-surface font-medium">FLIR-TG550</span></span>
+</div>
+</div>
+<!-- Actions Footer -->
+<div class="pl-space-xs ml-11 flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex flex-wrap items-center gap-space-sm">
+<button class="h-8 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary transition-colors shadow-sm" type="button">
+<span>View Work Order</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">support_agent</span>
+<span>Escalate to Eng Mgr</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">person_add</span>
+<span>Dispatch Backup Tech</span>
+</button>
+</div>
+<span class="font-code-xs text-code-xs text-secondary font-medium">Auto-escalation in 08:34</span>
+</div>
+</div>
+<!-- CARD 2: PO APPROVAL REQUIRED -->
+<div class="relative rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-md overflow-hidden transition-all hover:shadow-md" data-category="approvals">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary"></div>
+<div class="flex items-start justify-between gap-space-md pl-space-xs">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-secondary-container text-on-secondary-container flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-xl">order_approve</span>
+</div>
+<div class="flex flex-col">
+<div class="flex flex-wrap items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-code-xs font-semibold tracking-wide">
+                    PO APPROVAL REQUIRED
+                  </span>
+<span class="font-code-xs text-code-xs font-semibold text-primary">PR-2026-0314</span>
+<span class="text-secondary text-code-xs font-code-xs">• $2,900.00 USD</span>
+<span class="text-outline text-code-xs font-code-xs">• 24 mins ago</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Silicon Carbide Shaft Seal Kit (Pack of 2)</h2>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 text-body-xs font-body-xs text-secondary mt-1">
+<span>Vendor: <strong class="text-on-surface">Trane EarthWise Supply</strong></span>
+<span>• Requester: <span class="text-on-surface">Marcus Kowalski</span></span>
+<span>• Budget: <span class="text-on-surface font-medium">CUP Capex ($64.2k remaining)</span></span>
+</div>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container" title="Dismiss Alert" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<!-- Snippet -->
+<div class="pl-space-xs ml-11 p-space-md rounded-lg bg-surface-container-low flex items-center justify-between">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Dual technical endorsement completed by Plant Engineering. Awaiting final authorization from <strong class="text-on-surface">Marcus Vance (VP Operations)</strong> to release requisition to purchasing broker.
+            </p>
+<span class="font-code-xs text-code-xs px-2 py-1 rounded bg-surface-container text-primary font-semibold flex-shrink-0 ml-4">
+              3-Way Match Verified
+            </span>
+</div>
+<!-- Actions -->
+<div class="pl-space-xs ml-11 flex flex-wrap items-center gap-space-sm pt-space-xs">
+<button class="h-8 px-space-md rounded-lg bg-tertiary-container text-on-tertiary-container font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-tertiary hover:text-on-tertiary transition-colors shadow-sm" onclick="this.innerHTML='&lt;span class=\'material-symbols-outlined text-sm\'&gt;check&lt;/span&gt; Authorized'; this.classList.add('bg-tertiary')" type="button">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+<span>One-Click Authorize PO</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">visibility</span>
+<span>Review 3-Way Match</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-error font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-error-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">block</span>
+<span>Reject Justification</span>
+</button>
+</div>
+</div>
+<!-- CARD 3: INVENTORY LOW STOCK WARNING -->
+<div class="relative rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-md overflow-hidden transition-all hover:shadow-md" data-category="inventory">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-surface-tint"></div>
+<div class="flex items-start justify-between gap-space-md pl-space-xs">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-primary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-xl">inventory_2</span>
+</div>
+<div class="flex flex-col">
+<div class="flex flex-wrap items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-code-xs text-code-xs font-semibold tracking-wide">
+                    STOCK DEPLETION WARNING
+                  </span>
+<span class="font-code-xs text-code-xs font-semibold text-primary">PART-SEAL-8821</span>
+<span class="text-secondary text-code-xs font-code-xs">• Below Safety Stock</span>
+<span class="text-outline text-code-xs font-code-xs">• 1h ago</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">PTFE Gasket Flange Kit (ANSI Class 300)</h2>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 text-body-xs font-body-xs text-secondary mt-1">
+<span>On-Hand: <strong class="text-error font-semibold">2 ea</strong></span>
+<span>• Reserved: <span class="text-on-surface font-medium">1 ea</span></span>
+<span>• Net Available: <strong class="text-error">1 ea</strong> (Min Threshold: 4 ea)</span>
+<span>• Bin: <span class="font-code-xs text-code-xs text-on-surface">CRIB-B / Bin C-04</span></span>
+</div>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container" title="Dismiss Alert" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<!-- Snippet -->
+<div class="pl-space-xs ml-11 p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Auto-reorder draft requisition <span class="font-code-xs text-code-xs font-semibold text-primary">PR-2026-0315</span> automatically staged for 10 units via Trane Supply catalog at $185.00/unit.
+            </p>
+</div>
+<!-- Actions -->
+<div class="pl-space-xs ml-11 flex flex-wrap items-center gap-space-sm pt-space-xs">
+<button class="h-8 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-sm">shopping_cart_checkout</span>
+<span>Auto-Approve Reorder (10 ea)</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">list_alt</span>
+<span>View Inventory Ledger</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">swap_horiz</span>
+<span>Transfer from Central Crib</span>
+</button>
+</div>
+</div>
+<!-- CARD 4: WORK ORDER ASSIGNED -->
+<div class="relative rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-md overflow-hidden transition-all hover:shadow-md" data-category="wo">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<div class="flex items-start justify-between gap-space-md pl-space-xs">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-primary-fixed text-primary flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-xl">build</span>
+</div>
+<div class="flex flex-col">
+<div class="flex flex-wrap items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-primary font-code-xs text-code-xs font-semibold tracking-wide">
+                    WORK ORDER DISPATCHED
+                  </span>
+<span class="font-code-xs text-code-xs font-semibold text-primary">WO-2026-0898</span>
+<span class="text-secondary text-code-xs font-code-xs">• Priority 2 Routine</span>
+<span class="text-outline text-code-xs font-code-xs">• 1h 40m ago</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">AHU-02 VAV Box Damper Actuator Calibration</h2>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 text-body-xs font-body-xs text-secondary mt-1">
+<span>Lead Technician: <strong class="text-on-surface">Elena Voronova</strong></span>
+<span>• Location: <span class="text-on-surface font-medium">Substation East Wing (Roof Level)</span></span>
+<span>• Execution Window: <strong class="text-on-surface">Today 15:30 UTC</strong></span>
+</div>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container" title="Dismiss Alert" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<!-- Snippet -->
+<div class="pl-space-xs ml-11 p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Quarterly sensor drift audit checklist linked. Pre-work Job Safety Analysis (JSA) digital signature pending field sign-in from technician device.
+            </p>
+</div>
+<!-- Actions -->
+<div class="pl-space-xs ml-11 flex flex-wrap items-center gap-space-sm pt-space-xs">
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-primary">fact_check</span>
+<span>View Field Checklist</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-secondary">sync_alt</span>
+<span>Reassign Tech</span>
+</button>
+</div>
+</div>
+<!-- CARD 5: SECURITY / RBAC AUDIT EVENT -->
+<div class="relative rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-md overflow-hidden transition-all hover:shadow-md" data-category="security">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-tertiary-container"></div>
+<div class="flex items-start justify-between gap-space-md pl-space-xs">
+<div class="flex items-start gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-tertiary-fixed text-on-tertiary-fixed flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-xl">admin_panel_settings</span>
+</div>
+<div class="flex flex-col">
+<div class="flex flex-wrap items-center gap-space-xs mb-1">
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-code-xs text-code-xs font-semibold tracking-wide">
+                    SECURITY POLICY OVERRIDE
+                  </span>
+<span class="font-code-xs text-code-xs font-semibold text-tertiary-container">AUDIT-EVT-9042</span>
+<span class="text-secondary text-code-xs font-code-xs">• Off-Hours Access</span>
+<span class="text-outline text-code-xs font-code-xs">• 14:15 UTC</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Physical &amp; SCADA Access Bypass Granted</h2>
+<div class="flex flex-wrap items-center gap-x-space-md gap-y-1 text-body-xs font-body-xs text-secondary mt-1">
+<span>Authorized Actor: <strong class="text-on-surface">David Chen (Engineering Manager)</strong></span>
+<span>• Target Terminal: <span class="font-code-xs text-code-xs text-on-surface font-semibold">HVC-ENG-02</span></span>
+<span>• Duration: <span class="text-on-surface font-medium">90 mins session cap</span></span>
+</div>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface p-1 rounded hover:bg-surface-container" title="Dismiss Alert" type="button">
+<span class="material-symbols-outlined text-base">close</span>
+</button>
+</div>
+<!-- Snippet -->
+<div class="pl-space-xs ml-11 p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Elevated override executed for emergency chiller diagnostic session following P1 alert. Multi-factor hardware security key confirmed on terminal port.
+            </p>
+</div>
+<!-- Actions -->
+<div class="pl-space-xs ml-11 flex flex-wrap items-center gap-space-sm pt-space-xs">
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-surface-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm text-tertiary-container">verified_user</span>
+<span>View Audit Trace Log</span>
+</button>
+<button class="h-8 px-space-md rounded-lg bg-surface-container-lowest text-error font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-error-container shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-sm">lock_reset</span>
+<span>Revoke Active Session</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: Offcanvas Drawer Inspector & Notification Preferences Matrix (35% ~ col-span-4) -->
+<div class="lg:col-span-4 flex flex-col gap-space-lg sticky top-20">
+<!-- Drawer Preview & Tabbed Control Inspector -->
+<div class="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-xl">tune</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Preferences &amp; Routing</h2>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-code-xs text-code-xs font-semibold">Matrix v4</span>
+</div>
+<!-- Section 1: Delivery Channels & Notification Routing Matrix -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Channel Routing per Alert Class</span>
+<!-- Channel 1: Critical SLA -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+                Critical SLA &amp; Safety
+              </span>
+<span class="font-code-xs text-code-xs px-1.5 py-0.5 rounded bg-error text-on-error font-semibold uppercase">P1 Locked</span>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary pt-1">
+<span>App: <strong class="text-tertiary">ON</strong></span>
+<span>Email: <strong class="text-tertiary">Instant</strong></span>
+<span>SMS/Call: <strong class="text-error">Forced ON</strong></span>
+</div>
+</div>
+<!-- Channel 2: Work Orders -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+                WO Dispatches &amp; Status
+              </span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary pt-1">
+<span>App: <strong class="text-on-surface">Live</strong></span>
+<span>Email: <strong class="text-on-surface">Shift Digest</strong></span>
+<span>SMS: <strong class="text-outline">Muted</strong></span>
+</div>
+</div>
+<!-- Channel 3: Inventory Reorder -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-surface-tint"></span>
+                Inventory &amp; Stock Triggers
+              </span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary pt-1">
+<span>App: <strong class="text-on-surface">Live</strong></span>
+<span>Email: <strong class="text-on-surface">Daily 08:00</strong></span>
+<span>SMS: <strong class="text-outline">Off</strong></span>
+</div>
+</div>
+<!-- Channel 4: Purchase Approvals -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                PO Approvals &amp; Capex
+              </span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary pt-1">
+<span>App: <strong class="text-on-surface">Push</strong></span>
+<span>Email: <strong class="text-on-surface">Instant</strong></span>
+<span>SMS: <strong class="text-tertiary">Push (URGENT)</strong></span>
+</div>
+</div>
+<!-- Channel 5: Security / RBAC -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+                Security &amp; RBAC Overrides
+              </span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface-container-lowest after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary pt-1">
+<span>App: <strong class="text-on-surface">Live</strong></span>
+<span>Email: <strong class="text-on-surface">Weekly Summary</strong></span>
+<span>SMS: <strong class="text-outline">Off</strong></span>
+</div>
+</div>
+</div>
+<!-- Section 2: Escalation & Quiet Hours Policies -->
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Escalation Rule Engine</span>
+<div class="p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-primary text-lg mt-0.5">hourglass_top</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">15-Minute Unread Escalation</span>
+<span class="font-body-xs text-body-xs text-secondary">Auto-route unacknowledged Critical P1 alerts to On-Duty VP Operations and Facilities Director via emergency SMS broadcast.</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-code-xs font-code-xs pt-1">
+<span class="text-secondary">Current Target:</span>
+<span class="text-on-surface font-semibold">Marcus Vance (+1 415-555-0192)</span>
+</div>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container-low flex flex-col gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-lg mt-0.5">bedtime</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Shift Auto-Mute Policy</span>
+<span class="font-body-xs text-body-xs text-secondary">Silence non-critical notifications outside Shift A (07:00 - 15:30 WIB) except P1 Emergency alarms and chiller shut-offs.</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-code-xs font-code-xs pt-1">
+<span class="text-tertiary font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active Schedule
+              </span>
+<span class="text-secondary">Shift A Mode</span>
+</div>
+</div>
+</div>
+<!-- Section 3: HTMX Active Test Simulation Bar -->
+<div class="p-space-md rounded-lg bg-inverse-surface text-inverse-on-surface flex flex-col gap-space-sm mt-space-xs shadow-md">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase">Active Bus Debugger</span>
+<span class="font-code-xs text-code-xs text-tertiary-fixed font-semibold">WS-PUSH: 12ms</span>
+</div>
+<p class="font-body-xs text-body-xs text-inverse-on-surface/80">
+            Inject a real-time synthetic P1 telemetry alarm into the live message bus to test dispatch triggers.
+          </p>
+<button class="w-full h-8 px-space-md rounded bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center justify-center gap-space-xs hover:bg-primary transition-colors" onclick="triggerSimulationAlert()" type="button">
+<span class="material-symbols-outlined text-sm">bolt</span>
+<span>Trigger Test P1 Alert (HTMX)</span>
+</button>
+<div class="flex items-center justify-between font-code-xs text-code-xs text-secondary-fixed-dim pt-1">
+<span>WebSocket: <strong class="text-tertiary-fixed">Connected</strong></span>
+<span>Channel: <span class="text-secondary-fixed-dim">sha256-aes-gcm</span></span>
+</div>
+</div>
+</div>
+<!-- Compact Asset SLA Pulse Mini-Chart Widget -->
+<div class="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-secondary uppercase">24-Hour SLA Compliance Rate</span>
+<span class="font-code-xs text-code-xs font-bold text-tertiary">98.4% Target</span>
+</div>
+<!-- Inline SVG Sparkline SLA Visualization -->
+<div class="relative w-full h-16 pt-2">
+<svg class="w-full h-full overflow-visible" fill="none" viewbox="0 0 300 60">
+<defs>
+<lineargradient id="slaGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#1e40af" stop-opacity="0.25"></stop>
+<stop offset="100%" stop-color="#1e40af" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,45 L25,42 L50,48 L75,30 L100,28 L125,35 L150,22 L175,26 L200,18 L225,20 L250,12 L275,15 L300,8 L300,60 L0,60 Z" fill="url(#slaGradient)"></path>
+<path d="M0,45 L25,42 L50,48 L75,30 L100,28 L125,35 L150,22 L175,26 L200,18 L225,20 L250,12 L275,15 L300,8" stroke="#1e40af" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+<circle cx="300" cy="8" fill="#1e40af" r="4" stroke="#ffffff" stroke-width="2"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-code-xs font-code-xs text-secondary pt-1">
+<span>Shift A: 100% met</span>
+<span>Shift B: 97.2% met</span>
+<span>Shift C: 98.0% met</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Filter tabs behavior
+  document.querySelectorAll('#category-filter-bar .tab-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#category-filter-bar .tab-pill').forEach(b => {
+        b.classList.remove('bg-primary-container', 'text-on-primary', 'font-semibold', 'shadow-sm');
+        b.classList.add('bg-surface-container-low', 'text-on-surface-variant', 'font-medium');
+      });
+      btn.classList.remove('bg-surface-container-low', 'text-on-surface-variant', 'font-medium');
+      btn.classList.add('bg-primary-container', 'text-on-primary', 'font-semibold', 'shadow-sm');
+
+      const filterVal = btn.getAttribute('data-filter');
+      const cards = document.querySelectorAll('#notification-feed-list > div');
+      cards.forEach(card => {
+        if (filterVal === 'all') {
+          card.style.display = 'flex';
+        } else if (card.getAttribute('data-category') === filterVal) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+
+  // Client-side quick filter input
+  const searchInput = document.getElementById('alert-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      document.querySelectorAll('#notification-feed-list > div').forEach(card => {
+        const text = card.innerText.toLowerCase();
+        card.style.display = text.includes(q) ? 'flex' : 'none';
+      });
+    });
+  }
+
+  // Mark all as read micro-interaction
+  function markAllRead() {
+    const kpi = document.getElementById('kpi-unread-count');
+    if (kpi) {
+      kpi.innerText = '0';
+      kpi.classList.add('text-secondary');
+    }
+    document.querySelectorAll('#notification-feed-list > div').forEach(card => {
+      card.classList.add('opacity-75');
+    });
+  }
+
+  // HTMX synthetic alert trigger simulator
+  function triggerSimulationAlert() {
+    const feed = document.getElementById('notification-feed-list');
+    const newCard = document.createElement('div');
+    newCard.className = 'relative rounded-xl bg-surface-container-lowest p-space-lg shadow-md flex flex-col gap-space-md overflow-hidden border-l-4 border-error animate-pulse';
+    newCard.setAttribute('data-category', 'critical');
+    newCard.innerHTML = `
+      <div class="flex items-start justify-between gap-space-md">
+        <div class="flex items-start gap-space-sm">
+          <div class="w-9 h-9 rounded-lg bg-error-container text-on-error-container flex items-center justify-center flex-shrink-0">
+            <span class="material-symbols-outlined text-xl">bolt</span>
+          </div>
+          <div class="flex flex-col">
+            <div class="flex flex-wrap items-center gap-space-xs mb-1">
+              <span class="px-2 py-0.5 rounded-full bg-error text-on-error font-code-xs text-code-xs font-semibold tracking-wide">SYNTHETIC P1 TELEMETRY</span>
+              <span class="font-code-xs text-code-xs font-semibold text-primary">TEST-ALARM-998</span>
+              <span class="text-outline text-code-xs font-code-xs">• Just now</span>
+            </div>
+            <h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Chilled Water Return Temp Exceeded 14.2°C Threshold</h2>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Live WebSocket fragment injected into client message queue. SLA deadline auto-computed.</p>
+          </div>
+        </div>
+        <button type="button" class="text-secondary hover:text-on-surface p-1" onclick="this.closest('.relative').remove()"><span class="material-symbols-outlined text-base">close</span></button>
+      </div>
+    `;
+    feed.insertBefore(newCard, feed.firstChild);
+    setTimeout(() => {
+      newCard.classList.remove('animate-pulse');
+    }, 1500);
+  }
+</script></main></div></body></html>

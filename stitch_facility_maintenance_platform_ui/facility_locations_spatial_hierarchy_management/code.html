@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline": "#757684", "surface-container-highest": "#d3e4fe", "primary-fixed": "#dde1ff", "primary-container": "#1e40af", "secondary-fixed-dim": "#bec6e0", "on-primary-fixed": "#001453", "surface-tint": "#3755c3", "on-background": "#0b1c30", "outline-variant": "#c4c5d5", "surface-dim": "#cbdbf5", "secondary": "#565e74", "on-secondary-fixed-variant": "#3f465c", "surface-variant": "#d3e4fe", "surface-bright": "#f8f9ff", "on-primary-container": "#a8b8ff", "secondary-fixed": "#dae2fd", "surface-container-lowest": "#ffffff", "error": "#ba1a1a", "primary": "#00288e", "tertiary-container": "#00563a", "surface-container-high": "#dce9ff", "on-secondary-container": "#5c647a", "surface": "#f8f9ff", "secondary-container": "#dae2fd", "on-tertiary-fixed": "#002114", "on-surface": "#0b1c30", "on-error-container": "#93000a", "surface-container-low": "#eff4ff", "inverse-surface": "#213145", "on-secondary-fixed": "#131b2e", "on-tertiary-fixed-variant": "#005137", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "on-primary": "#ffffff", "tertiary": "#003d28", "tertiary-fixed": "#85f8c4", "on-surface-variant": "#444653", "background": "#f8f9ff", "inverse-on-surface": "#eaf1ff", "tertiary-fixed-dim": "#68dba9", "on-tertiary-container": "#5bcf9e", "on-secondary": "#ffffff", "surface-container": "#e5eeff", "primary-fixed-dim": "#b8c4ff", "on-primary-fixed-variant": "#173bab", "on-error": "#ffffff", "inverse-primary": "#b8c4ff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter": "1rem", "space-lg": "1rem", "margin": "1.5rem", "space-2xl": "2rem", "space-xl": "1.5rem", "gutter-lg": "1.5rem", "margin-mobile": "1rem", "gutter-sm": "0.75rem", "space-md": "0.75rem" }, "fontFamily": { "body-lg": [ "Inter" ], "headline-lg": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "body-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "label-caps": [ "Inter" ], "body-xs": [ "Inter" ], "headline-xl": [ "Inter" ], "metric-display": [ "Inter" ], "headline-md": [ "Inter" ], "body-sm": [ "Inter" ], "code-xs": [ "JetBrains Mono" ] }, "fontSize": { "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-xl-mobile": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "headline-sm": [ "16px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "label-caps": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" } ], "body-xs": [ "11px", { "lineHeight": "16px", "fontWeight": "500" } ], "headline-xl": [ "32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "metric-display": [ "36px", { "lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "code-xs": [ "11px", { "lineHeight": "14px", "fontWeight": "500" } ] } } } }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface"><aside class="fixed left-0 top-0 h-screen w-72 bg-inverse-surface z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm bg-inverse-surface"><img alt="Apex Ops Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WwCGE3jgd8oJh2SRylkRsCk2z2RLTJaal9S8uBTtQD5LoIjadhxPmyM8vixHpQSxMwdQDA02_8fapQLvTJaoTMNa3ir0H86gfpTnfp9KiJZArQpq1OvvD4Es4ffC90KheoPealjyr_chJM96CPDLrUIPQK1f6lY5S01VIodLSbuXp-FXCg6DvcglyrrWcA339Nl-t__VFBGdwKsZ2OSFyugSGnZQpSUvGoqSq82y0YG-y3VXrqKj3R6Jov"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface leading-tight tracking-tight">Apex Ops</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim uppercase tracking-wider">Enterprise CMMS</span></div></div><div class="px-gutter-sm pt-space-md pb-space-sm"><div class="px-space-sm py-space-xs rounded-lg bg-surface-container-high/10 flex items-center justify-between"><span class="font-code-xs text-code-xs text-tertiary-fixed flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>Live Sync Active</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim">v4.18-p3</span></div></div><nav class="px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-headline-sm rounded-lg"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Core Operations</span></div><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary font-headline-sm rounded-lg" data-path="operations-dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">grid_view</span><span class="font-body-sm text-body-sm">Operations Dashboard</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="work-orders" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-body-sm text-body-sm">Work Orders</span></div><span class="px-space-xs py-0.5 rounded-full bg-primary-container text-on-primary font-code-xs text-code-xs font-semibold">14</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="service-requests" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">inbox</span><span class="font-body-sm text-body-sm">Service Requests</span></div><span class="px-space-xs py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-code-xs font-semibold">5</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="preventive-maintenance" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-body-sm text-body-sm">Preventive Maintenance</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="field-inspections" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">checklist_rtl</span><span class="font-body-sm text-body-sm">Field Inspections</span></div></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Asset &amp; Resource</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="asset-registry" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">domain</span><span class="font-body-sm text-body-sm">Asset Registry</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="facility-locations" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-sm text-body-sm">Facility Locations</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="inventory-and-parts-ledger" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-body-sm text-body-sm">Inventory &amp; Parts Ledger</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="purchasing-and-pos" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">receipt_long</span><span class="font-body-sm text-body-sm">Purchasing &amp; POs</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="vendors-and-contractors" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">badge</span><span class="font-body-sm text-body-sm">Vendors &amp; Contractors</span></div></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Governance &amp; System</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="reports-and-analytics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">monitoring</span><span class="font-body-sm text-body-sm">Reports &amp; Analytics</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="audit-trail-and-logs" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">security</span><span class="font-body-sm text-body-sm">Audit Trail &amp; Logs</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="notifications-and-sla-alerts" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">warning</span><span class="font-body-sm text-body-sm">Notifications &amp; SLA Alerts</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="organization-and-rbac" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">manage_accounts</span><span class="font-body-sm text-body-sm">Organization &amp; RBAC</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="settings-and-system-config" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-sm text-body-sm">Settings &amp; System Config</span></div></a></nav></div><div class="p-space-md bg-inverse-surface/80"><div class="p-space-sm rounded-lg bg-surface-container-high/10 flex items-center justify-between"><div class="flex flex-col"><span class="font-label-caps text-label-caps text-secondary-fixed-dim">Telemetry Bus</span><span class="font-code-xs text-code-xs text-tertiary-fixed">Broker: 10.14.0.8</span></div><span class="font-code-xs text-code-xs px-space-xs py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-semibold">HEALTHY</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-gutter flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md flex-1 max-w-2xl"><div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-base text-primary">corporate_fare</span><div class="flex flex-col text-left"><span class="font-label-caps text-label-caps text-secondary uppercase">Facility Scope</span><span class="font-body-sm text-body-sm text-on-surface font-semibold truncate max-w-xs">HQ Campus - East Wing (Nusantara Tower)</span></div><span class="material-symbols-outlined text-base text-outline">arrow_drop_down</span></div><div class="relative flex-1"><span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span><input class="w-full h-9 pl-9 pr-space-md bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-sm font-body-sm rounded-lg outline-none focus:ring-2 focus:ring-primary-container shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all" placeholder="Search Work Orders (WO-#), Assets (AST-#), or Parts..." type="text"/></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span><span class="font-code-xs text-code-xs text-on-surface-variant font-medium">HTMX Server: <span class="text-tertiary-container font-semibold">Connected</span> | Sync: <span class="text-tertiary-container font-semibold">Realtime</span></span></div><button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary transition-colors shadow-[0_1px_3px_rgba(30,64,175,0.2)]" type="button"><span class="material-symbols-outlined text-base font-bold">add</span><span>New Dispatch / Request</span></button><div class="relative"><button class="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative" type="button"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error ring-2 ring-surface"></span></button></div><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUrbFrKd_a9q8FNQ6e-DTVYDzTmV3i2C6GQPftdhK5gwDaAQqywkJ3q55WCb6AH7YfWTmRyaNwiN1sMoJcw6YvkowVfo4iggzuvj2taz4_SzKlgmuCbZJqmXfb0xJ-xdz97L9kz9F_cnXRLay5SyU64_dBjvclcpybzg5U7v4WgUQlLaL8lM8U2yM-xu6sd-thediR-oG0f5rcqo0notuxmKhU29Grazp-PURqitTE0QfQSp8nVur1vw"/><div class="hidden md:flex flex-col text-left"><span class="font-body-sm text-body-sm text-on-surface font-semibold leading-tight">Marcus Vance</span><span class="font-label-caps text-label-caps text-secondary leading-tight">VP Operations &amp; Facilities</span></div></div></div></header><main class="relative pt-16 w-full bg-surface min-h-screen px-gutter py-margin"><div class="flex flex-col w-full">
+<!-- Breadcrumb Navigation Bar -->
+<div class="flex items-center justify-between pb-space-md">
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm text-secondary flex-wrap">
+<a class="hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">home</span>
+<span>Home</span>
+</a>
+<span class="text-outline">/</span>
+<span class="text-secondary">Asset &amp; Resource</span>
+<span class="text-outline">/</span>
+<a class="hover:text-primary transition-colors" href="#">Facility Locations</a>
+<span class="text-outline">/</span>
+<span class="text-on-surface font-semibold flex items-center gap-1">
+<span>HQ Campus (Nusantara Tower)</span>
+<span class="text-outline">›</span>
+<span>Building B (CUP)</span>
+<span class="text-outline">›</span>
+<span>Basement L2</span>
+<span class="text-outline">›</span>
+<span class="text-primary font-code-sm text-code-sm px-1.5 py-0.5 rounded bg-surface-container-high">Room #B-204</span>
+</span>
+</div>
+<!-- Quick Telemetry & Status Badges -->
+<div class="hidden lg:flex items-center gap-space-sm">
+<div class="px-space-sm py-1 rounded-full bg-surface-container flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span>
+<span class="font-code-xs text-code-xs text-on-surface-variant font-medium">Spatial Sync: <strong class="text-tertiary-container font-semibold">Realtime</strong></span>
+</div>
+<div class="px-space-sm py-1 rounded-full bg-surface-container text-on-surface-variant font-code-xs text-code-xs font-medium shadow-sm">
+        Total Managed Area: <span class="font-semibold text-on-surface">142,500 m²</span>
+</div>
+<div class="px-space-sm py-1 rounded-full bg-surface-container text-on-surface-variant font-code-xs text-code-xs font-medium shadow-sm">
+        Monitored Zones: <span class="font-semibold text-on-surface">68 Active</span>
+</div>
+</div>
+</div>
+<!-- Sub-Header & Main Action Toolbar -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md pb-space-lg">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Facility Locations &amp; Spatial Topology Hub</h1>
+<p class="font-body-sm text-body-sm text-secondary mt-0.5">Multi-tier geospatial asset hierarchy, BIM node coordination, and live mechanical room occupancy.</p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="h-9 px-space-md rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-body-sm text-body-sm font-semibold flex items-center gap-1.5 shadow-sm transition-all" onclick="document.getElementById('quick-selector-modal').classList.toggle('hidden')" type="button">
+<span class="material-symbols-outlined text-[18px] text-primary">filter_center_focus</span>
+<span>Quick Selector</span>
+</button>
+<button class="h-9 px-space-md rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-body-sm text-body-sm font-semibold flex items-center gap-1.5 shadow-sm transition-all" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">file_download</span>
+<span>Export GeoJSON / BIM</span>
+</button>
+<button class="h-9 px-space-md rounded bg-primary-container text-on-primary hover:bg-primary font-body-sm text-body-sm font-semibold flex items-center gap-1.5 shadow-sm transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">add_location_alt</span>
+<span>+ Add Sub-Location / Room</span>
+</button>
+</div>
+</div>
+<!-- Main Grid Layout (Split-Pane Architecture: 28% Left | 72% Center-Right) -->
+<div class="grid grid-cols-12 gap-space-lg items-start">
+<!-- LEFT PANE: Interactive Spatial Tree (Col 1-12 on mobile, Col 1-4 on Desktop - approx 28%) -->
+<div class="col-span-12 xl:col-span-4 2xl:col-span-3 flex flex-col gap-space-md">
+<!-- Spatial Tree Container Card -->
+<div class="bg-surface-container-lowest rounded-lg shadow-sm flex flex-col overflow-hidden">
+<!-- Search & Filter Controls -->
+<div class="p-space-md bg-surface-container-low/60 flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps uppercase tracking-wider text-secondary">Campus Spatial Index</span>
+<span class="font-code-xs text-code-xs text-primary font-medium">BIM LOD-350</span>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full h-8 pl-8 pr-12 bg-surface-container-lowest text-body-sm font-body-sm text-on-surface rounded placeholder:text-outline outline-none focus:bg-surface-container-lowest shadow-inner" placeholder="Filter room code, tag, or floor... (Ctrl + /)" type="text"/>
+<kbd class="absolute right-2 top-1/2 -translate-y-1/2 px-1 py-0.5 rounded bg-surface-container text-secondary font-code-xs text-[10px]">^/</kbd>
+</div>
+</div>
+<!-- Hierarchical Tree Navigation List -->
+<div class="p-space-sm flex flex-col gap-0.5 overflow-y-auto max-h-[720px] text-body-sm select-none">
+<!-- Node: Campus Root -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer group">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-secondary">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[18px] text-primary">domain</span>
+<span class="font-semibold text-on-surface truncate">HQ Campus (Nusantara)</span>
+</div>
+<span class="px-1.5 py-0.5 rounded bg-tertiary-container/15 text-tertiary font-code-xs text-[10px] font-semibold">4 BLDG</span>
+</div>
+<!-- Level 1: Buildings List -->
+<div class="pl-4 flex flex-col gap-0.5">
+<!-- Building A -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[16px]">arrow_right</span>
+<span class="material-symbols-outlined text-[16px]">apartment</span>
+<span class="truncate">Building A - Corp HQ (5 Fl)</span>
+</div>
+<span class="font-code-xs text-[11px] text-outline">Nominal</span>
+</div>
+<!-- Building B (Active Expanded) -->
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-high/60 text-on-surface cursor-pointer font-medium">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[16px] text-primary">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[16px] text-primary">factory</span>
+<span class="truncate">Building B - Central Plant (CUP)</span>
+</div>
+<span class="px-1.5 py-0.2 rounded bg-error-container text-error font-code-xs text-[10px] font-bold">1 ALERT</span>
+</div>
+<!-- Building B Floors / Sub-Levels -->
+<div class="pl-4 flex flex-col gap-0.5">
+<!-- Roof Deck -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px]">arrow_right</span>
+<span class="material-symbols-outlined text-[16px]">roofing</span>
+<span class="truncate">Roof - Chiller Loop &amp; CT</span>
+</div>
+<span class="font-code-xs text-[10px] text-outline">4 Assets</span>
+</div>
+<!-- Level 01 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px]">arrow_right</span>
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+<span class="truncate">Level 01 - Main Switchyard</span>
+</div>
+<span class="font-code-xs text-[10px] text-outline">6 Assets</span>
+</div>
+<!-- Basement L2 (Active Level) -->
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center justify-between p-1.5 rounded bg-surface-container-low text-on-surface cursor-pointer font-medium">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px] text-primary">arrow_drop_down</span>
+<span class="material-symbols-outlined text-[16px] text-primary">precision_manufacturing</span>
+<span class="truncate">Basement L2 - Heavy Mech</span>
+</div>
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-secondary font-code-xs text-[10px]">6 Rooms</span>
+</div>
+<!-- Basement L2 Specific Rooms -->
+<div class="pl-4 flex flex-col gap-0.5">
+<!-- Room B-201 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px] text-outline">meeting_room</span>
+<span class="truncate">#B-201 Emer Gen Vault</span>
+</div>
+<span class="font-code-xs text-[10px] text-outline">3 Ast | 1 WO</span>
+</div>
+<!-- Room B-204 (ACTIVE SELECTED NODE) -->
+<div class="flex items-center justify-between p-1.5 rounded bg-primary-container text-on-primary shadow-sm cursor-pointer" hx-get="/locations/tree/node/LOC-B2-MECH-204" hx-target="#location-detail-container">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px]">door_open</span>
+<span class="truncate font-semibold text-on-primary">#B-204 Centrifugal Chiller</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error ring-1 ring-on-primary animate-ping"></span>
+<span class="px-1 rounded bg-surface-container-lowest text-primary font-code-xs text-[10px] font-bold">8 AST</span>
+</div>
+</div>
+<!-- Room B-208 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px] text-outline">meeting_room</span>
+<span class="truncate">#B-208 Primary Pump Bay</span>
+</div>
+<span class="font-code-xs text-[10px] text-outline">5 Ast</span>
+</div>
+<!-- Room B-212 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px] text-outline">meeting_room</span>
+<span class="truncate">#B-212 Chemical Dosing</span>
+</div>
+<span class="font-code-xs text-[10px] text-outline">2 Ast</span>
+</div>
+</div>
+</div>
+<!-- Basement L3 -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[14px]">arrow_right</span>
+<span class="material-symbols-outlined text-[16px]">water_drop</span>
+<span class="truncate">Basement L3 - Fire Pumps</span>
+</div>
+<span class="font-code-xs text-[10px] text-outline">Optimal</span>
+</div>
+</div>
+</div>
+<!-- Building C -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[16px]">arrow_right</span>
+<span class="material-symbols-outlined text-[16px]">biotech</span>
+<span class="truncate">Building C - Cleanroom Hub</span>
+</div>
+<span class="font-code-xs text-[11px] text-outline">Nominal</span>
+</div>
+<!-- Logistics Warehouse -->
+<div class="flex items-center justify-between p-1.5 rounded hover:bg-surface-container-low cursor-pointer text-secondary">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-[16px]">arrow_right</span>
+<span class="material-symbols-outlined text-[16px]">warehouse</span>
+<span class="truncate">Logistics &amp; Central Warehouse</span>
+</div>
+<span class="font-code-xs text-[11px] text-outline">Nominal</span>
+</div>
+</div>
+</div>
+<!-- Tree Summary Footer Strip -->
+<div class="p-space-sm bg-surface-container-low/70 flex items-center justify-between text-secondary">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px]">analytics</span>
+<span class="font-code-xs text-code-xs">12 Sites · 34 Bldgs · 1,420 Rooms</span>
+</div>
+<a class="font-code-xs text-code-xs text-primary hover:underline" href="#">Recalibrate GIS</a>
+</div>
+</div>
+<!-- Quick Room Access & Health Overview Mini Card -->
+<div class="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col gap-space-sm">
+<span class="font-label-caps text-label-caps uppercase text-secondary tracking-wider">Zone Safety &amp; Compliance</span>
+<div class="grid grid-cols-2 gap-space-sm">
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-code-xs text-code-xs text-secondary">Fire Safety Zone</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold mt-0.5">FZ-09</span>
+<span class="font-code-xs text-[10px] text-tertiary-container mt-1">FM-200 Active</span>
+</div>
+<div class="p-space-sm rounded bg-error-container/30 flex flex-col">
+<span class="font-code-xs text-code-xs text-on-surface-variant">OSHA Risk Rating</span>
+<span class="font-headline-sm text-headline-sm text-error font-semibold mt-0.5">Hazard Class 2</span>
+<span class="font-code-xs text-[10px] text-error mt-1">Noise: 88 dBA</span>
+</div>
+</div>
+</div>
+</div>
+<!-- CENTER / RIGHT PANE (Col 1-12 on mobile, Col 5-12 on Desktop - approx 72%) -->
+<div class="col-span-12 xl:col-span-8 2xl:col-span-9 flex flex-col gap-space-lg" id="location-detail-container">
+<!-- Top Card: Selected Location Header & Technical Telemetry -->
+<div class="bg-surface-container-lowest rounded-lg shadow-sm p-space-lg flex flex-col gap-space-md">
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="px-2 py-0.5 rounded bg-primary text-on-primary font-code-sm text-code-sm font-semibold">LOC-B2-MECH-204</span>
+<span class="font-label-caps text-label-caps uppercase text-secondary">Zone: Nusantara-CUP-B2</span>
+<span class="flex items-center gap-1 font-code-xs text-code-xs text-error font-semibold px-2 py-0.5 rounded bg-error-container">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span> Active Critical Alert
+              </span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-bold">Centrifugal Chiller Plant Room #B-204</h2>
+<div class="flex items-center gap-space-sm font-body-sm text-body-sm text-secondary">
+<span class="material-symbols-outlined text-[16px] text-primary">pin_drop</span>
+<span>Building B (Central Utilities Plant) · Level Basement L2 · Grid Coordinates: CUP-G8-X3</span>
+</div>
+</div>
+<!-- Quick Action Controls for Selected Room -->
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="h-8 px-3 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm font-medium flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">polyline</span>
+<span>Edit Polygon</span>
+</button>
+<button class="h-8 px-3 rounded bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-body-sm text-body-sm font-medium flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">qr_code_2</span>
+<span>Print Badge QR</span>
+</button>
+<button class="h-8 px-3 rounded bg-primary hover:bg-primary-container text-on-primary font-body-sm text-body-sm font-medium flex items-center gap-1 transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">assignment_turned_in</span>
+<span>Dispatch Room Audit</span>
+</button>
+</div>
+</div>
+<!-- Telemetry & Environmental KPI Strip -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-space-sm pt-space-xs">
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-label-caps text-label-caps uppercase text-secondary">Floor Area</span>
+<span class="font-headline-md text-headline-md text-on-surface font-bold mt-1">480 m²</span>
+<span class="font-code-xs text-[11px] text-outline">Clearance: 5.2m</span>
+</div>
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-label-caps text-label-caps uppercase text-secondary">Ambient Temp</span>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">22.4</span>
+<span class="font-body-sm text-secondary">°C</span>
+</div>
+<span class="font-code-xs text-[11px] text-tertiary-container font-medium">● Setpoint Target</span>
+</div>
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-label-caps text-label-caps uppercase text-secondary">Rel Humidity</span>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">48.2</span>
+<span class="font-body-sm text-secondary">%</span>
+</div>
+<span class="font-code-xs text-[11px] text-tertiary-container font-medium">● Nominal (35-65%)</span>
+</div>
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-label-caps text-label-caps uppercase text-secondary">Refrigerant (R-134a)</span>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline-md text-headline-md text-error font-bold">142</span>
+<span class="font-body-sm text-error">PPM</span>
+</div>
+<span class="font-code-xs text-[11px] text-error font-medium">▲ Warning (&gt;100 PPM)</span>
+</div>
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-label-caps text-label-caps uppercase text-secondary">Thermal Delta T</span>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">5.8</span>
+<span class="font-body-sm text-secondary">°C</span>
+</div>
+<span class="font-code-xs text-[11px] text-secondary">Primary/Sec Loop</span>
+</div>
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col">
+<span class="font-label-caps text-label-caps uppercase text-secondary">Active Assets</span>
+<div class="flex items-baseline gap-1 mt-1">
+<span class="font-headline-md text-headline-md text-on-surface font-bold">8</span>
+<span class="font-body-sm text-secondary">units</span>
+</div>
+<span class="font-code-xs text-[11px] text-primary font-medium">1 In Service Overhaul</span>
+</div>
+</div>
+</div>
+<!-- Architectural 2D CAD Blueprint & Vector Spatial Visualizer -->
+<div class="bg-surface-container-lowest rounded-lg shadow-sm overflow-hidden flex flex-col">
+<!-- Floorplan Header Controls -->
+<div class="px-space-md py-space-sm bg-surface-container-low flex items-center justify-between flex-wrap gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-primary">architecture</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Architectural Spatial Blueprint: Room #B-204</span>
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container text-secondary font-medium">Vector Layer: Level -2.000m</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<div class="flex items-center bg-surface-container rounded p-0.5">
+<button class="px-2 py-1 rounded bg-surface-container-lowest text-primary font-code-xs text-code-xs font-semibold shadow-sm" type="button">HVAC Ducts</button>
+<button class="px-2 py-1 rounded text-secondary hover:text-on-surface font-code-xs text-code-xs font-semibold" type="button">Electrical</button>
+<button class="px-2 py-1 rounded text-secondary hover:text-on-surface font-code-xs text-code-xs font-semibold" type="button">Fire Safety</button>
+</div>
+<div class="flex items-center gap-1 pl-2">
+<button class="w-7 h-7 rounded bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface" title="Zoom In" type="button"><span class="material-symbols-outlined text-[16px]">add</span></button>
+<button class="w-7 h-7 rounded bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface" title="Zoom Out" type="button"><span class="material-symbols-outlined text-[16px]">remove</span></button>
+<button class="w-7 h-7 rounded bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface" title="Fit to Frame" type="button"><span class="material-symbols-outlined text-[16px]">crop_free</span></button>
+<button class="px-2 h-7 rounded bg-surface-container-high text-primary flex items-center gap-1 font-code-xs text-code-xs font-semibold" title="Toggle Thermal Sensor Heatmap" type="button">
+<span class="material-symbols-outlined text-[14px]">thermostat</span>
+<span>Heatmap</span>
+</button>
+</div>
+</div>
+</div>
+<!-- SVG CAD Canvas Container -->
+<div class="relative w-full bg-surface p-space-md flex items-center justify-center overflow-hidden">
+<svg class="w-full h-80 max-h-96" fill="none" viewbox="0 0 920 380" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<pattern height="20" id="cadGrid" patternunits="userSpaceOnUse" width="20">
+<path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d3e4fe" stroke-opacity="0.3" stroke-width="0.75"></path>
+</pattern>
+<radialgradient cx="50%" cy="50%" id="alertGlow" r="50%">
+<stop offset="0%" stop-color="#ba1a1a" stop-opacity="0.35"></stop>
+<stop offset="100%" stop-color="#ba1a1a" stop-opacity="0"></stop>
+</radialgradient>
+<lineargradient id="ductGrad" x1="0" x2="1" y1="0" y2="0">
+<stop offset="0%" stop-color="#d3e4fe" stop-opacity="0.7"></stop>
+<stop offset="100%" stop-color="#b8c4ff" stop-opacity="0.7"></stop>
+</lineargradient>
+</defs>
+<!-- CAD Grid Background -->
+<rect fill="url(#cadGrid)" height="380" width="920"></rect>
+<!-- Room Outer Perimeter Concrete Walls -->
+<rect fill="#ffffff" height="320" rx="4" stroke="#757684" stroke-width="4" width="840" x="40" y="30"></rect>
+<!-- Structural Pillars -->
+<rect fill="#213145" height="20" width="20" x="220" y="45"></rect>
+<rect fill="#213145" height="20" width="20" x="440" y="45"></rect>
+<rect fill="#213145" height="20" width="20" x="660" y="45"></rect>
+<rect fill="#213145" height="20" width="20" x="220" y="315"></rect>
+<rect fill="#213145" height="20" width="20" x="440" y="315"></rect>
+<rect fill="#213145" height="20" width="20" x="660" y="315"></rect>
+<!-- Overhead Chilled Water Loop Header (Piping Conduit) -->
+<line stroke="#1e40af" stroke-dasharray="12 4" stroke-opacity="0.7" stroke-width="6" x1="80" x2="840" y1="190" y2="190"></line>
+<text fill="#1e40af" font-family="JetBrains Mono" font-size="10" font-weight="600" x="90" y="182">PRIMARY CHILLED WATER RETURN (DN300 / 6.2 BAR)</text>
+<line stroke="#00563a" stroke-opacity="0.7" stroke-width="6" x1="80" x2="840" y1="210" y2="210"></line>
+<text fill="#00563a" font-family="JetBrains Mono" font-size="10" font-weight="600" x="90" y="224">PRIMARY CHILLED WATER SUPPLY (DN300 / 7.1 BAR)</text>
+<!-- Overhead Exhaust & Air Handling Duct -->
+<rect fill="url(#ductGrad)" height="18" width="760" x="80" y="60"></rect>
+<text fill="#173bab" font-family="JetBrains Mono" font-size="9" font-weight="500" x="90" y="73">EXHAUST VENT DUCT (EXH-09) - 1,200 CFM</text>
+<!-- ASSET 1: Centrifugal Chiller #03 (AST-HVAC-003) - Status: NOMINAL -->
+<g class="cursor-pointer group" transform="translate(100, 90)">
+<rect fill="#f8f9ff" height="85" rx="4" stroke="#00563a" stroke-width="2" width="180"></rect>
+<rect fill="#eff4ff" height="55" rx="3" stroke="#68dba9" stroke-dasharray="4 2" stroke-width="1.5" width="156" x="12" y="15"></rect>
+<circle cx="28" cy="42" fill="#00563a" r="8"></circle>
+<circle cx="28" cy="42" fill="#85f8c4" r="4"></circle>
+<text fill="#0b1c30" font-family="Inter" font-size="12" font-weight="700" x="44" y="36">CHILLER #03</text>
+<text fill="#444653" font-family="JetBrains Mono" font-size="10" x="44" y="50">AST-HVAC-003 (450 TR)</text>
+<text fill="#00563a" font-family="Inter" font-size="9" font-weight="600" x="44" y="62">RUNNING NOMINAL · 96%</text>
+</g>
+<!-- ASSET 2: Centrifugal Chiller #04 (AST-HVAC-004) - Status: CRITICAL ALERT (Active Selected) -->
+<g class="cursor-pointer group" transform="translate(320, 90)">
+<!-- Alert Radiation Glow -->
+<ellipse cx="90" cy="42" fill="url(#alertGlow)" rx="110" ry="60"></ellipse>
+<rect fill="#ffdad6" height="85" rx="4" stroke="#ba1a1a" stroke-width="2.5" width="180"></rect>
+<rect fill="#ffffff" height="55" rx="3" stroke="#ba1a1a" stroke-width="1.5" width="156" x="12" y="15"></rect>
+<!-- Pulsing indicator -->
+<circle cx="28" cy="42" fill="#ba1a1a" r="9"></circle>
+<circle cx="28" cy="42" fill="#ba1a1a" opacity="0.3" r="14">
+<animate attributename="r" dur="2s" repeatcount="indefinite" values="9;18;9"></animate>
+<animate attributename="opacity" dur="2s" repeatcount="indefinite" values="0.6;0;0.6"></animate>
+</circle>
+<circle cx="28" cy="42" fill="#ffffff" r="4"></circle>
+<text fill="#93000a" font-family="Inter" font-size="12" font-weight="700" x="44" y="34">CHILLER #04 [CRITICAL]</text>
+<text fill="#93000a" font-family="JetBrains Mono" font-size="10" font-weight="600" x="44" y="48">AST-HVAC-004</text>
+<text fill="#ba1a1a" font-family="Inter" font-size="9" font-weight="700" x="44" y="62">SEAL REFRIG LEAK · WO-0894</text>
+</g>
+<!-- ASSET 3: Primary Chilled Pump 101 -->
+<g class="cursor-pointer" transform="translate(100, 240)">
+<rect fill="#f8f9ff" height="70" rx="4" stroke="#00563a" stroke-width="2" width="120"></rect>
+<circle cx="30" cy="35" fill="#eff4ff" r="14" stroke="#00563a" stroke-width="2"></circle>
+<path d="M 24 35 L 36 35 M 30 29 L 30 41" stroke="#00563a" stroke-width="2"></path>
+<text fill="#0b1c30" font-family="Inter" font-size="11" font-weight="700" x="52" y="32">PUMP #101</text>
+<text fill="#444653" font-family="JetBrains Mono" font-size="9" x="52" y="46">AST-PUMP-101</text>
+<text fill="#00563a" font-family="Inter" font-size="8" font-weight="600" x="52" y="58">75HP · ACTIVE</text>
+</g>
+<!-- ASSET 4: Primary Chilled Pump 102 (Standby) -->
+<g class="cursor-pointer" transform="translate(240, 240)">
+<rect fill="#f8f9ff" height="70" rx="4" stroke="#565e74" stroke-width="1.5" width="120"></rect>
+<circle cx="30" cy="35" fill="#eff4ff" r="14" stroke="#565e74" stroke-width="1.5"></circle>
+<path d="M 24 35 L 36 35" stroke="#565e74" stroke-width="2"></path>
+<text fill="#0b1c30" font-family="Inter" font-size="11" font-weight="700" x="52" y="32">PUMP #102</text>
+<text fill="#444653" font-family="JetBrains Mono" font-size="9" x="52" y="46">AST-PUMP-102</text>
+<text fill="#565e74" font-family="Inter" font-size="8" font-weight="600" x="52" y="58">STANDBY READY</text>
+</g>
+<!-- ASSET 5: Motor Control Center (MCC-B2-04) -->
+<g transform="translate(680, 90)">
+<rect fill="#213145" height="55" rx="3" stroke="#00288e" stroke-width="2" width="160"></rect>
+<text fill="#ffffff" font-family="Inter" font-size="11" font-weight="700" x="14" y="24">MCC-B2-04 SWITCHGEAR</text>
+<text fill="#a8b8ff" font-family="JetBrains Mono" font-size="9" x="14" y="40">480V 3-PHASE · FEED 2B</text>
+<circle cx="145" cy="27" fill="#85f8c4" r="5"></circle>
+</g>
+<!-- Valve Substation -->
+<g transform="translate(400, 250)">
+<rect fill="#eff4ff" height="50" rx="3" stroke="#3755c3" stroke-width="1.5" width="90"></rect>
+<text fill="#0b1c30" font-family="Inter" font-size="10" font-weight="700" x="10" y="24">VALV-042</text>
+<text fill="#444653" font-family="JetBrains Mono" font-size="8" x="10" y="38">DN300 BFLY</text>
+</g>
+<!-- Safety & Egress Markings -->
+<!-- Emergency Exit Door East -->
+<path d="M 880 160 L 880 220" stroke="#ba1a1a" stroke-linecap="round" stroke-width="6"></path>
+<path d="M 880 160 A 60 60 0 0 1 840 215" fill="none" stroke="#ba1a1a" stroke-dasharray="4 3" stroke-width="1.5"></path>
+<text fill="#ba1a1a" font-family="Inter" font-size="9" font-weight="700" x="780" y="195">FIRE EXIT</text>
+<!-- Emergency Eyewash & LOTO Bay -->
+<g transform="translate(600, 245)">
+<rect fill="#eff4ff" height="58" rx="3" stroke="#00563a" stroke-width="1.5" width="95"></rect>
+<rect fill="#00563a" height="16" rx="2" width="16" x="8" y="8"></rect>
+<text fill="#ffffff" font-family="Inter" font-size="12" font-weight="bold" x="12" y="20">+</text>
+<text fill="#003d28" font-family="Inter" font-size="9" font-weight="700" x="28" y="20">EYEWASH</text>
+<text fill="#444653" font-family="JetBrains Mono" font-size="8" x="8" y="42">LOTO LOCKOUT #4</text>
+</g>
+<!-- Entry Vestibule West -->
+<path d="M 40 160 L 40 220" stroke="#1e40af" stroke-width="6"></path>
+<path d="M 40 160 A 60 60 0 0 0 80 215" fill="none" stroke="#1e40af" stroke-dasharray="4 3" stroke-width="1.5"></path>
+<text fill="#1e40af" font-family="Inter" font-size="9" font-weight="700" x="48" y="152">MAIN ACCESS DOOR</text>
+</svg>
+<!-- Spatial Interactive Floating Legend Overlay -->
+<div class="absolute bottom-3 left-3 bg-surface-container-lowest/90 backdrop-blur rounded p-2 text-on-surface shadow-sm flex items-center gap-3">
+<div class="flex items-center gap-1.5 font-code-xs text-[11px]">
+<span class="w-3 h-3 rounded bg-tertiary-container"></span>
+<span>Nominal (6)</span>
+</div>
+<div class="flex items-center gap-1.5 font-code-xs text-[11px]">
+<span class="w-3 h-3 rounded bg-error"></span>
+<span>Critical Active (1)</span>
+</div>
+<div class="flex items-center gap-1.5 font-code-xs text-[11px]">
+<span class="w-3 h-3 rounded bg-secondary"></span>
+<span>Standby (1)</span>
+</div>
+<div class="flex items-center gap-1.5 font-code-xs text-[11px] text-outline">
+<span>Scale: 1:50</span>
+</div>
+</div>
+<!-- Active Room Spatial Stamp -->
+<div class="absolute top-3 right-3 bg-surface-container-lowest/90 backdrop-blur rounded px-2.5 py-1 text-on-surface shadow-sm font-code-xs text-code-xs flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-primary">verified</span>
+<span>BIM REVIT 2026.2 MODEL MATCHED</span>
+</div>
+</div>
+</div>
+<!-- BOTTOM SPLIT SECTION (Assets in Location Table & Active Room Work Orders) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+<!-- Left Sub-Pane: Assets Installed in this Room (Col 1-7) -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-lg shadow-sm flex flex-col overflow-hidden">
+<div class="p-space-md bg-surface-container-low/60 flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-primary">inventory_2</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Installed Assets in Room</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary font-code-xs text-[10px] font-bold">4 Linked</span>
+</div>
+<button class="font-body-sm text-body-sm text-primary font-semibold hover:underline flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">swap_horiz</span>
+<span>Reassign / Transfer</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-secondary font-label-caps text-label-caps uppercase">
+<th class="py-2.5 px-space-md">Asset Tag / Name</th>
+<th class="py-2.5 px-space-sm">Classification</th>
+<th class="py-2.5 px-space-sm">Operational Status</th>
+<th class="py-2.5 px-space-md text-right">Health Score</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container font-body-sm text-body-sm text-on-surface">
+<!-- Row 1: Alert Asset -->
+<tr class="hover:bg-surface-container-low/80 transition-colors bg-error-container/10">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm font-semibold text-primary">AST-HVAC-004</span>
+<span class="font-body-xs text-body-xs text-secondary truncate max-w-xs">Centrifugal Water Chiller 450-TR</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-[10px] font-medium">Critical Class A</span>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-error font-code-xs text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span> P1 Warning
+                    </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<span class="font-code-sm text-code-sm font-bold text-error">88.4%</span>
+</td>
+</tr>
+<!-- Row 2: Pump 101 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm font-semibold text-primary">AST-PUMP-101</span>
+<span class="font-body-xs text-body-xs text-secondary truncate max-w-xs">Primary Chilled Water Pump 75HP</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-[10px] font-medium">Standard Class B</span>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-code-xs text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span> Running Nominal
+                    </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<span class="font-code-sm text-code-sm font-bold text-tertiary-container">96.8%</span>
+</td>
+</tr>
+<!-- Row 3: Pump 102 -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm font-semibold text-primary">AST-PUMP-102</span>
+<span class="font-body-xs text-body-xs text-secondary truncate max-w-xs">Primary Chilled Water Standby Pump</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-[10px] font-medium">Standard Class B</span>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Standby / Ready
+                    </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">99.1%</span>
+</td>
+</tr>
+<!-- Row 4: Valve -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-space-md">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm font-semibold text-primary">AST-VALV-042</span>
+<span class="font-body-xs text-body-xs text-secondary truncate max-w-xs">Main Header Motorized Butterfly Valve</span>
+</div>
+</div>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-[10px] font-medium">Safety Critical</span>
+</td>
+<td class="py-2.5 px-space-sm">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-code-xs text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container"></span> Operational
+                    </span>
+</td>
+<td class="py-2.5 px-space-md text-right">
+<span class="font-code-sm text-code-sm font-bold text-tertiary-container">94.2%</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-space-sm bg-surface-container-low/40 flex items-center justify-between">
+<span class="font-body-xs text-body-xs text-secondary">Showing 4 of 8 total mapped assets for Room #B-204</span>
+<a class="font-code-xs text-code-xs text-primary hover:underline" href="#">View All 8 in Asset Registry →</a>
+</div>
+</div>
+<!-- Right Sub-Pane: Active Work Orders & Defects in Room (Col 8-12) -->
+<div class="lg:col-span-5 bg-surface-container-lowest rounded-lg shadow-sm flex flex-col overflow-hidden">
+<div class="p-space-md bg-surface-container-low/60 flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-error">assignment_late</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Active Work Orders &amp; Defects</span>
+<span class="px-2 py-0.5 rounded-full bg-error-container text-error font-code-xs text-[10px] font-bold">2 Open</span>
+</div>
+<button class="h-7 px-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-code-xs text-code-xs font-semibold flex items-center gap-1" type="button">
+<span>+ Log Defect</span>
+</button>
+</div>
+<div class="p-space-md flex flex-col gap-space-md">
+<!-- WO 1: Critical -->
+<div class="p-space-sm rounded bg-error-container/20 flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-error text-on-error font-code-xs text-[10px] font-bold">P1 CRITICAL</span>
+<span class="font-code-xs text-code-xs text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">timer</span> SLA Breach in 42m
+                </span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">WO-2026-0894</span>
+<span class="text-secondary text-body-xs">· AST-HVAC-004</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-medium mt-0.5">Chiller #04 Shaft Seal Refrigerant Leak</p>
+</div>
+<div class="flex items-center justify-between pt-1 font-body-xs text-body-xs text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-primary">engineering</span>
+<span class="font-medium text-on-surface">M. Kowalski</span>
+<span>(HVAC Lead)</span>
+</div>
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-on-surface font-code-xs text-[10px] font-medium">In Progress</span>
+</div>
+</div>
+<!-- WO 2: Preventive -->
+<div class="p-space-sm rounded bg-surface-container-low flex flex-col gap-1.5">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-surface-container text-secondary font-code-xs text-[10px] font-bold">P3 ROUTINE</span>
+<span class="font-code-xs text-code-xs text-secondary font-medium">Due Tomorrow 18:00</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">WO-2026-0881</span>
+<span class="text-secondary text-body-xs">· AST-VALV-042</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-medium mt-0.5">Semi-Annual Calibration of Pressure Relief Valve</p>
+</div>
+<div class="flex items-center justify-between pt-1 font-body-xs text-body-xs text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-secondary">person</span>
+<span>Assigned: Shift Delta Team</span>
+</div>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high text-primary font-code-xs text-[10px] font-semibold">Scheduled</span>
+</div>
+</div>
+<!-- Recent Inspection Audit Result Box -->
+<div class="p-space-sm rounded bg-surface-container-low/50 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary-container text-[20px]">fact_check</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm font-semibold text-on-surface">Audit TMPL-HVAC-CHL-02</span>
+<span class="font-body-xs text-body-xs text-secondary">Completed today at 09:15 UTC · 3/4 passed</span>
+</div>
+</div>
+<span class="px-2 py-0.5 rounded bg-error-container text-error font-code-xs text-[10px] font-bold">1 Defect</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- FLOATING UNIVERSAL CASCADING LOCATION SELECTOR (MODAL PREVIEW / INTERACTIVE TOOLBAR POPUP) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-inverse-surface/40 backdrop-blur-xs hidden" id="quick-selector-modal">
+<div class="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden flex flex-col">
+<!-- Modal Header -->
+<div class="p-space-md bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]">account_tree</span>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Universal Cascading Location Selector</h3>
+<p class="font-body-xs text-body-xs text-secondary">Global spatial switch for dispatchers, technicians, and telemetry views.</p>
+</div>
+</div>
+<button class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-secondary" onclick="document.getElementById('quick-selector-modal').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Cascading 4-Level Dropdowns -->
+<div class="p-space-lg flex flex-col gap-space-md">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Level 1: Site / Campus -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps uppercase text-secondary">Level 1: Campus / Site</label>
+<div class="relative">
+<select class="w-full h-10 px-space-sm bg-surface-container-low text-on-surface font-body-sm rounded outline-none focus:bg-surface-container-lowest shadow-sm appearance-none cursor-pointer">
+<option selected="">HQ Campus - East Wing (Nusantara Tower)</option>
+<option>Western Regional Logistics Terminal</option>
+<option>Bio-Pharma Clean Manufacturing Park</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Level 2: Building -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps uppercase text-secondary">Level 2: Building / Complex</label>
+<div class="relative">
+<select class="w-full h-10 px-space-sm bg-surface-container-low text-on-surface font-body-sm rounded outline-none focus:bg-surface-container-lowest shadow-sm appearance-none cursor-pointer">
+<option>Building A - Corporate HQ</option>
+<option selected="">Building B - Central Utilities Plant (CUP)</option>
+<option>Building C - High Density Lab</option>
+<option>Central Parts Warehouse</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Level 3: Floor / Vertical Level -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps uppercase text-secondary">Level 3: Floor / Spatial Level</label>
+<div class="relative">
+<select class="w-full h-10 px-space-sm bg-surface-container-low text-on-surface font-body-sm rounded outline-none focus:bg-surface-container-lowest shadow-sm appearance-none cursor-pointer">
+<option>Roof Deck (Cooling Loop)</option>
+<option>Level 01 (Switchgear Yard)</option>
+<option selected="">Basement L2 - Heavy Mech Vault</option>
+<option>Basement L3 - Fire Pumps</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Level 4: Room / Sub-Location -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps uppercase text-secondary">Level 4: Room / Equipment Bay</label>
+<div class="relative">
+<select class="w-full h-10 px-space-sm bg-surface-container-low text-on-surface font-body-sm rounded outline-none focus:bg-surface-container-lowest shadow-sm appearance-none cursor-pointer">
+<option>Room #B-201: Generator Vault</option>
+<option selected="">Room #B-204: Centrifugal Chiller Plant (Active)</option>
+<option>Room #B-208: Primary Pump Bay</option>
+<option>Room #B-212: Chemical Dosing</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+</div>
+<!-- Filter Preview Strip inside Modal -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Selected: <strong class="text-primary">8 Assets</strong>, <strong class="text-error">2 Open WOs</strong>, and <strong class="text-on-surface">480 m²</strong> footprint</span>
+</div>
+<span class="font-code-xs text-code-xs text-secondary">Node: LOC-B2-MECH-204</span>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="p-space-md bg-surface-container-low/60 flex items-center justify-end gap-space-sm">
+<button class="px-space-md h-9 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm font-medium" onclick="document.getElementById('quick-selector-modal').classList.add('hidden')" type="button">Cancel</button>
+<button class="px-space-md h-9 rounded bg-primary-container hover:bg-primary text-on-primary font-body-sm text-body-sm font-semibold shadow-sm flex items-center gap-1.5" onclick="document.getElementById('quick-selector-modal').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+<span>Apply Filter Across Dashboard</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

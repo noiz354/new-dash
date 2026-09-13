@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline": "#757684", "surface-container-highest": "#d3e4fe", "primary-fixed": "#dde1ff", "primary-container": "#1e40af", "secondary-fixed-dim": "#bec6e0", "on-primary-fixed": "#001453", "surface-tint": "#3755c3", "on-background": "#0b1c30", "outline-variant": "#c4c5d5", "surface-dim": "#cbdbf5", "secondary": "#565e74", "on-secondary-fixed-variant": "#3f465c", "surface-variant": "#d3e4fe", "surface-bright": "#f8f9ff", "on-primary-container": "#a8b8ff", "secondary-fixed": "#dae2fd", "surface-container-lowest": "#ffffff", "error": "#ba1a1a", "primary": "#00288e", "tertiary-container": "#00563a", "surface-container-high": "#dce9ff", "on-secondary-container": "#5c647a", "surface": "#f8f9ff", "secondary-container": "#dae2fd", "on-tertiary-fixed": "#002114", "on-surface": "#0b1c30", "on-error-container": "#93000a", "surface-container-low": "#eff4ff", "inverse-surface": "#213145", "on-secondary-fixed": "#131b2e", "on-tertiary-fixed-variant": "#005137", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "on-primary": "#ffffff", "tertiary": "#003d28", "tertiary-fixed": "#85f8c4", "on-surface-variant": "#444653", "background": "#f8f9ff", "inverse-on-surface": "#eaf1ff", "tertiary-fixed-dim": "#68dba9", "on-tertiary-container": "#5bcf9e", "on-secondary": "#ffffff", "surface-container": "#e5eeff", "primary-fixed-dim": "#b8c4ff", "on-primary-fixed-variant": "#173bab", "on-error": "#ffffff", "inverse-primary": "#b8c4ff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter": "1rem", "space-lg": "1rem", "margin": "1.5rem", "space-2xl": "2rem", "space-xl": "1.5rem", "gutter-lg": "1.5rem", "margin-mobile": "1rem", "gutter-sm": "0.75rem", "space-md": "0.75rem" }, "fontFamily": { "body-lg": [ "Inter" ], "headline-lg": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "body-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "label-caps": [ "Inter" ], "body-xs": [ "Inter" ], "headline-xl": [ "Inter" ], "metric-display": [ "Inter" ], "headline-md": [ "Inter" ], "body-sm": [ "Inter" ], "code-xs": [ "JetBrains Mono" ] }, "fontSize": { "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-xl-mobile": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "headline-sm": [ "16px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "label-caps": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" } ], "body-xs": [ "11px", { "lineHeight": "16px", "fontWeight": "500" } ], "headline-xl": [ "32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "metric-display": [ "36px", { "lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "code-xs": [ "11px", { "lineHeight": "14px", "fontWeight": "500" } ] } } } }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface"><aside class="fixed left-0 top-0 h-screen w-72 bg-inverse-surface z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm bg-inverse-surface"><img alt="Apex Ops Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WwCGE3jgd8oJh2SRylkRsCk2z2RLTJaal9S8uBTtQD5LoIjadhxPmyM8vixHpQSxMwdQDA02_8fapQLvTJaoTMNa3ir0H86gfpTnfp9KiJZArQpq1OvvD4Es4ffC90KheoPealjyr_chJM96CPDLrUIPQK1f6lY5S01VIodLSbuXp-FXCg6DvcglyrrWcA339Nl-t__VFBGdwKsZ2OSFyugSGnZQpSUvGoqSq82y0YG-y3VXrqKj3R6Jov"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface leading-tight tracking-tight">Apex Ops</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim uppercase tracking-wider">Enterprise CMMS</span></div></div><div class="px-gutter-sm pt-space-md pb-space-sm"><div class="px-space-sm py-space-xs rounded-lg bg-surface-container-high/10 flex items-center justify-between"><span class="font-code-xs text-code-xs text-tertiary-fixed flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>Live Sync Active</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim">v4.18-p3</span></div></div><nav class="px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-headline-sm rounded-lg"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Core Operations</span></div><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary font-headline-sm rounded-lg" data-path="operations-dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">grid_view</span><span class="font-body-sm text-body-sm">Operations Dashboard</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="work-orders" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-body-sm text-body-sm">Work Orders</span></div><span class="px-space-xs py-0.5 rounded-full bg-primary-container text-on-primary font-code-xs text-code-xs font-semibold">14</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="service-requests" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">inbox</span><span class="font-body-sm text-body-sm">Service Requests</span></div><span class="px-space-xs py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-code-xs font-semibold">5</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="preventive-maintenance" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-body-sm text-body-sm">Preventive Maintenance</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="field-inspections" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">checklist_rtl</span><span class="font-body-sm text-body-sm">Field Inspections</span></div></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Asset &amp; Resource</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="asset-registry" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">domain</span><span class="font-body-sm text-body-sm">Asset Registry</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="facility-locations" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-sm text-body-sm">Facility Locations</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="inventory-and-parts-ledger" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-body-sm text-body-sm">Inventory &amp; Parts Ledger</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="purchasing-and-pos" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">receipt_long</span><span class="font-body-sm text-body-sm">Purchasing &amp; POs</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="vendors-and-contractors" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">badge</span><span class="font-body-sm text-body-sm">Vendors &amp; Contractors</span></div></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Governance &amp; System</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="reports-and-analytics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">monitoring</span><span class="font-body-sm text-body-sm">Reports &amp; Analytics</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="audit-trail-and-logs" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">security</span><span class="font-body-sm text-body-sm">Audit Trail &amp; Logs</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="notifications-and-sla-alerts" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">warning</span><span class="font-body-sm text-body-sm">Notifications &amp; SLA Alerts</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="organization-and-rbac" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">manage_accounts</span><span class="font-body-sm text-body-sm">Organization &amp; RBAC</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="settings-and-system-config" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-sm text-body-sm">Settings &amp; System Config</span></div></a></nav></div><div class="p-space-md bg-inverse-surface/80"><div class="p-space-sm rounded-lg bg-surface-container-high/10 flex items-center justify-between"><div class="flex flex-col"><span class="font-label-caps text-label-caps text-secondary-fixed-dim">Telemetry Bus</span><span class="font-code-xs text-code-xs text-tertiary-fixed">Broker: 10.14.0.8</span></div><span class="font-code-xs text-code-xs px-space-xs py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-semibold">HEALTHY</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-gutter flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md flex-1 max-w-2xl"><div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-base text-primary">corporate_fare</span><div class="flex flex-col text-left"><span class="font-label-caps text-label-caps text-secondary uppercase">Facility Scope</span><span class="font-body-sm text-body-sm text-on-surface font-semibold truncate max-w-xs">HQ Campus - East Wing (Nusantara Tower)</span></div><span class="material-symbols-outlined text-base text-outline">arrow_drop_down</span></div><div class="relative flex-1"><span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span><input class="w-full h-9 pl-9 pr-space-md bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-sm font-body-sm rounded-lg outline-none focus:ring-2 focus:ring-primary-container shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all" placeholder="Search Work Orders (WO-#), Assets (AST-#), or Parts..." type="text"/></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span><span class="font-code-xs text-code-xs text-on-surface-variant font-medium">HTMX Server: <span class="text-tertiary-container font-semibold">Connected</span> | Sync: <span class="text-tertiary-container font-semibold">Realtime</span></span></div><button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary transition-colors shadow-[0_1px_3px_rgba(30,64,175,0.2)]" type="button"><span class="material-symbols-outlined text-base font-bold">add</span><span>New Dispatch / Request</span></button><div class="relative"><button class="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative" type="button"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error ring-2 ring-surface"></span></button></div><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUrbFrKd_a9q8FNQ6e-DTVYDzTmV3i2C6GQPftdhK5gwDaAQqywkJ3q55WCb6AH7YfWTmRyaNwiN1sMoJcw6YvkowVfo4iggzuvj2taz4_SzKlgmuCbZJqmXfb0xJ-xdz97L9kz9F_cnXRLay5SyU64_dBjvclcpybzg5U7v4WgUQlLaL8lM8U2yM-xu6sd-thediR-oG0f5rcqo0notuxmKhU29Grazp-PURqitTE0QfQSp8nVur1vw"/><div class="hidden md:flex flex-col text-left"><span class="font-body-sm text-body-sm text-on-surface font-semibold leading-tight">Marcus Vance</span><span class="font-label-caps text-label-caps text-secondary leading-tight">VP Operations &amp; Facilities</span></div></div></div></header><main class="relative pt-16 w-full bg-surface min-h-screen px-gutter py-margin"><div class="flex flex-col w-full">
+<!-- Sub-Header Context Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md pb-space-lg">
+<div class="flex flex-col gap-space-xs">
+<!-- Breadcrumb -->
+<nav class="flex items-center gap-space-xs text-body-xs font-body-xs text-secondary">
+<a class="hover:text-primary transition-colors" href="#">Home</a>
+<span class="text-outline-variant">/</span>
+<a class="hover:text-primary transition-colors" href="#">Core Operations</a>
+<span class="text-outline-variant">/</span>
+<a class="hover:text-primary transition-colors" href="#">Field Inspections</a>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface font-semibold">Findings &amp; Auto-WO Conversion Desk</span>
+</nav>
+<!-- Title & Live Badges -->
+<div class="flex flex-wrap items-center gap-space-sm pt-0.5">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Defect Ledger &amp; Auto-WO Dispatch</h1>
+<div class="flex items-center gap-space-xs">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-code-xs text-code-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            Active Ledger
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-code-xs text-code-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+            5 Unresolved
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-secondary-container font-code-xs text-code-xs">
+<span class="material-symbols-outlined text-[13px] text-tertiary">timer</span>
+            SLA: &lt;30m Triage
+          </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-container text-on-tertiary-container font-code-xs text-code-xs font-semibold">
+<span class="material-symbols-outlined text-[13px]">bolt</span>
+            Auto-WO Engine: Online
+          </span>
+</div>
+</div>
+</div>
+<!-- Right Controls -->
+<div class="flex items-center gap-space-sm self-start lg:self-auto">
+<button class="h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[17px] text-secondary">file_download</span>
+<span>Export CSV</span>
+</button>
+<button class="h-9 px-space-md rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-space-xs shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[17px] text-secondary">verified_user</span>
+<span>Audit Integrity Report</span>
+</button>
+<button class="h-9 px-space-md rounded-lg bg-primary text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary-container shadow-md transition-all active:scale-[0.98]" type="button">
+<span class="material-symbols-outlined text-[18px]">electric_bolt</span>
+<span>Batch Convert to Work Orders (3)</span>
+</button>
+</div>
+</div>
+<!-- Top Metric Overview Matrix (3 Highlight Tiles) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md pb-space-lg">
+<!-- Tile 1: Total Audit Failures -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-wider">Total Audit Failures (Month)</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">rule</span>
+</div>
+<div class="flex items-baseline gap-space-sm pt-space-xs">
+<span class="font-metric-display text-metric-display text-on-surface">32</span>
+<span class="font-body-sm text-body-sm text-secondary font-medium">Defect Points Detected</span>
+</div>
+<div class="pt-space-sm flex flex-col gap-1.5">
+<div class="w-full bg-surface-container-high rounded-full h-1.5 overflow-hidden flex">
+<div class="bg-primary h-1.5" style="width: 88%;"></div>
+<div class="bg-outline-variant h-1.5" style="width: 12%;"></div>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary">
+<span class="text-on-surface font-medium">88% Converted to Work Orders</span>
+<span>12% Dismissed w/ Justification</span>
+</div>
+</div>
+</div>
+<!-- Tile 2: Critical Safety / OSHA Breach -->
+<div class="bg-error-container/25 rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-error uppercase tracking-wider font-semibold">Critical Safety / OSHA Breach Findings</span>
+<span class="material-symbols-outlined text-[18px] text-error">gavel</span>
+</div>
+<div class="flex items-baseline gap-space-sm pt-space-xs">
+<span class="font-metric-display text-metric-display text-error">03</span>
+<span class="font-label-caps text-label-caps uppercase px-2 py-0.5 rounded-full bg-error text-on-error font-bold tracking-wide">Critical Fail</span>
+</div>
+<div class="pt-space-sm flex items-center justify-between text-body-xs font-body-xs">
+<span class="text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">lock_reset</span>
+          100% Requires Mandatory LOTO WO
+        </span>
+<span class="text-on-surface-variant font-code-xs text-code-xs">SLA: IMMEDIATE</span>
+</div>
+</div>
+<!-- Tile 3: MTTR from Inspection -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-wider">Mean Time to Repair (MTTR)</span>
+<span class="material-symbols-outlined text-[18px] text-tertiary">speed</span>
+</div>
+<div class="flex items-baseline gap-space-sm pt-space-xs">
+<span class="font-metric-display text-metric-display text-on-surface">3.4</span>
+<span class="font-body-md text-body-md text-secondary font-medium">Hours avg.</span>
+</div>
+<div class="pt-space-sm flex items-center justify-between text-body-xs font-body-xs">
+<span class="inline-flex items-center gap-1 text-tertiary font-semibold">
+<span class="material-symbols-outlined text-[15px]">trending_down</span>
+          -18% faster dispatch resolution
+        </span>
+<span class="text-secondary font-code-xs text-code-xs">via Auto-WO Pipeline</span>
+</div>
+</div>
+</div>
+<!-- Two-Pane Split Layout (5 cols / 7 cols) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- Left Pane: Inspection Findings & Defect Stream (5 Cols) -->
+<div class="xl:col-span-5 flex flex-col gap-space-md">
+<!-- Defect Stream Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-md flex flex-col gap-space-md">
+<!-- Filter Tabs -->
+<div class="flex items-center gap-1 overflow-x-auto pb-1 bg-surface-container-low p-1 rounded-lg">
+<button class="px-space-sm py-1 rounded-md text-on-surface-variant hover:text-on-surface font-body-xs text-body-xs font-medium whitespace-nowrap transition-colors" type="button">
+            All (12)
+          </button>
+<button class="px-space-sm py-1 rounded-md bg-error text-on-error font-body-xs text-body-xs font-semibold whitespace-nowrap shadow-xs" type="button">
+            CRITICAL FAIL (5)
+          </button>
+<button class="px-space-sm py-1 rounded-md text-on-surface-variant hover:text-on-surface font-body-xs text-body-xs font-medium whitespace-nowrap transition-colors" type="button">
+            OUT-OF-SPEC (4)
+          </button>
+<button class="px-space-sm py-1 rounded-md text-on-surface-variant hover:text-on-surface font-body-xs text-body-xs font-medium whitespace-nowrap transition-colors" type="button">
+            CONVERTED (3)
+          </button>
+</div>
+<!-- Search & Parametric Filters -->
+<div class="flex items-center gap-space-xs">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[16px]">filter_alt</span>
+<input class="w-full h-8 pl-8 pr- space-xs bg-surface-container-low text-on-surface text-body-xs font-body-xs rounded-lg outline-none focus:bg-surface-container-lowest focus:shadow-xs transition-all" placeholder="Filter by FND-ID, AST-ID, Technician..." type="text" value="FND-2026"/>
+</div>
+<button class="h-8 px-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-secondary flex items-center justify-center transition-colors" title="Filter options" type="button">
+<span class="material-symbols-outlined text-[17px]">tune</span>
+</button>
+</div>
+<!-- Defect Cards Stack -->
+<div class="flex flex-col gap-space-sm" id="defect-stream">
+<!-- Card 1 (SELECTED / ACTIVE) -->
+<div class="p-space-md rounded-xl bg-surface-container-high/40 shadow-sm transition-all cursor-pointer relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-error"></div>
+<div class="flex items-start justify-between gap-space-sm pl-1">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error text-on-error font-code-xs text-code-xs font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-on-error animate-ping"></span>
+                  CRITICAL FAIL
+                </span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-code-xs text-code-xs font-semibold">
+                  OSHA Mandatory
+                </span>
+<span class="font-code-xs text-code-xs font-semibold text-primary">FND-2026-0188</span>
+</div>
+<span class="text-body-xs font-body-xs text-secondary font-medium whitespace-nowrap">22m ago</span>
+</div>
+<div class="pl-1 pt-space-xs flex flex-col gap-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold leading-snug">
+                Refrigerant Line Primary Mechanical Shaft Seal
+              </span>
+<div class="flex items-center gap-space-xs text-body-xs font-body-xs text-secondary">
+<span class="material-symbols-outlined text-[14px]">domain</span>
+<span class="font-code-xs text-code-xs text-on-surface font-medium">AST-HVAC-004</span>
+<span>• Centrifugal Chiller Unit 04 (Basement Mech B-204)</span>
+</div>
+</div>
+<!-- Quantitative Telemetry Breach -->
+<div class="pl-1 pt-space-xs">
+<div class="p-space-xs rounded-lg bg-error-container/40 text-on-error-container text-body-xs font-body-xs flex items-center justify-between">
+<span class="font-medium truncate">Ultrasonic leak probe: 18.4 ppm</span>
+<span class="font-code-xs text-code-xs font-semibold uppercase text-error">Threshold: 0.0 ppm</span>
+</div>
+</div>
+<!-- Evidence Thumbnail & Tech Footnote -->
+<div class="pl-1 pt-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg overflow-hidden relative shadow-xs bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="Macro close-up inspection photo of industrial centrifugal chiller mechanical flange showing active oil weeping, bubbled refrigerant sight glass, and yellow grease seal degradation under industrial high-bay lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDGFQq-xZ2cYsIG5d6qmgE_SOgICaPxwP8KKiSiz5BeJU1ex0G0HUA9BxvVZD0xQ1c2uI5TjZK6TGfuFon7dKe3ElPxOMvzXBYVMfxf6wFeWINnJIvnhHYxNfpIU1mTw-tdnGr7jaooK-SU1Ai_XI9-8uCGHJ1u1Fu1Jdj1tIZA1gH4cLtpoZZOoLzgAZWOMySGOzSgOY3Xopiq92dfghcxe3vs0mJ0DUpgYlSPH1CVdBILVLg9lyfLYg"/>
+<span class="absolute bottom-0.5 right-0.5 bg-inverse-surface/80 text-inverse-on-surface rounded px-0.5 text-[8px] font-code-xs font-bold">+1</span>
+</div>
+<div class="flex flex-col text-left">
+<span class="text-body-xs font-body-xs text-on-surface font-semibold">M. Kowalski (Lead Tech)</span>
+<span class="font-code-xs text-code-xs text-secondary">via INS-2026-0412</span>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-primary-container text-on-primary font-code-xs text-code-xs font-semibold flex items-center gap-1">
+                Active Triage <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+</span>
+</div>
+</div>
+<!-- Card 2: Diesel Generator Voltage Fail -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest hover:bg-surface-container-low transition-all cursor-pointer shadow-xs">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error/15 text-error font-code-xs text-code-xs font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  CRITICAL FAIL
+                </span>
+<span class="font-code-xs text-code-xs font-semibold text-secondary">FND-2026-0185</span>
+</div>
+<span class="text-body-xs font-body-xs text-secondary whitespace-nowrap">2h ago</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold leading-snug">
+                Emergency Starter Battery Bank Float Voltage
+              </span>
+<div class="flex items-center gap-space-xs text-body-xs font-body-xs text-secondary">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+<span class="font-code-xs text-code-xs text-on-surface font-medium">AST-GEN-01</span>
+<span>• Emergency Diesel Gen 1200kVA (Sub-yard A)</span>
+</div>
+</div>
+<div class="pt-space-xs">
+<div class="p-space-xs rounded-lg bg-surface-container text-on-surface-variant text-body-xs font-body-xs flex items-center justify-between">
+<span class="text-error font-medium truncate">Measured: 21.4 VDC (High crank risk)</span>
+<span class="font-code-xs text-code-xs text-secondary uppercase">Nominal: 24.0 VDC</span>
+</div>
+</div>
+<div class="pt-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-xs text-body-xs font-body-xs text-secondary">
+<span class="material-symbols-outlined text-[15px]">person</span>
+<span>T. Chen (Apprentice) • INS-2026-0409</span>
+</div>
+<button class="text-primary font-body-xs text-body-xs font-semibold hover:underline" type="button">Select &gt;</button>
+</div>
+</div>
+<!-- Card 3: HEPA Filter Differential Pressure Out-of-Spec -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest hover:bg-surface-container-low transition-all cursor-pointer shadow-xs">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex flex-wrap items-center gap-1.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-code-xs font-bold uppercase">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  OUT-OF-SPEC METER
+                </span>
+<span class="font-code-xs text-code-xs font-semibold text-secondary">FND-2026-0182</span>
+</div>
+<span class="text-body-xs font-body-xs text-secondary whitespace-nowrap">4h ago</span>
+</div>
+<div class="pt-space-xs flex flex-col gap-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold leading-snug">
+                Static Differential Pressure Across Stage 2 Filter
+              </span>
+<div class="flex items-center gap-space-xs text-body-xs font-body-xs text-secondary">
+<span class="material-symbols-outlined text-[14px]">air</span>
+<span class="font-code-xs text-code-xs text-on-surface font-medium">AST-ENV-108</span>
+<span>• Cleanroom HEPA Core (Zone D Labs)</span>
+</div>
+</div>
+<div class="pt-space-xs">
+<div class="p-space-xs rounded-lg bg-surface-container text-on-surface-variant text-body-xs font-body-xs flex items-center justify-between">
+<span class="font-medium text-secondary truncate">Delta-P: 340 Pa (Restricted flow)</span>
+<span class="font-code-xs text-code-xs text-secondary uppercase">Max limit: 280 Pa</span>
+</div>
+</div>
+<div class="pt-space-sm flex items-center justify-between">
+<div class="flex items-center gap-space-xs text-body-xs font-body-xs text-secondary">
+<span class="material-symbols-outlined text-[15px]">person</span>
+<span>E. Rostova • INS-2026-0415</span>
+</div>
+<button class="text-primary font-body-xs text-body-xs font-semibold hover:underline" type="button">Select &gt;</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Quick Auto-WO Rules Engine Teaser -->
+<div class="bg-surface-container rounded-xl p-space-md shadow-xs flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">smart_toy</span>
+<div class="flex flex-col text-left">
+<span class="text-body-sm font-body-sm text-on-surface font-semibold">Triage Rule: #HVAC-LEAK-R134A</span>
+<span class="font-code-xs text-code-xs text-secondary">Auto-promotes leaks &gt;10ppm to Emergency P1 Breakdown</span>
+</div>
+</div>
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-semibold">ENFORCED</span>
+</div>
+</div>
+<!-- Right Pane: Active Finding Triage & Work Order Auto-Conversion Engine (7 Cols) -->
+<div class="xl:col-span-7 flex flex-col gap-space-md">
+<!-- Conversion Console Surface -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-space-lg flex flex-col gap-space-lg">
+<!-- Target Finding Header Banner -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm pb-space-xs">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm px-2 py-0.5 rounded bg-error-container text-on-error-container font-bold">FND-2026-0188</span>
+<span class="font-code-xs text-code-xs text-secondary">Source: INS-2026-0412 (Weekly Chiller Run-Check)</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight pt-1">
+              Primary Shaft Seal Refrigerant Leak &amp; Bearing Contamination
+            </h2>
+</div>
+<div class="flex items-center gap-1.5 self-start lg:self-auto">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-error text-on-error font-code-xs text-code-xs font-bold uppercase tracking-wider">
+              Priority: Emergency P1
+            </span>
+</div>
+</div>
+<!-- Inspection Context Metadata Bar -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-space-sm p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Recorded At</span>
+<span class="font-code-xs text-code-xs text-on-surface font-semibold">Today 14:15 UTC</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Certified Auditor</span>
+<span class="font-body-xs text-body-xs text-on-surface font-semibold truncate">M. Kowalski (Cert #882)</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Asset Tier</span>
+<span class="font-code-xs text-code-xs text-error font-semibold">Tier 1 Critical Mission</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Location Tag</span>
+<span class="font-body-xs text-body-xs text-on-surface font-semibold truncate">Mech Room B-204 / Pad 4</span>
+</div>
+</div>
+<!-- Side-by-Side Inspection Comparison & Visual Evidence -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-space-md">
+<!-- Textual Specs Comparison (7 cols) -->
+<div class="md:col-span-7 flex flex-col gap-space-sm">
+<div class="p-space-sm rounded-lg bg-surface-container flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-secondary uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check_circle</span>
+                Nominal Acceptance Criteria
+              </span>
+<p class="font-body-sm text-body-sm text-on-surface">
+                Hermetic seal integrity, <strong>0.0 ppm R-134a</strong> detection threshold, no physical weeping at seal housing, mechanical flange torqued to 45 Nm.
+              </p>
+</div>
+<div class="p-space-sm rounded-lg bg-error-container/30 flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-error uppercase flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-[14px] text-error">cancel</span>
+                Actual Recorded Field Finding
+              </span>
+<p class="font-body-sm text-body-sm text-on-surface font-medium">
+                Ultrasonic sniffer alarmed at <span class="text-error font-bold font-code-sm text-code-sm">18.4 ppm R-134a</span>. Visible refrigerant oil emulsion weeping along lower flange quadrant. Slight bearing chirping noted during off-load spin down.
+              </p>
+</div>
+</div>
+<!-- Photo Evidence Preview (5 cols) -->
+<div class="md:col-span-5 flex flex-col gap-1">
+<div class="relative w-full h-36 rounded-lg overflow-hidden bg-inverse-surface shadow-xs group">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="High-resolution macro inspection photograph showing centrifugal compressor shaft seal weeping lubricant emulsion with digital yellow crosshairs highlighting micro-cracks and yellow pressure warning tag stamped 14:15 UTC" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxGXyRZK1BHnK4-Cyuk3zhXBt38uc-fT4433-qtRcndEqB2izfHadYqaFac9b42q8OOb2Id-yMqewlkHrPUoNfBy0oW9kGplWlzknYa0C-FPs-b5C1W0LQM-CNViIcDyXKxty0z6cijrU0TOVzYjy8pfTnTXnVH_Y502947PMFXYGhAycDfyhxdXEoSUoFBlQXp9XMgrchzne3wL61fWouIx_2psmux2hzFOWAPYV6J1MBy8_nrzp8SA"/>
+<div class="absolute inset-0 bg-gradient-to-t from-inverse-surface/90 via-transparent to-transparent flex items-end justify-between p-2">
+<span class="font-code-xs text-code-xs text-inverse-on-surface font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-error">photo_camera</span>
+                  PHOTO_CHILLER4_SEAL.RAW
+                </span>
+<span class="font-code-xs text-code-xs text-tertiary-fixed font-semibold">SHA-256 Verified</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-body-xs font-body-xs text-secondary px-0.5">
+<span>EXIF: 48.12°N 11.58°E ±1m</span>
+<button class="text-primary font-semibold hover:underline flex items-center gap-0.5" type="button">
+<span class="material-symbols-outlined text-[13px]">zoom_in</span> Full Specimen View
+              </button>
+</div>
+</div>
+</div>
+<!-- Divider Line Substitute using Surface Shift -->
+<div class="h-px w-full bg-surface-container-high"></div>
+<!-- Auto-WO Generation Form (Pre-populated Engine Output) -->
+<div class="flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">build_circle</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">
+                Auto-Work Order Dispatch Profile
+              </span>
+</div>
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-primary-fixed text-on-primary-fixed font-semibold">
+              PRE-COMPILED VIA TEMPLATE #WO-HVAC-LEAK
+            </span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Work Order Type -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Target Work Order Type</label>
+<div class="relative">
+<select class="w-full h-9 pl-3 pr-8 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm font-semibold outline-none appearance-none">
+<option selected="">EMERGENCY BREAKDOWN (WO-EM-01)</option>
+<option>CORRECTIVE MAINTENANCE (WO-CM-02)</option>
+<option>PREVENTIVE OVERHAUL (WO-PM-03)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-secondary pointer-events-none text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Priority Override -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Calculated Dispatch Priority</label>
+<div class="h-9 px-3 rounded-lg bg-error-container text-on-error-container font-code-sm text-code-sm font-bold flex items-center justify-between">
+<span class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                  P1 - IMMEDIATE CALLOUT (&lt;1 HOUR)
+                </span>
+<span class="font-code-xs text-code-xs opacity-80">Score: 94/100</span>
+</div>
+</div>
+</div>
+<!-- Auto-Generated WO Title -->
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Generated Work Order Title &amp; Scope</label>
+<input class="w-full h-9 px-3 rounded-lg bg-surface-container-low text-on-surface font-body-sm text-body-sm font-medium outline-none focus:bg-surface-container-lowest focus:shadow-xs transition-all" type="text" value="Corrective Repair &amp; Seal Replacement: Chiller #4 Mechanical Shaft Leak (AST-HVAC-004)"/>
+</div>
+<!-- Assigned Lead Technician & Crew -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Assigned Primary Lead Technician</label>
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-body-xs font-body-xs">
+                    MK
+                  </div>
+<div class="flex flex-col">
+<span class="text-body-sm font-body-sm text-on-surface font-semibold">Marcus Kowalski</span>
+<span class="font-code-xs text-code-xs text-secondary">HVAC Master • Shift A Lead</span>
+</div>
+</div>
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-semibold">AVAILABLE</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Target Completion SLA</label>
+<div class="p-2 rounded-lg bg-surface-container-low flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-body-sm font-body-sm text-on-surface font-semibold">Today 18:15 UTC (4h Window)</span>
+<span class="font-code-xs text-code-xs text-secondary">OSHA Clean Air Containment Mandate</span>
+</div>
+<span class="material-symbols-outlined text-primary text-[20px]">schedule</span>
+</div>
+</div>
+</div>
+<!-- Auto-Reserved Bill of Materials (BOM SKUs) -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Auto-Staged Spare Parts &amp; Consumables (BOM)</span>
+<span class="font-code-xs text-code-xs text-tertiary font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">check_circle</span>
+                All Line Items in Central Crib
+              </span>
+</div>
+<div class="bg-surface-container-low rounded-lg overflow-hidden">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container text-secondary font-label-caps text-label-caps uppercase">
+<th class="py-1.5 px-3">Part ID / SKU</th>
+<th class="py-1.5 px-3">Description</th>
+<th class="py-1.5 px-3">Qty</th>
+<th class="py-1.5 px-3">Bin Location</th>
+<th class="py-1.5 px-3 text-right">Est. Cost</th>
+</tr>
+</thead>
+<tbody class="font-body-xs text-body-xs text-on-surface divide-y divide-surface-container-high/30">
+<tr class="hover:bg-surface-container/50">
+<td class="py-2 px-3 font-code-xs text-code-xs font-semibold text-primary">PART-SEAL-8821</td>
+<td class="py-2 px-3 font-medium">Silicon Carbide Shaft Seal Assembly 2.5"</td>
+<td class="py-2 px-3 font-semibold">1 ea</td>
+<td class="py-2 px-3 font-code-xs text-code-xs text-secondary">CRIB-B / Bin C-04</td>
+<td class="py-2 px-3 text-right font-code-xs text-code-xs font-medium">$1,450.00</td>
+</tr>
+<tr class="hover:bg-surface-container/50">
+<td class="py-2 px-3 font-code-xs text-code-xs font-semibold text-primary">PART-LUB-09</td>
+<td class="py-2 px-3 font-medium">Synthetic POE Refrigeration Lubricant ISO 68</td>
+<td class="py-2 px-3 font-semibold">1 pail (5 gal)</td>
+<td class="py-2 px-3 font-code-xs text-code-xs text-secondary">CRIB-CHEM / Rack 02</td>
+<td class="py-2 px-3 text-right font-code-xs text-code-xs font-medium">$195.00</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Compliance & Safety Mandate Banner -->
+<div class="p-space-sm rounded-lg bg-surface-container-high/60 flex items-start gap-space-sm">
+<div class="pt-0.5">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-0 cursor-pointer" id="loto-check" type="checkbox"/>
+</div>
+<label class="flex flex-col cursor-pointer" for="loto-check">
+<span class="text-body-sm font-body-sm text-on-surface font-semibold flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-error">lock</span>
+                Enforce Mandatory LOTO 480V 3-Phase Lockout Protocol
+              </span>
+<span class="font-body-xs text-body-xs text-secondary">
+                Technician cannot close or certify Work Order without submitting signed dual-key lock voucher and gas sniffer purge certificate.
+              </span>
+</label>
+</div>
+<!-- Action Buttons Bar -->
+<div class="pt-space-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-space-sm">
+<button class="px-space-md py-2 rounded-lg bg-error/10 hover:bg-error/20 text-error font-body-sm text-body-sm font-semibold flex items-center justify-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+<span>Dismiss Finding (Requires Justification)</span>
+</button>
+<div class="flex items-center gap-space-sm">
+<button class="px-space-md py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm font-semibold transition-colors" type="button">
+                Schedule Routine PM
+              </button>
+<button class="px-space-lg py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-body-sm text-body-sm font-bold flex items-center justify-center gap-space-xs shadow-md transition-all active:scale-[0.98]" id="btn-convert" type="button">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+<span>Convert Finding to Work Order &amp; Auto-Dispatch Lead</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-interaction script -->
+<script>
+    (function() {
+      const convertBtn = document.getElementById('btn-convert');
+      if (convertBtn) {
+        convertBtn.addEventListener('click', function() {
+          const originalContent = this.innerHTML;
+          this.disabled = true;
+          this.classList.add('opacity-80');
+          this.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Generating WO-2026-8802 & Dispatching...</span>
+          `;
+          setTimeout(() => {
+            this.innerHTML = `
+              <span class="material-symbols-outlined text-[18px]">check_circle</span>
+              <span>WO-2026-8802 Dispatched to M. Kowalski</span>
+            `;
+            this.classList.remove('bg-primary');
+            this.classList.add('bg-tertiary-container', 'text-on-tertiary-container');
+          }, 900);
+        });
+      }
+    })();
+  </script>
+</div></main></div></body></html>

@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline": "#757684", "surface-container-highest": "#d3e4fe", "primary-fixed": "#dde1ff", "primary-container": "#1e40af", "secondary-fixed-dim": "#bec6e0", "on-primary-fixed": "#001453", "surface-tint": "#3755c3", "on-background": "#0b1c30", "outline-variant": "#c4c5d5", "surface-dim": "#cbdbf5", "secondary": "#565e74", "on-secondary-fixed-variant": "#3f465c", "surface-variant": "#d3e4fe", "surface-bright": "#f8f9ff", "on-primary-container": "#a8b8ff", "secondary-fixed": "#dae2fd", "surface-container-lowest": "#ffffff", "error": "#ba1a1a", "primary": "#00288e", "tertiary-container": "#00563a", "surface-container-high": "#dce9ff", "on-secondary-container": "#5c647a", "surface": "#f8f9ff", "secondary-container": "#dae2fd", "on-tertiary-fixed": "#002114", "on-surface": "#0b1c30", "on-error-container": "#93000a", "surface-container-low": "#eff4ff", "inverse-surface": "#213145", "on-secondary-fixed": "#131b2e", "on-tertiary-fixed-variant": "#005137", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "on-primary": "#ffffff", "tertiary": "#003d28", "tertiary-fixed": "#85f8c4", "on-surface-variant": "#444653", "background": "#f8f9ff", "inverse-on-surface": "#eaf1ff", "tertiary-fixed-dim": "#68dba9", "on-tertiary-container": "#5bcf9e", "on-secondary": "#ffffff", "surface-container": "#e5eeff", "primary-fixed-dim": "#b8c4ff", "on-primary-fixed-variant": "#173bab", "on-error": "#ffffff", "inverse-primary": "#b8c4ff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter": "1rem", "space-lg": "1rem", "margin": "1.5rem", "space-2xl": "2rem", "space-xl": "1.5rem", "gutter-lg": "1.5rem", "margin-mobile": "1rem", "gutter-sm": "0.75rem", "space-md": "0.75rem" }, "fontFamily": { "body-lg": [ "Inter" ], "headline-lg": [ "Inter" ], "headline-xl-mobile": [ "Inter" ], "body-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "label-caps": [ "Inter" ], "body-xs": [ "Inter" ], "headline-xl": [ "Inter" ], "metric-display": [ "Inter" ], "headline-md": [ "Inter" ], "body-sm": [ "Inter" ], "code-xs": [ "JetBrains Mono" ] }, "fontSize": { "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-xl-mobile": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "700" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "headline-sm": [ "16px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "label-caps": [ "11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" } ], "body-xs": [ "11px", { "lineHeight": "16px", "fontWeight": "500" } ], "headline-xl": [ "32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" } ], "metric-display": [ "36px", { "lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "body-sm": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ], "code-xs": [ "11px", { "lineHeight": "14px", "fontWeight": "500" } ] } } } }</script></head><body class="bg-surface font-body-md text-body-md text-on-surface"><aside class="fixed left-0 top-0 h-screen w-72 bg-inverse-surface z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-gutter flex items-center gap-space-sm bg-inverse-surface"><img alt="Apex Ops Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WwCGE3jgd8oJh2SRylkRsCk2z2RLTJaal9S8uBTtQD5LoIjadhxPmyM8vixHpQSxMwdQDA02_8fapQLvTJaoTMNa3ir0H86gfpTnfp9KiJZArQpq1OvvD4Es4ffC90KheoPealjyr_chJM96CPDLrUIPQK1f6lY5S01VIodLSbuXp-FXCg6DvcglyrrWcA339Nl-t__VFBGdwKsZ2OSFyugSGnZQpSUvGoqSq82y0YG-y3VXrqKj3R6Jov"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface leading-tight tracking-tight">Apex Ops</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim uppercase tracking-wider">Enterprise CMMS</span></div></div><div class="px-gutter-sm pt-space-md pb-space-sm"><div class="px-space-sm py-space-xs rounded-lg bg-surface-container-high/10 flex items-center justify-between"><span class="font-code-xs text-code-xs text-tertiary-fixed flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>Live Sync Active</span><span class="font-code-xs text-code-xs text-secondary-fixed-dim">v4.18-p3</span></div></div><nav class="px-space-sm py-space-xs flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary font-headline-sm rounded-lg"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Core Operations</span></div><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs transition-colors bg-primary-container text-on-primary font-headline-sm rounded-lg" data-path="operations-dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">grid_view</span><span class="font-body-sm text-body-sm">Operations Dashboard</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="work-orders" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-body-sm text-body-sm">Work Orders</span></div><span class="px-space-xs py-0.5 rounded-full bg-primary-container text-on-primary font-code-xs text-code-xs font-semibold">14</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="service-requests" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">inbox</span><span class="font-body-sm text-body-sm">Service Requests</span></div><span class="px-space-xs py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-code-xs text-code-xs font-semibold">5</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="preventive-maintenance" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-body-sm text-body-sm">Preventive Maintenance</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="field-inspections" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">checklist_rtl</span><span class="font-body-sm text-body-sm">Field Inspections</span></div></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Asset &amp; Resource</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="asset-registry" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">domain</span><span class="font-body-sm text-body-sm">Asset Registry</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="facility-locations" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-sm text-body-sm">Facility Locations</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="inventory-and-parts-ledger" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-body-sm text-body-sm">Inventory &amp; Parts Ledger</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="purchasing-and-pos" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">receipt_long</span><span class="font-body-sm text-body-sm">Purchasing &amp; POs</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="vendors-and-contractors" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">badge</span><span class="font-body-sm text-body-sm">Vendors &amp; Contractors</span></div></a><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-caps text-label-caps text-secondary-fixed-dim uppercase tracking-wider">Governance &amp; System</span></div><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="reports-and-analytics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">monitoring</span><span class="font-body-sm text-body-sm">Reports &amp; Analytics</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="audit-trail-and-logs" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">security</span><span class="font-body-sm text-body-sm">Audit Trail &amp; Logs</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="notifications-and-sla-alerts" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">warning</span><span class="font-body-sm text-body-sm">Notifications &amp; SLA Alerts</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="organization-and-rbac" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">manage_accounts</span><span class="font-body-sm text-body-sm">Organization &amp; RBAC</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded-lg text-inverse-on-surface hover:bg-surface-container-high/20 hover:text-on-primary transition-colors" data-path="settings-and-system-config" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-sm text-body-sm">Settings &amp; System Config</span></div></a></nav></div><div class="p-space-md bg-inverse-surface/80"><div class="p-space-sm rounded-lg bg-surface-container-high/10 flex items-center justify-between"><div class="flex flex-col"><span class="font-label-caps text-label-caps text-secondary-fixed-dim">Telemetry Bus</span><span class="font-code-xs text-code-xs text-tertiary-fixed">Broker: 10.14.0.8</span></div><span class="font-code-xs text-code-xs px-space-xs py-0.5 rounded bg-tertiary-container text-on-tertiary-container font-semibold">HEALTHY</span></div></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-gutter flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md flex-1 max-w-2xl"><div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant"><span class="material-symbols-outlined text-base text-primary">corporate_fare</span><div class="flex flex-col text-left"><span class="font-label-caps text-label-caps text-secondary uppercase">Facility Scope</span><span class="font-body-sm text-body-sm text-on-surface font-semibold truncate max-w-xs">HQ Campus - East Wing (Nusantara Tower)</span></div><span class="material-symbols-outlined text-base text-outline">arrow_drop_down</span></div><div class="relative flex-1"><span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-outline text-lg pointer-events-none">search</span><input class="w-full h-9 pl-9 pr-space-md bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-sm font-body-sm rounded-lg outline-none focus:ring-2 focus:ring-primary-container shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition-all" placeholder="Search Work Orders (WO-#), Assets (AST-#), or Parts..." type="text"/></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs px-space-sm py-1 rounded bg-surface-container-low text-on-surface-variant"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span><span class="font-code-xs text-code-xs text-on-surface-variant font-medium">HTMX Server: <span class="text-tertiary-container font-semibold">Connected</span> | Sync: <span class="text-tertiary-container font-semibold">Realtime</span></span></div><button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-space-xs hover:bg-primary transition-colors shadow-[0_1px_3px_rgba(30,64,175,0.2)]" type="button"><span class="material-symbols-outlined text-base font-bold">add</span><span>New Dispatch / Request</span></button><div class="relative"><button class="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative" type="button"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error ring-2 ring-surface"></span></button></div><div class="flex items-center gap-space-sm pl-space-xs"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUrbFrKd_a9q8FNQ6e-DTVYDzTmV3i2C6GQPftdhK5gwDaAQqywkJ3q55WCb6AH7YfWTmRyaNwiN1sMoJcw6YvkowVfo4iggzuvj2taz4_SzKlgmuCbZJqmXfb0xJ-xdz97L9kz9F_cnXRLay5SyU64_dBjvclcpybzg5U7v4WgUQlLaL8lM8U2yM-xu6sd-thediR-oG0f5rcqo0notuxmKhU29Grazp-PURqitTE0QfQSp8nVur1vw"/><div class="hidden md:flex flex-col text-left"><span class="font-body-sm text-body-sm text-on-surface font-semibold leading-tight">Marcus Vance</span><span class="font-label-caps text-label-caps text-secondary leading-tight">VP Operations &amp; Facilities</span></div></div></div></header><main class="relative pt-16 w-full bg-surface min-h-screen px-gutter py-margin"><div class="flex flex-col w-full gap-space-lg">
+<!-- TOP CONTEXT / BREADCRUMB / VIEW SELECTOR BAR -->
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+<div class="flex flex-col gap-space-xs">
+<nav class="flex items-center gap-space-xs font-body-sm text-body-sm text-secondary flex-wrap">
+<a class="hover:text-primary transition-colors flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-[16px]">home</span>
+<span>Home</span>
+</a>
+<span class="text-outline-variant">/</span>
+<a class="hover:text-primary transition-colors" href="#">Asset &amp; Resource</a>
+<span class="text-outline-variant">/</span>
+<a class="hover:text-primary transition-colors" href="#">Asset Registry</a>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface font-semibold font-code-sm text-code-sm bg-surface-container-low px-space-xs py-0.5 rounded">AST-HVAC-004</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface font-medium truncate">Centrifugal Water Chiller Unit 4</span>
+</nav>
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+          P1 - Mission Critical Facility Plant
+        </span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps uppercase flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-ping"></span>
+          Active / Under Monitoring
+        </span>
+<span class="text-outline-variant text-body-xs font-body-xs">|</span>
+<span class="font-code-xs text-code-xs text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sensors</span>
+          Telemetry ID: <span class="text-on-surface font-semibold">IOT-CHL-450-04</span>
+</span>
+</div>
+</div>
+<!-- SUB-TABS NAVIGATION -->
+<div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg overflow-x-auto">
+<button class="px-space-sm py-1.5 rounded-lg bg-surface-container-lowest text-primary font-headline-sm text-headline-sm shadow-sm flex items-center gap-1 whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Asset 360° &amp; Lifecycle</span>
+</button>
+<button class="px-space-sm py-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container font-headline-sm text-headline-sm transition-colors flex items-center gap-1 whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-[16px]">inventory_2</span>
+<span>Spare Parts Ledger</span>
+<span class="ml-1 px-1.5 py-0.2 rounded-full bg-primary-container text-on-primary font-code-xs text-code-xs">18</span>
+</button>
+<button class="px-space-sm py-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container font-headline-sm text-headline-sm transition-colors flex items-center gap-1 whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-[16px]">monitoring</span>
+<span>IoT Diagnostics</span>
+</button>
+<button class="px-space-sm py-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container font-headline-sm text-headline-sm transition-colors flex items-center gap-1 whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-[16px]">event_repeat</span>
+<span>PM Schedules</span>
+<span class="ml-1 px-1.5 py-0.2 rounded-full bg-surface-container-highest text-on-surface-variant font-code-xs text-code-xs">12</span>
+</button>
+<button class="px-space-sm py-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container font-headline-sm text-headline-sm transition-colors flex items-center gap-1 whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>Compliance &amp; Docs</span>
+</button>
+</div>
+</div>
+<!-- SECTION 1: ASSET DETAIL HERO CARD & TELEMETRY CLUSTER -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg">
+<!-- LEFT: ASSET IDENTITY & SPECS (7 COLS) -->
+<div class="xl:col-span-7 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between gap-space-md relative overflow-hidden">
+<div class="absolute right-0 top-0 w-80 h-80 bg-gradient-to-br from-primary-fixed/20 via-transparent to-transparent pointer-events-none rounded-bl-full"></div>
+<div>
+<div class="flex items-start justify-between gap-space-sm mb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm bg-surface-container-high px-space-xs py-1 rounded text-primary font-semibold tracking-wide flex items-center gap-1">
+<span>AST-HVAC-004</span>
+<button class="hover:text-on-surface transition-colors" onclick="navigator.clipboard.writeText('AST-HVAC-004')" title="Copy Tag" type="button">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+</button>
+</span>
+<span class="font-label-caps text-label-caps text-secondary uppercase tracking-widest bg-surface-container-low px-space-xs py-1 rounded">Daikin Applied Magnitude®</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-2 py-0.5 rounded bg-tertiary-container text-on-tertiary font-code-xs text-code-xs font-semibold">BOM VERIFIED</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-code-xs text-code-xs">REV-2024.3</span>
+</div>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight mb-space-xs">
+          Centrifugal Industrial Water Chiller 450-TR - Unit 04
+        </h1>
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm text-secondary-fixed-dim/90 mb-space-md">
+<span class="material-symbols-outlined text-[16px] text-primary">pin_drop</span>
+<span class="text-on-surface font-medium">HQ Campus (East Wing)</span>
+<span class="text-outline-variant">›</span>
+<span class="text-on-surface font-medium">Building B (Central Utilities Plant)</span>
+<span class="text-outline-variant">›</span>
+<span class="text-on-surface">Basement L2</span>
+<span class="text-outline-variant">›</span>
+<span class="text-primary font-semibold font-code-xs text-code-xs bg-surface-container-low px-1.5 py-0.5 rounded">Mechanical Room #B-204</span>
+</div>
+<!-- SPECIFICATION GRID -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-space-sm p-space-md bg-surface-container-low rounded-lg mb-space-md">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Nominal Capacity</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">450 Tons (TR)</span>
+<span class="font-code-xs text-code-xs text-secondary">1,582 kW Thermal</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Refrigerant Spec</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">HFC-134a</span>
+<span class="font-code-xs text-code-xs text-secondary">Charge: 620 lbs (Dry)</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Compressor Topology</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">Dual Mag-Bearing</span>
+<span class="font-code-xs text-code-xs text-secondary">Oil-Free Centrifugal</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Electrical Supply</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">480V / 3Ø / 60Hz</span>
+<span class="font-code-xs text-code-xs text-secondary">FLA: 512 Amps</span>
+</div>
+</div>
+<!-- LIFECYCLE & CONTRACT STACK -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-sm p-space-sm rounded-lg bg-surface-container-lowest shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+<div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">OEM Warranty &amp; SLA</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Daikin Applied Global Corp.</span>
+<span class="font-code-xs text-code-xs text-primary">WAR-99214-DK • Active to Nov 2026 (Tier 1 2h)</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm p-space-sm rounded-lg bg-surface-container-lowest shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+<div class="w-10 h-10 rounded-lg bg-secondary-container flex items-center justify-center text-on-secondary-fixed">
+<span class="material-symbols-outlined text-[20px]">calendar_month</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Commissioning &amp; Age</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Oct 14, 2019 (4.5 Yrs in Service)</span>
+<span class="font-code-xs text-code-xs text-secondary">Design Life: 20 Yrs • 77.5% Expected Remaining</span>
+</div>
+</div>
+</div>
+</div>
+<!-- ACTION TOOLBAR -->
+<div class="flex items-center justify-between gap-space-sm pt-space-sm flex-wrap">
+<div class="flex items-center gap-space-xs flex-wrap">
+<button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-1 hover:bg-primary transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">build</span>
+<span>Quick Dispatch WO</span>
+</button>
+<button class="h-9 px-space-md rounded-lg bg-surface-container-high text-on-surface font-body-sm text-body-sm font-semibold flex items-center gap-1 hover:bg-surface-variant transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">fact_check</span>
+<span>Log Inspection</span>
+</button>
+<button class="h-9 px-space-sm rounded-lg bg-surface-container-low text-secondary hover:text-on-surface font-body-sm text-body-sm font-medium flex items-center gap-1 transition-colors" title="Export PDF" type="button">
+<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+<span class="hidden sm:inline">Dossier</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-code-xs text-code-xs text-secondary">Asset Custodian:</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">HVAC Central Plant Team (Ops L2)</span>
+</div>
+</div>
+</div>
+<!-- RIGHT: HEALTH INDEX & LIVE TELEMETRY TELEGRAPH (5 COLS) -->
+<div class="xl:col-span-5 bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between gap-space-md">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-tertiary">monitor_heart</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold">Health &amp; Telemetry Diagnostics</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-code-xs text-code-xs font-semibold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+            SAMPLING: 1 SEC
+          </span>
+</div>
+<!-- OVERALL ASSET HEALTH DIAL & SCORE -->
+<div class="flex items-center gap-space-lg p-space-md bg-surface-container-low rounded-lg mb-space-md">
+<div class="relative w-24 h-24 flex items-center justify-center shrink-0">
+<svg class="w-24 h-24 transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-tertiary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="88, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-metric-display text-[26px] leading-tight text-on-surface font-extrabold">88%</span>
+<span class="font-label-caps text-[9px] uppercase tracking-wider text-tertiary font-bold">OPTIMAL</span>
+</div>
+</div>
+<div class="flex flex-col flex-1 gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-secondary uppercase">Operational Index</span>
+<span class="font-code-xs text-code-xs font-semibold text-tertiary">Grade A-</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface leading-tight">
+              Magnetic bearing stability nominal. Condenser tube heat exchange efficiency at <span class="font-semibold text-primary">96.4%</span> of commissioning baseline.
+            </p>
+<div class="flex items-center gap-space-sm pt-1">
+<span class="font-code-xs text-code-xs text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-tertiary">trending_up</span>
+                MTBF: <strong class="text-on-surface">1,840 hrs</strong>
+</span>
+<span class="text-outline-variant text-code-xs">|</span>
+<span class="font-code-xs text-code-xs text-secondary">
+                MTTR: <strong class="text-on-surface">3.2 hrs</strong>
+</span>
+</div>
+</div>
+</div>
+<!-- 3 LIVE TELEMETRY GAUGES -->
+<div class="grid grid-cols-3 gap-space-xs">
+<!-- Metric 1: Vibration -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-caps text-[10px] text-secondary uppercase tracking-tight">Bearing Vibration</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold font-code-sm">0.18 <span class="text-[11px] font-normal text-secondary">in/s</span></span>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full rounded-full" style="width: 32%"></div>
+</div>
+<span class="font-code-xs text-[10px] text-tertiary">Normal (&lt; 0.28 in/s)</span>
+</div>
+<!-- Metric 2: Delta-T -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-caps text-[10px] text-secondary uppercase tracking-tight">Evap Delta-T (ΔT)</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold font-code-sm">11.2 <span class="text-[11px] font-normal text-secondary">°F</span></span>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 82%"></div>
+</div>
+<span class="font-code-xs text-[10px] text-primary">In Spec (10–12°F)</span>
+</div>
+<!-- Metric 3: Refrigerant Pressure -->
+<div class="p-space-sm rounded-lg bg-surface-container-low flex flex-col gap-1">
+<span class="font-label-caps text-[10px] text-secondary uppercase tracking-tight">Suction Pressure</span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-bold font-code-sm">124 <span class="text-[11px] font-normal text-secondary">PSI</span></span>
+<div class="w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full rounded-full" style="width: 68%"></div>
+</div>
+<span class="font-code-xs text-[10px] text-tertiary">Stable (R-134a)</span>
+</div>
+</div>
+</div>
+<!-- RUNTIME / RELIABILITY BAR -->
+<div class="p-space-sm rounded-lg bg-surface-container-high/30 flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-primary">av_timer</span>
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-secondary uppercase">Lifetime Cumulative Runtime</span>
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">32,491.4 Operating Hours</span>
+</div>
+</div>
+<div class="text-right">
+<span class="font-label-caps text-[10px] text-secondary uppercase">Availability</span>
+<div class="font-code-sm text-code-sm font-bold text-tertiary">99.2% Uptime (18.5h Total Outage)</div>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 2: CHRONOLOGICAL AUDIT & LIFECYCLE TIMELINE (COMPACT ENTERPRISE DENSITY) -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Asset Lifecycle &amp; Maintenance Audit Trail</h2>
+<p class="font-body-xs text-body-xs text-secondary">Immutable ledger of Work Orders, field inspections, parts usage, and compliance certifications</p>
+</div>
+</div>
+<!-- TIMELINE FILTER PILLS (HTMX Simulation) -->
+<div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg flex-wrap">
+<button class="px-space-xs py-1 rounded bg-surface-container-lowest text-primary font-code-xs text-code-xs font-semibold shadow-sm" type="button">
+          All Events (54)
+        </button>
+<button class="px-space-xs py-1 rounded text-secondary hover:text-on-surface font-code-xs text-code-xs transition-colors" type="button">
+          Work Orders (14)
+        </button>
+<button class="px-space-xs py-1 rounded text-secondary hover:text-on-surface font-code-xs text-code-xs transition-colors" type="button">
+          Inspections (28)
+        </button>
+<button class="px-space-xs py-1 rounded text-secondary hover:text-on-surface font-code-xs text-code-xs transition-colors" type="button">
+          Parts Replaced (8)
+        </button>
+<button class="px-space-xs py-1 rounded text-secondary hover:text-on-surface font-code-xs text-code-xs transition-colors" type="button">
+          Calibration (4)
+        </button>
+</div>
+</div>
+<!-- TIMELINE LIST -->
+<div class="relative pl-6 space-y-space-md before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-container-highest">
+<!-- Event 1 -->
+<div class="relative flex items-start gap-space-md">
+<div class="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-primary ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 p-space-md rounded-lg bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-space-sm hover:bg-surface-container transition-colors">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-primary-fixed text-primary font-semibold">PM-2025-0812</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Scheduled Preventive Maintenance (Semi-Annual Overhaul)</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps uppercase">Completed</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">
+              Replaced mechanical shaft seals, topped 4.5 kg R-134a refrigerant, verified magnetic bearing levitation clearance, dynamically balanced condenser liquid flow rate.
+            </p>
+<div class="flex items-center gap-space-sm pt-0.5 flex-wrap">
+<span class="font-code-xs text-code-xs text-primary font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">inventory</span>
+                Parts Deducted: <code class="bg-surface-container-lowest px-1 py-0.5 rounded">PART-SEAL-8821 (-2)</code>, <code class="bg-surface-container-lowest px-1 py-0.5 rounded">PART-LUB-09 (-2)</code>
+</span>
+<span class="text-outline-variant text-code-xs">•</span>
+<span class="font-code-xs text-code-xs text-secondary">Downtime Duration: 3.5 Hours</span>
+</div>
+</div>
+<div class="flex md:flex-col items-end justify-between md:justify-center text-right shrink-0 gap-1">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">14 Feb 2025</span>
+<span class="font-code-xs text-code-xs text-secondary">08:30 – 12:00 EST</span>
+<span class="font-body-xs text-body-xs text-secondary-fixed-dim font-medium">Tech: M. Kowalski (#1042)</span>
+</div>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="relative flex items-start gap-space-md">
+<div class="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-error ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 p-space-md rounded-lg bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-space-sm hover:bg-surface-container transition-colors">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-error-container text-on-error-container font-semibold">WO-2025-0044</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">IoT Telemetry Spike Alert &amp; Corrective Bearing Lube</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps uppercase">Resolved</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">
+              Automated trip flag: radial vibration exceeded 0.32 in/s threshold on compressor stage 2. Emergency dispatch performed, purged dry line, greased auxiliary journal, reset telemetry bus.
+            </p>
+<div class="flex items-center gap-space-sm pt-0.5">
+<span class="font-code-xs text-code-xs text-primary font-medium">Root Cause: Micro-debris in secondary bypass filter</span>
+<span class="text-outline-variant text-code-xs">•</span>
+<span class="font-code-xs text-code-xs text-secondary">Corrective WO closed in 1.4 hrs</span>
+</div>
+</div>
+<div class="flex md:flex-col items-end justify-between md:justify-center text-right shrink-0 gap-1">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">03 Jan 2025</span>
+<span class="font-code-xs text-code-xs text-secondary">22:14 EST</span>
+<span class="font-body-xs text-body-xs text-secondary-fixed-dim font-medium">Tech: J. Chen (Night Lead)</span>
+</div>
+</div>
+</div>
+<!-- Event 3 -->
+<div class="relative flex items-start gap-space-md">
+<div class="absolute -left-6 top-1.5 w-3 h-3 rounded-full bg-secondary ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 p-space-md rounded-lg bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-space-sm hover:bg-surface-container transition-colors">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-code-xs text-code-xs px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-semibold">INS-2024-4401</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Annual Statutory Pressure Vessel Shell Hydrostatic Test</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-caps text-label-caps uppercase">Pass / Cert Issued</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">
+              Statutory boiler inspector inspection for evaporator &amp; condenser pressure vessels. Ultrasonic thickness gauge scan passed (minimum 14.8mm shell thickness against 12.0mm tolerance).
+            </p>
+<div class="flex items-center gap-space-sm pt-0.5">
+<span class="font-code-xs text-code-xs text-primary font-medium">Certificate #NBIC-990-2024 (Valid 12 Months)</span>
+</div>
+</div>
+<div class="flex md:flex-col items-end justify-between md:justify-center text-right shrink-0 gap-1">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">18 Nov 2024</span>
+<span class="font-code-xs text-code-xs text-secondary">10:00 EST</span>
+<span class="font-body-xs text-body-xs text-secondary-fixed-dim font-medium">Inspector: R. Davies (Gov PE)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- SECTION 3: BILL OF MATERIALS (BOM) & SPARE PARTS WAREHOUSE LEDGER -->
+<div class="flex flex-col gap-space-md">
+<!-- BOM HEADER & WAREHOUSE SELECTOR -->
+<div class="flex flex-col xl:flex-row xl:items-center justify-between gap-space-md bg-surface-container-lowest p-space-md rounded-xl shadow-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-primary">warehouse</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-bold">Bill of Materials (BOM) &amp; Linked Spare Parts Ledger</h2>
+</div>
+<p class="font-body-xs text-body-xs text-secondary">Real-time inventory levels, reorder buffers, warehouse bin allocations, and parts issuance controls</p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+<span class="font-label-caps text-label-caps text-secondary uppercase px-2">Warehouse Scope:</span>
+<button class="px-space-sm py-1 rounded-lg bg-surface-container-lowest text-primary font-body-sm text-body-sm font-semibold shadow-sm" type="button">
+            Central Distribution Hub (Primary)
+          </button>
+<button class="px-space-sm py-1 rounded-lg text-secondary hover:text-on-surface font-body-sm text-body-sm transition-colors" type="button">
+            Building B Satellite Bin
+          </button>
+</div>
+<button class="h-9 px-space-md rounded-lg bg-primary-container text-on-primary font-body-sm text-body-sm font-semibold flex items-center gap-1 hover:bg-primary transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">add_box</span>
+<span>Add SKU to BOM</span>
+</button>
+</div>
+</div>
+<!-- 4 KPI TILES FOR SPARE PARTS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Card 1 -->
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary mb-space-xs">
+<span class="font-label-caps text-label-caps uppercase">Linked BOM SKUs</span>
+<span class="material-symbols-outlined text-[20px] text-primary">category</span>
+</div>
+<div class="font-metric-display text-metric-display text-on-surface font-bold tracking-tight">18 <span class="font-body-sm text-body-sm font-normal text-secondary">Parts</span></div>
+<div class="flex items-center gap-1 text-tertiary font-code-xs text-code-xs mt-space-xs">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>100% Critical Assemblies Mapped</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary mb-space-xs">
+<span class="font-label-caps text-label-caps uppercase text-error font-semibold">Low-Stock Stockout Risk</span>
+<span class="material-symbols-outlined text-[20px] text-error">notification_important</span>
+</div>
+<div class="font-metric-display text-metric-display text-error font-bold tracking-tight">2 <span class="font-body-sm text-body-sm font-normal text-secondary">SKUs Alerting</span></div>
+<div class="flex items-center gap-1 text-error font-code-xs text-code-xs mt-space-xs font-semibold">
+<span>PART-SEAL-8821 Deficit (Par: 4, Net: 0)</span>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary mb-space-xs">
+<span class="font-label-caps text-label-caps uppercase">Stored BOM Valuation</span>
+<span class="material-symbols-outlined text-[20px] text-secondary">payments</span>
+</div>
+<div class="font-metric-display text-metric-display text-on-surface font-bold tracking-tight font-code-sm">$34,820.00</div>
+<div class="flex items-center gap-1 text-secondary font-code-xs text-code-xs mt-space-xs">
+<span>Weighted Average Cost (WAC)</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="p-space-md bg-surface-container-lowest rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary mb-space-xs">
+<span class="font-label-caps text-label-caps uppercase">Replenishment POs</span>
+<span class="material-symbols-outlined text-[20px] text-primary">local_shipping</span>
+</div>
+<div class="font-metric-display text-metric-display text-on-surface font-bold tracking-tight">2 <span class="font-body-sm text-body-sm font-normal text-secondary">In-Transit</span></div>
+<div class="flex items-center gap-1 text-primary font-code-xs text-code-xs mt-space-xs font-medium">
+<span>PO-2025-0144 ETA: Feb 20, 2025</span>
+</div>
+</div>
+</div>
+<!-- TABLE 1: SPARE PARTS INVENTORY BALANCE TABLE -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- TABLE CONTROLS BAR -->
+<div class="p-space-md bg-surface-container-low flex flex-col lg:flex-row lg:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full h-8 pl-9 pr-space-md bg-surface-container-lowest text-on-surface text-body-sm rounded-lg outline-none focus:ring-1 focus:ring-primary shadow-none" placeholder="Filter BOM parts by SKU, Description, or Bin Location..." type="text"/>
+</div>
+<select class="h-8 px-space-sm bg-surface-container-lowest text-on-surface text-body-sm rounded-lg outline-none">
+<option>All Subsystems</option>
+<option>Compressor Core</option>
+<option>Filtration</option>
+<option>Lubrication</option>
+<option>Electrical / Solenoid</option>
+</select>
+</div>
+<div class="flex items-center gap-space-xs text-body-xs text-secondary font-body-xs">
+<span>Showing <strong>5 of 18</strong> linked parts</span>
+<button class="p-1 rounded hover:bg-surface-container text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container text-on-surface transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</div>
+<!-- RESPONSIVE TABLE WRAPPER -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-secondary font-label-caps text-label-caps uppercase tracking-wider">
+<th class="py-space-sm px-space-md">Part SKU &amp; Nomenclature</th>
+<th class="py-space-sm px-space-md">Subsystem</th>
+<th class="py-space-sm px-space-md">Bin / Staging</th>
+<th class="py-space-sm px-space-md text-right">Par Level</th>
+<th class="py-space-sm px-space-md text-right">On-Hand</th>
+<th class="py-space-sm px-space-md text-right">Allocated</th>
+<th class="py-space-sm px-space-md text-right">Unit / Value</th>
+<th class="py-space-sm px-space-md text-center">Health / Stock Status</th>
+<th class="py-space-sm px-space-md text-right">Warehouse Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low text-body-sm font-body-sm">
+<!-- ROW 1: CRITICAL DEFICIT -->
+<tr class="hover:bg-surface-container-low/50 transition-colors bg-error-container/10">
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm font-bold text-error">PART-SEAL-8821</span>
+<span class="px-1.5 py-0.2 rounded bg-error-container text-on-error-container font-label-caps text-[9px]">CRITICAL</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Silicon Carbide Mechanical Shaft Seal 2.5"</span>
+<span class="font-code-xs text-code-xs text-secondary">OEM: Daikin P/N 330291-C</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-code-xs">Compressor Core</span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-medium">Rack C-04 / Bin 12</span>
+<span class="font-code-xs text-code-xs text-secondary">Security Cage Alpha</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-semibold text-secondary">4 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-error">1 pc</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm text-secondary">1 pc (WO-0812)</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">$1,450.00</span>
+<span class="font-code-xs text-code-xs text-secondary font-code-xs">Tot: $1,450.00</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-center">
+<div class="inline-flex flex-col items-center gap-1">
+<span class="px-2.5 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps font-bold flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+                    STOCK DEFICIT (0 NET)
+                  </span>
+<span class="font-code-xs text-code-xs text-error font-semibold">PO-2025-0144 (+4 In-Transit)</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="h-7 px-2 rounded bg-error-container text-on-error-container font-code-xs text-code-xs font-semibold hover:bg-error hover:text-on-error transition-colors" title="Expedite PO" type="button">
+                    + PR Request
+                  </button>
+<button class="h-7 w-7 rounded hover:bg-surface-container text-secondary flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- ROW 2: WARNING / REORDER LEVEL -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm font-bold text-primary">PART-LUB-09</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Synthetic Polyolester Lubricant ISO 68 (5-Gal Pail)</span>
+<span class="font-code-xs text-code-xs text-secondary">Grade: Emkarate RL68H</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-code-xs">Lubrication</span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-medium">Cabinet F-02</span>
+<span class="font-code-xs text-code-xs text-secondary">Flammable Store</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-semibold text-secondary">5 pails</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-on-surface">3 pails</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm text-secondary">0 pails</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">$380.00</span>
+<span class="font-code-xs text-code-xs text-secondary font-code-xs">Tot: $1,140.00</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-center">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-caps text-label-caps font-semibold inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  BELOW PAR (REORDER)
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="h-7 px-2 rounded bg-surface-container text-on-surface font-code-xs text-code-xs font-medium hover:bg-surface-container-high transition-colors" type="button">
+                    + Quick PO
+                  </button>
+<button class="h-7 w-7 rounded hover:bg-surface-container text-secondary flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- ROW 3: OPTIMAL -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm font-bold text-primary">PART-FLTR-401</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">MERV 14 Chilled Water Loop Inline Filter Cartridge</span>
+<span class="font-code-xs text-code-xs text-secondary">Size: 24" x 24" x 2" (5 Micron)</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-code-xs">Filtration</span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-medium">Rack A-01 / Bin 03</span>
+<span class="font-code-xs text-code-xs text-secondary">General Bulk Aisle</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-semibold text-secondary">8 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-tertiary">24 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm text-secondary">2 pcs</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">$94.50</span>
+<span class="font-code-xs text-code-xs text-secondary font-code-xs">Tot: $2,268.00</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-center">
+<span class="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps font-semibold inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  OPTIMAL BUFFER
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="h-7 px-2 rounded bg-surface-container text-on-surface font-code-xs text-code-xs font-medium hover:bg-surface-container-high transition-colors" type="button">
+                    Issue to WO
+                  </button>
+<button class="h-7 w-7 rounded hover:bg-surface-container text-secondary flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- ROW 4: SOLENOID VALVE -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm font-bold text-primary">PART-VLV-102</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Electronic Expansion Solenoid Valve 24VAC / Pulse</span>
+<span class="font-code-xs text-code-xs text-secondary">Danfoss ETS-50B Collet</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-code-xs">Electrical / Metering</span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-medium">Rack D-02 / Bin 09</span>
+<span class="font-code-xs text-code-xs text-secondary">Precision Controls Bin</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-semibold text-secondary">2 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-tertiary">3 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm text-secondary">0 pcs</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">$890.00</span>
+<span class="font-code-xs text-code-xs text-secondary font-code-xs">Tot: $2,670.00</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-center">
+<span class="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps font-semibold inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  OPTIMAL BUFFER
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="h-7 px-2 rounded bg-surface-container text-on-surface font-code-xs text-code-xs font-medium hover:bg-surface-container-high transition-colors" type="button">
+                    Issue to WO
+                  </button>
+<button class="h-7 w-7 rounded hover:bg-surface-container text-secondary flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- ROW 5: SKF BEARING -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-code-sm text-code-sm font-bold text-primary">PART-BRG-6204</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">SKF Explorer Deep Groove Hybrid Ceramic Ball Bearing</span>
+<span class="font-code-xs text-code-xs text-secondary">Specs: 20x47x14mm C3 P6</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-code-xs text-code-xs">Aux Drive</span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-medium">Rack C-01 / Bin 44</span>
+<span class="font-code-xs text-code-xs text-secondary">Anti-Static Cabinet</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-semibold text-secondary">4 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-tertiary">6 pcs</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm text-secondary">0 pcs</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex flex-col">
+<span class="font-code-sm text-code-sm text-on-surface font-semibold">$315.00</span>
+<span class="font-code-xs text-code-xs text-secondary font-code-xs">Tot: $1,890.00</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-center">
+<span class="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps font-semibold inline-flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  OPTIMAL BUFFER
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right">
+<div class="flex items-center justify-end gap-1">
+<button class="h-7 px-2 rounded bg-surface-container text-on-surface font-code-xs text-code-xs font-medium hover:bg-surface-container-high transition-colors" type="button">
+                    Issue to WO
+                  </button>
+<button class="h-7 w-7 rounded hover:bg-surface-container text-secondary flex items-center justify-center" type="button">
+<span class="material-symbols-outlined text-[16px]">more_vert</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-space-sm bg-surface-container-low flex items-center justify-between text-body-xs font-body-xs text-secondary">
+<span>Warehouse Ledger Hash: <code class="font-code-xs text-code-xs bg-surface-container px-1 py-0.5 rounded text-on-surface">SHA-256: 9e08fc...18a</code></span>
+<div class="flex items-center gap-space-xs">
+<button class="px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold" type="button">1</button>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary" type="button">2</button>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary" type="button">3</button>
+<span class="px-1">...</span>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary" type="button">Next ›</button>
+</div>
+</div>
+</div>
+<!-- TABLE 2: IMMUTABLE STOCK MOVEMENT LEDGER (TRANSACTIONS) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="p-space-md bg-surface-container-low flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[16px]">receipt_long</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Immutable Stock Movement Ledger</h3>
+<p class="font-body-xs text-body-xs text-secondary">Double-entry perpetual transaction journal tracking inventory allocations against AST-HVAC-004</p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-code-xs text-code-xs text-tertiary flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+            Auto-Reconciliation Active
+          </span>
+</div>
+</div>
+<div class="overflow-x-auto" id="stock-movement-ledger">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-secondary font-label-caps text-label-caps uppercase tracking-wider">
+<th class="py-space-sm px-space-md">Transaction ID</th>
+<th class="py-space-sm px-space-md">Timestamp (UTC-5)</th>
+<th class="py-space-sm px-space-md">Part SKU &amp; Spec</th>
+<th class="py-space-sm px-space-md">Transaction Type</th>
+<th class="py-space-sm px-space-md text-right">Quantity Delta</th>
+<th class="py-space-sm px-space-md text-right">Running Balance</th>
+<th class="py-space-sm px-space-md">Source Document</th>
+<th class="py-space-sm px-space-md">Operator / Custodian</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low text-body-sm font-body-sm">
+<!-- TXN 1 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">TXN-2025-88419</span>
+</td>
+<td class="py-space-sm px-space-md font-code-sm text-code-sm text-secondary">
+                2025-02-14 09:15:22
+              </td>
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm text-primary font-semibold">PART-SEAL-8821</span>
+<div class="font-body-xs text-body-xs text-secondary">Ceramic Shaft Seal 2.5"</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase font-bold inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">remove</span>
+                  WO DISPATCH USAGE
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-error">
+                -2 pcs
+              </td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-on-surface">
+                1 pc
+              </td>
+<td class="py-space-sm px-space-md font-code-xs text-code-xs">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+<span>#WO-2025-0812</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-[10px]">MK</div>
+<div class="flex flex-col leading-tight">
+<span class="font-body-xs text-body-xs text-on-surface font-semibold">M. Kowalski</span>
+<span class="font-code-xs text-[10px] text-secondary">Lead Field Tech</span>
+</div>
+</div>
+</td>
+</tr>
+<!-- TXN 2 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">TXN-2025-88390</span>
+</td>
+<td class="py-space-sm px-space-md font-code-sm text-code-sm text-secondary">
+                2025-02-14 09:12:01
+              </td>
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm text-primary font-semibold">PART-LUB-09</span>
+<div class="font-body-xs text-body-xs text-secondary">Polyolester Oil ISO 68</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase font-bold inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">remove</span>
+                  WO DISPATCH USAGE
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-error">
+                -2 pails
+              </td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-on-surface">
+                3 pails
+              </td>
+<td class="py-space-sm px-space-md font-code-xs text-code-xs">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+<span>#WO-2025-0812</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-[10px]">MK</div>
+<div class="flex flex-col leading-tight">
+<span class="font-body-xs text-body-xs text-on-surface font-semibold">M. Kowalski</span>
+<span class="font-code-xs text-[10px] text-secondary">Lead Field Tech</span>
+</div>
+</div>
+</td>
+</tr>
+<!-- TXN 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">TXN-2025-87910</span>
+</td>
+<td class="py-space-sm px-space-md font-code-sm text-code-sm text-secondary">
+                2025-01-29 14:40:11
+              </td>
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm text-primary font-semibold">PART-FLTR-401</span>
+<div class="font-body-xs text-body-xs text-secondary">MERV 14 Chiller Filter</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-caps text-label-caps uppercase font-bold inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">add</span>
+                  PO RECEIPT STOCK-IN
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-tertiary">
+                +20 pcs
+              </td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-on-surface">
+                24 pcs
+              </td>
+<td class="py-space-sm px-space-md font-code-xs text-code-xs">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+<span>#PO-2025-0081</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-fixed flex items-center justify-center font-bold text-[10px]">RP</div>
+<div class="flex flex-col leading-tight">
+<span class="font-body-xs text-body-xs text-on-surface font-semibold">R. Pratama</span>
+<span class="font-code-xs text-[10px] text-secondary">Storeman Hub</span>
+</div>
+</div>
+</td>
+</tr>
+<!-- TXN 4 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">TXN-2025-86102</span>
+</td>
+<td class="py-space-sm px-space-md font-code-sm text-code-sm text-secondary">
+                2025-01-15 11:05:40
+              </td>
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm text-primary font-semibold">PART-BRG-6204</span>
+<div class="font-body-xs text-body-xs text-secondary">SKF Hybrid Ball Bearing</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-caps text-label-caps uppercase font-bold inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">sync_alt</span>
+                  TRANSFER RECEIVED
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-primary">
+                +4 pcs
+              </td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-on-surface">
+                6 pcs
+              </td>
+<td class="py-space-sm px-space-md font-code-xs text-code-xs">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+<span>#TO-8891 (Sat-B)</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-fixed flex items-center justify-center font-bold text-[10px]">RP</div>
+<div class="flex flex-col leading-tight">
+<span class="font-body-xs text-body-xs text-on-surface font-semibold">R. Pratama</span>
+<span class="font-code-xs text-[10px] text-secondary">Storeman Hub</span>
+</div>
+</div>
+</td>
+</tr>
+<!-- TXN 5 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm font-bold text-on-surface">TXN-2025-84902</span>
+</td>
+<td class="py-space-sm px-space-md font-code-sm text-code-sm text-secondary">
+                2024-12-28 16:20:00
+              </td>
+<td class="py-space-sm px-space-md">
+<span class="font-code-sm text-code-sm text-primary font-semibold">PART-VLV-102</span>
+<div class="font-body-xs text-body-xs text-secondary">Expansion Solenoid 24V</div>
+</td>
+<td class="py-space-sm px-space-md">
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-caps text-label-caps uppercase font-bold inline-flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">exposure</span>
+                  AUDIT CYCLE COUNT
+                </span>
+</td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-secondary">
+                -1 pc
+              </td>
+<td class="py-space-sm px-space-md text-right font-code-sm text-code-sm font-bold text-on-surface">
+                3 pcs
+              </td>
+<td class="py-space-sm px-space-md font-code-xs text-code-xs">
+<a class="text-primary hover:underline font-semibold flex items-center gap-1" href="#">
+<span>#ADJ-2024-Q4</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-primary-fixed text-primary flex items-center justify-center font-bold text-[10px]">MV</div>
+<div class="flex flex-col leading-tight">
+<span class="font-body-xs text-body-xs text-on-surface font-semibold">M. Vance</span>
+<span class="font-code-xs text-[10px] text-secondary">VP Ops Auditor</span>
+</div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-space-sm bg-surface-container-low flex items-center justify-between">
+<span class="font-body-xs text-body-xs text-secondary">Showing latest 5 entries from total 421 ledger transactions for AST-HVAC-004</span>
+<button class="font-code-xs text-code-xs text-primary font-semibold hover:underline flex items-center gap-1" type="button">
+<span>Load Full Historical Ledger (CSV / HTMX Stream)</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div></main></div></body></html>
