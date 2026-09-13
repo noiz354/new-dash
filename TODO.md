@@ -77,12 +77,21 @@
 - [x] Expansion checklist 20 layar → `docs/EXPANSION_CHECKLIST.md` (270 item P1/P2/P3 + bahasan + transisi TERDEFINISI/TAK TERDEFINISI per layar; part: `docs/exp-check/`)
 - [x] Interaction trees 20 layar → `docs/INTERACTION_TREES.md` (201 pohon L0→L5 + [POLA-BARU] kandidat kontrak komponen; part: `docs/exp-trees/`)
 
-## Fase 2 — Rebuild Layar (0/20) ⬜
+## Fase F — Rebuild + Integrasi 🟡 Parsial (wave-1 done 2026-09-13)
+
+- [x] Shell prod: SideNav 15 data-path + TopBar + CommandPalette ⌘K + ⌘K global
+- [x] Kontrak komponen: Button/Badge/Input/Skeleton/Dialog/ConfirmDialog/Logo/EmptyState/OfflineBanner/Banner/ErrorToast/TableSkeleton/SlaCountdown/LaborStopwatch + lib/canon.ts
+- [x] Full rebuild: `/` dashboard (dispatch terverifikasi) + `/work-orders/[id]` H1 port (seed WO-2026-0894)
+- [x] 22 route wave-2 live (EmptyState jujur, zero dead link) · tsc + build hijau · smoke-test OK
+- [ ] Wave-2: 18 layar penuh (lihat Fase 2 — satu layar = satu unit)
+- [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
+
+## Fase 2 — Rebuild Layar (2/20 prod + 22 route wave-2) 🟡
 
 Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 
-1. [ ] `operations_dashboard` (749 baris) — kerangka sidebar + KPI + command center
-2. [ ] `work_order_management_execution_hub` (651) — inti CMMS
+1. [x] `operations_dashboard` → `/` prod (sidebar + KPI + dispatch terverifikasi + telemetri + feed)
+2. [x] `work_order_management_execution_hub` → `/work-orders/[id]` prod (port H1: checklist, labor, ledger $1,765, OSHA, dialog WOD-05/06/12)
 3. [ ] `service_requests_triage_hub` (650)
 4. [ ] `asset_registry_lifecycle_management_ledger` (858)
 5. [ ] `asset_detail_spare_parts_inventory_ledger` (985)

@@ -24,6 +24,7 @@
 | 2026-09-13 | Fase C — Gelombang MEDIUM | ✅ Selesai | M1 vendor-detail.html (Trane, MSA 312d, PDF viewer, amandemen, dispatch ?vendorId=); M2 service-request-detail.html (SR-2026-0894 → WO-2026-0894, riwayat, ?asset=); M3 login.html (SSO/MFA/SCIM); M6 asset-bim.html (file terpisah [ASUMSI-OTOMATIS]); M4 palette ⌘K + M5 konvensi query didokumenkan di docs/DECISIONS_M4_M5_M6.md. DoD rg bersih. |
 | 2026-09-13 | Fase D — Gelombang Wiring | ✅ Selesai | Audit 9 file web/: DoD rg bersih (zero href="#", tanpa alert()/confirm()/TODO/placeholder); semua link internal resolve KECUALI shift-plan.html (L1) + user-profile.html (L2) — keduanya scope Fase E (expected, bukan BLOCKED); hx-get/post/put/patch semuanya aksi /api/v1 (tanpa fragment halaman); semua button statis wired (data-/hx-/id) + toast dinamis wired saat dibuat. |
 | 2026-09-13 | Fase E — LOW + stack | ✅ Selesai | L1 shift-plan.html (handover A→B); L2 user-profile.html (sesi + revoke konfirmasi + badge QR); L3 print permit (H1) + PO batch (H3) + badge (L2); L4 MELEBUR ke M4 palette (docs/DECISIONS_M4_M5_M6.md). Stack A live: Next.js 14 + Tailwind + token A/B + lib/canon.ts + Logo; `npm run build` hijau. BLOCKED: self-host woff2 (Google Fonts unreachable dari sandbox) — font via system stack sementara. |
+| 2026-09-13 | Fase F — Rebuild + integrasi (wave-1) | 🟡 Parsial | Shell (SideNav 15 data-path + TopBar + palette ⌘K) + kontrak komponen (Button/Badge/Input/Skeleton/Dialog/ConfirmDialog/Logo/EmptyState/OfflineBanner/Banner/ErrorToast/TableSkeleton/timers) + lib/canon.ts. Full rebuild 2/20: dashboard (dispatch terverifikasi) + WO-2026-0894. 22 route wave-2 live sebagai halaman EmptyState jujur (zero dead link). tsc bersih, build hijau, smoke-test 200/200/404 OK. Sisa 18 layar → TODO Fase 2. |
 | — | Fase 2 — Rebuild layar | ⬜ Belum mulai | 0/20 layar. |
 
 ## Detail Fase 0 (2026-09-13)
@@ -46,13 +47,17 @@
 - [BARU Fase A] C3: WO hub:538 mencatat PART-SEAL-8821 = $1,420.00 (Dispensed & Installed) — bertentangan dengan findings:468 + asset-detail:518-519 ($1,450.00). Klaim kanonisasi (1,420 tak terkonfirmasi) DICABUT. Putusan: $1,450 tetap (mayoritas); entri WO hub di-rewire di H1.
 - [BARU Fase A] C4: WO hub:349 + :361 menyebut "Daikin OEM seal" (2x) — Daikin kini di 2 file (asset-detail + WO hub). Trane tetap menang (5+ sumber). Refs Daikin di-rewire ke Trane di H1.
 - [BARU Fase A] C10: `CHILL-NUSA-04` (purchasing:599), `WO-0894` (facility SVG:408), `WO-9042` (ui-states:403) terkonfirmasi ADA — klaim kanonisasi (tak ditemukan) DICABUT. Status: artefak GUGUR, format penuh ditegakkan.
-- [BARU Fase A] C12: mobile:54/57 "Step 2 of 4 (50%)" vs hub 65% — keduanya ada. Mobile memakai fraksi step kasar; file H2 baru menampilkan 65% berbobot + posisi step terpisah.
+- [BARU Fase A] C12: mobile:54/57 "Step 2 of 4 (50%)" vs hub 65%
+- [BARU Fase F] `AST-CHILLER-03` (dashboard feed + ui-states input) melanggar format AST-XXX-NNN → di-rewire `AST-HVAC-003` (Central Chiller #03) di kode baru [ASUMSI-OTOMATIS].
+- [Fase F] Dispatch dashboard baris 1–4 TERVERIFIKASI (0892 chillerbreach/ESCALATED, 0888 generator BREACH/ON HOLD, 0901 conveyor IN PROGRESS, 0904 pharma OPEN) — draf awal asisten yang mengarang judul baris DICABUT dan diganti nilai arsip. — keduanya ada. Mobile memakai fraksi step kasar; file H2 baru menampilkan 65% berbobot + posisi step terpisah.
 
 ## Asumsi Otonom — lanjutan
 
 - 2026-09-13 Fase E: L2 user-profile = Marcus Vance (persona header desktop); sesi tablet Voronova terdaftar di akun operasi yang sama. Bila user menetapkan session owner = Voronova → ganti header + profil.
 - 2026-09-13 Fase E: font production via system stack sementara (next/font dimatikan — Google Fonts unreachable dari sandbox). Self-host woff2 Inter/JetBrains Mono/Space Grotesk tetap wajib sebelum prod (TODO Fase 1).
 - 2026-09-13 Fase F: rebuild 20 layar dikerjakan bertahap — cakupan sesi ini: shell + kontrak komponen + dashboard + WO detail; 16 layar sisa dilanjut per checklist TODO Fase 2 (satu layar = satu unit).
+
+- 2026-09-13 Fase F: 22 halaman route wave-2 memakai EmptyState + tautan terkait (bukan stub TODO) — agar zero dead link sejak wave-1; isi penuh menyusul per layar.
 
 ## Log Layar (isi saat rebuild)
 
