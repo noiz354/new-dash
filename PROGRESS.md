@@ -20,6 +20,7 @@
 | 2026-09-13 | Git init + handoff Codex | ✅ Selesai | `git init`, commit `07c3045` (hanya `README.md` + `# new-dash`), push `main` ke `git@github.com:noiz354/new-dash.git`. `.gitignore` dibuat. `CODEX.md` ditulis (status, peta 11 dokumen, 8 aturan keras, Fase A–F: tutup kanon C9/C10/C12/C14 → HIGH → MEDIUM → wiring → LOW+stack → rebuild/QA).
 | 2026-09-13 | CODEX.md mode otonom penuh | ✅ Selesai | Tambah §0: JANGAN bertanya/berhenti, default C14 (Moreno = persona terpisah), stack A Next.js, default desain M4–M5, aturan konflik baru, protokol BLOCKED/PUSH-BLOCKED + tag `[ASUMSI-OTOMATIS]`.
 | 2026-09-13 | Fase A — Tutup kanon C9/C10/C12/C14 | ✅ Selesai | Grep ulang code.html: C9 = BUKAN konflik (6204 vs 6205 dua SKU berbeda); C10 = artefak GUGUR (CHILL-NUSA-04/WO-0894/WO-9042 ada, rewire format penuh); C12 = 65% kanon (hub otoritatif); C14 = persona terpisah [ASUMSI-OTOMATIS]. Amandemen: C3 TETAP $1,450 (2v1 atas WO hub $1,420; ledger H1 = $1,765); C4 TETAP Trane. Klausa CANON final. |
+| 2026-09-13 | Fase B — Gelombang HIGH | ✅ Selesai | 5 file di web/: H1 work-order-detail.html (WO-2026-0894, WOD-01..12, kanon Fase A, ledger $1,765); H2 my-audits.html + run-checklist.html (Sistem B, PIN override, guard FAIL, INS 65%) + sync-status.html (Idempotency-Key retry); H3 purchase-detail.html (PO-2026-0298, otorisasi $2,900/envelope $64,200, GRN idempoten, 3-Way Match, SLA BREACH). DoD rg bersih, zero href="#". |
 | — | Fase 2 — Rebuild layar | ⬜ Belum mulai | 0/20 layar. |
 
 ## Detail Fase 0 (2026-09-13)
