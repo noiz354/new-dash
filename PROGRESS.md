@@ -19,6 +19,7 @@
 | 2026-09-13 | Kanonisasi data master | ✅ Selesai | Bukti via `rg` langsung dari `code.html` → `docs/CANON_DATA.md`: 22 keputusan (C1–C22) + aturan format ID global + klausa CANON siap tempel. Putusan kunci: WO seal = WO-2026-0894 @ AST-HVAC-004 Trane (8802 artefak, 16 lawan 2); LOTO #4092 (M-44 = titik lockout DP-02); seal $1,450; skor 68; tenant APX-NUSA-01; 6 Roles; Shift A 07:00–15:30 WIB; Voronova; API v1; secret dianggap bocor → rotasi. DITUNDA (verifikasi saat seeding): C9 bearing SKU, C10 CHILL-NUSA-04/WO-0894, C12 progres INS (sementara 65%), C14 Elena Moreno.
 | 2026-09-13 | Git init + handoff Codex | ✅ Selesai | `git init`, commit `07c3045` (hanya `README.md` + `# new-dash`), push `main` ke `git@github.com:noiz354/new-dash.git`. `.gitignore` dibuat. `CODEX.md` ditulis (status, peta 11 dokumen, 8 aturan keras, Fase A–F: tutup kanon C9/C10/C12/C14 → HIGH → MEDIUM → wiring → LOW+stack → rebuild/QA).
 | 2026-09-13 | CODEX.md mode otonom penuh | ✅ Selesai | Tambah §0: JANGAN bertanya/berhenti, default C14 (Moreno = persona terpisah), stack A Next.js, default desain M4–M5, aturan konflik baru, protokol BLOCKED/PUSH-BLOCKED + tag `[ASUMSI-OTOMATIS]`.
+| 2026-09-13 | Fase A — Tutup kanon C9/C10/C12/C14 | ✅ Selesai | Grep ulang code.html: C9 = BUKAN konflik (6204 vs 6205 dua SKU berbeda); C10 = artefak GUGUR (CHILL-NUSA-04/WO-0894/WO-9042 ada, rewire format penuh); C12 = 65% kanon (hub otoritatif); C14 = persona terpisah [ASUMSI-OTOMATIS]. Amandemen: C3 TETAP $1,450 (2v1 atas WO hub $1,420; ledger H1 = $1,765); C4 TETAP Trane. Klausa CANON final. |
 | — | Fase 2 — Rebuild layar | ⬜ Belum mulai | 0/20 layar. |
 
 ## Detail Fase 0 (2026-09-13)
@@ -28,11 +29,20 @@
 - Tech stack teridentifikasi: HTML statis, Tailwind Play CDN + config inline, font Inter + JetBrains Mono (+ Space Grotesk di sistem B), ikon Material Symbols Outlined.
 - Dua design system dipetakan (lihat AGENTS.md §5).
 
+## Asumsi Otonom (butuh review user — tag `[ASUMSI-OTOMATIS]`)
+
+- 2026-09-13 Fase A: C14 `Elena Moreno` = persona TERPISAH (requestor/front-desk SR triage), bukan alias `Elena Voronova` (engineer lapangan). Dasar: default CODEX.md §0; bukti 1-layar tanpa kaitan. Bila user menyatakan alias → revisi kanon + file H1/H2/M2.
+- 2026-09-13 Fase A: C3 TETAP $1,450.00 (mayoritas 2-file-lawan-1 atas temuan baru WO hub $1,420). Konsekuensi: total ledger H1 = $1,765.00 (bukan $1,735.00 di mockup WO hub). Bila user memilih $1,420 → revisi C3 + H1 + H3.
+- 2026-09-13 Fase A: nama file H2 mengikuti CODEX.md (`my-audits.html`, `run-checklist.html`, `sync-status.html`), BUKAN nama readiness §2 (`field-audits.html`, `field-finding-new.html`, `field-sync.html`). Alasan: CODEX lebih baru + selaras label bottom-nav field valid.
+
 ## Temuan / Inkonsistensi Stitch
 
 > Catat di sini setiap inkonsistensi antar-layar yang ditemukan saat rebuild. Jangan "diperbaiki diam-diam".
 
-- (belum ada — isi saat Fase 2 berjalan)
+- [BARU Fase A] C3: WO hub:538 mencatat PART-SEAL-8821 = $1,420.00 (Dispensed & Installed) — bertentangan dengan findings:468 + asset-detail:518-519 ($1,450.00). Klaim kanonisasi (1,420 tak terkonfirmasi) DICABUT. Putusan: $1,450 tetap (mayoritas); entri WO hub di-rewire di H1.
+- [BARU Fase A] C4: WO hub:349 + :361 menyebut "Daikin OEM seal" (2x) — Daikin kini di 2 file (asset-detail + WO hub). Trane tetap menang (5+ sumber). Refs Daikin di-rewire ke Trane di H1.
+- [BARU Fase A] C10: `CHILL-NUSA-04` (purchasing:599), `WO-0894` (facility SVG:408), `WO-9042` (ui-states:403) terkonfirmasi ADA — klaim kanonisasi (tak ditemukan) DICABUT. Status: artefak GUGUR, format penuh ditegakkan.
+- [BARU Fase A] C12: mobile:54/57 "Step 2 of 4 (50%)" vs hub 65% — keduanya ada. Mobile memakai fraksi step kasar; file H2 baru menampilkan 65% berbobot + posisi step terpisah.
 
 ## Log Layar (isi saat rebuild)
 

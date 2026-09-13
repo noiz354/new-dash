@@ -41,6 +41,14 @@
 
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
+## Fase A — Tutup Kanon ✅ Selesai (2026-09-13)
+
+- [x] C9: bearing SKU — BUKAN konflik (PART-BRG-6204 vs PART-BRG-6205 dua SKU berbeda)
+- [x] C10: CHILL-NUSA-04 / WO-0894 / WO-9042 — artefak GUGUR, rewire format penuh
+- [x] C12: progres INS-2026-0412 — 65% kanon (hub otoritatif)
+- [x] C14: Elena Moreno — persona terpisah [ASUMSI-OTOMATIS]
+- [x] Amandemen C3 (tetap $1,450; ledger H1 $1,765) + C4 (tetap Trane) + klausa CANON §5 final
+
 ## Fase 1 — Keputusan Stack ⬜ (butuh jawaban user)
 
 - [ ] Pilih stack produksi. Opsi default yang diusulkan:
