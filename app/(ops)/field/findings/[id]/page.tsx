@@ -1,13 +1,29 @@
 import Link from 'next/link';
-import { EmptyState } from '@/components/ops/EmptyState';
+import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ops/EmptyState';
+import { FindingDesk } from '@/components/field/FindingDesk';
+import { CANON, ID_FORMATS } from '@/lib/canon';
 
-export default function Page({ params }: { params: { id: string } }) {
-  return (
-    <EmptyState
-      title={"Finding {id}".replace('{id}', params.id)}
-      description="FND-2026-0188 conversion source. Field rebuild ships in wave 2."
-      action={(<div className="flex gap-2"><Link href="/work-orders/WO-2026-0894"><Button variant="secondary">Open WO-2026-0894</Button></Link></div>)}
-    />
-  );
+export function generateStaticParams() {
+  return [{ id: CANON.finding }, { id: 'FND-2026-0185' }, { id: 'FND-2026-0182' }];
+}
+
+export default function FindingPage({ params }: { params: { id: string } }) {
+  const { id } = params;
+  if (!ID_FORMATS.finding.test(id)) notFound();
+  if (id !== CANON.finding) {
+    return (
+      <EmptyState
+        title={`Finding ${id}`}
+        description="Outside the field seed — full triage desk for this record ships in wave 2 (TODO Fase 2)."
+        action={
+          <Link href={`/field/findings/${CANON.finding}`}>
+            <Button>Open {CANON.finding} instead</Button>
+          </Link>
+        }
+      />
+    );
+  }
+  return <FindingDesk />;
 }

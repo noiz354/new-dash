@@ -50,3 +50,11 @@ body {
     display: none !important;
   }
 }
+
+/* System B safe-area insets for fixed field chrome. */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}

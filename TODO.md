@@ -86,7 +86,7 @@
 - [ ] Wave-2: 18 layar penuh (lihat Fase 2 — satu layar = satu unit)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (3/20 prod + 22 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (6/20 prod + 19 route wave-2) 🟡
 
 Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 
@@ -96,9 +96,9 @@ Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 4. [ ] `asset_registry_lifecycle_management_ledger` (858)
 5. [ ] `asset_detail_spare_parts_inventory_ledger` (985)
 6. [ ] `preventive_maintenance_scheduling_automation_hub` (957)
-7. [ ] `field_inspections_audit_queue_hub` (653)
-8. [ ] `inspection_findings_auto_wo_conversion_desk` (543)
-9. [ ] `mobile_field_inspection_execution_desk` (254, sistem B)
+7. [x] `field_inspections_audit_queue_hub` (653) → `/field/audits` prod (H2: antrean, skeleton, filter, offline)
+8. [x] `inspection_findings_auto_wo_conversion_desk` (543) → `/field/findings/[id]` prod (triage, BOM, convert, dismiss-guard)
+9. [x] `mobile_field_inspection_execution_desk` (254, sistem B) → `/field/audits/[id]/run` + `/field/sync` prod (H2: PIN 2468, guard, idem-retry)
 10. [ ] `facility_locations_spatial_hierarchy_management` (773)
 11. [ ] `inventory_spare_parts_management_ledger` (725)
 12. [x] `purchasing_pos_management_hub` (719) → `/purchasing/[id]` prod (H3: tabs, SLA, GRN idem, match, quorum, print)
