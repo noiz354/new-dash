@@ -4,6 +4,30 @@
 > tanpa membaca seluruh riwayat chat. Bahasa respons ke user: **Indonesia**.
 > Kode & komentar: English. Baca `AGENTS.md` + file di bawah sebelum mulai.
 
+## 0. Mode otonom penuh — JANGAN bertanya, JANGAN berhenti
+
+1. Kerjakan Fase A→F berurutan sampai semua checkbox `[x]` atau tercatat BLOCKED.
+2. Bila ada ambiguitas: pakai default dari tabel di bawah, tandai
+   `[ASUMSI-OTOMATIS]` di file yang disentuh + catat di `PROGRESS.md` (bagian
+   Asumsi Otonom) untuk review user. Jangan berhenti, jangan menunggu jawaban.
+3. Bila benar-benar buntu (butuh kredensial, layanan eksternal, atau perintah
+   yang bertentangan dengan aturan keras §3): tulis `BLOCKED: <alasan>` di
+   `TODO.md`, lanjutkan ke item independen berikutnya. Aturan keras TIDAK boleh
+   dilanggar dengan alasan otonomi.
+4. Commit lokal setiap selesai satu unit kerja (satu layar / satu fase).
+   Jalankan `git push` bila remote terjangkau; bila gagal, catat `PUSH-BLOCKED`
+   di `PROGRESS.md` dan lanjut kerja — jangan berhenti.
+
+### Default keputusan (menggantikan semua "tanya user")
+
+| Keputusan | Default — langsung pakai |
+|---|---|
+| C14 `Elena Moreno` | Persona TERPISAH: requestor/front-desk di SR triage; `Elena Voronova` = engineer lapangan. Jangan digabung. Tandai `[ASUMSI-OTOMATIS]` |
+| Stack produksi (Fase 1/E) | **A: Next.js 14 + Tailwind + shadcn/ui**. Gelombang HTML HIGH–LOW tetap standalone; Fase F rebuild memakai stack A |
+| M4–M5 desain | Ikuti pola terdekat dari `ui-state-patterns` + layar sejenis (drawer untuk detail, modal untuk konfirmasi); pilih opsi paling konsisten, catat asumsi |
+| Konflik baru tak tercakup kanon | Mayoritas sumber menang (metodologi C1–C22); bila seri, pilih sumber paling otoritatif untuk domain itu (RBAC→org hub, progres→hub antrean, harga→line item eksplisit); catat |
+| Push gagal (tanpa akses remote) | Tetap commit lokal per unit; catat `PUSH-BLOCKED`; lanjut kerja |
+
 ## 1. Status saat ini (2026-09-13)
 
 - Git: repo terinisiasi, remote `git@github.com:noiz354/new-dash.git` (branch `main`).
@@ -56,7 +80,7 @@
       nyatakan gugur.
 - [ ] C12: progres `INS-2026-0412` 65% vs 50% — konfirmasi angka di kedua file,
       tetapkan satu.
-- [ ] C14: `Elena Moreno` — **tanya user**: persona terpisah atau alias Voronova.
+- [ ] C14: `Elena Moreno` — pakai default §0 (persona terpisah, requestor SR triage).
 - Kriteria selesai: `CANON_DATA.md` tanpa status DITUNDA (kecuali menunggu user).
 
 ### Fase B — Gelombang HIGH (prompt Opsi 3 + Opsi 2, satu halaman per request)
@@ -73,7 +97,7 @@ Sertakan klausa CANON + ANTI-ARTIFACTS di tiap prompt. Output: HTML standalone.
 
 ### Fase C — Gelombang MEDIUM (M1–M3, M6; M4–M5 butuh keputusan desain user)
 - [ ] M1–M3, M6 sesuai readiness §2.
-- [ ] M4–M5: ajukan opsi desain ke user dulu (prompt Opsi 1 hanya untuk ≤3 halaman).
+- [ ] M4–M5: pakai default desain §0 (pola terdekat ui-state-patterns; catat asumsi).
 
 ### Fase D — Gelombang Wiring (prompt Opsi 4 + Opsi 6)
 - [ ] Sambung semua elemen mati di tabel wiring (readiness §3 + spec wiring §3):
@@ -83,8 +107,8 @@ Sertakan klausa CANON + ANTI-ARTIFACTS di tiap prompt. Output: HTML standalone.
 
 ### Fase E — Gelombang LOW (L1–L4) + keputusan stack
 - [ ] L1–L4 sesuai readiness §2.
-- [ ] TODO Fase 1 (baris 42): keputusan stack produksi masih terbuka
-      (usul default Next.js + Tailwind + shadcn) — tanya user sebelum rebuild.
+- [ ] Stack produksi: pakai default §0 (A: Next.js 14 + Tailwind + shadcn) —
+      JANGAN bertanya; langsung inisialisasi proyek + token DESIGN.md.
 
 ### Fase F — Rebuild + integrasi (TODO Fase 2 & 3, 0/20)
 - [ ] Rebuild 20 layar sebagai aplikasi produksi (referensi visual = Stitch HTML,
