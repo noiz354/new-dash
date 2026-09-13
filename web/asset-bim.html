@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<!--
+  Apex Ops — Asset BIM Viewer (M6)
+  Route: /assets/AST-HVAC-004/bim | File: web/asset-bim.html
+  System A. Standalone HTML + Tailwind Play CDN + HTMX via CDN.
+  [ASUMSI-OTOMATIS] M6 diputus sebagai FILE TERPISAH (bukan tab): viewer butuh
+  viewport penuh + pola terdekat ui-state (drawer untuk detail). Skematik SVG
+  digambar manual dari denah CUP BASEMENT L2 · SECTOR WEST — foto Chicago
+  (artefak) TIDAK direplikasi. 38 node telemetri = agregat + daftar sampel.
+  CANON: AST-HVAC-004 Trane EarthWise CVHE; WO-2026-0894; LOTO #4092; WIB.
+-->
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>BIM · AST-HVAC-004 — Apex Ops</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style>body { margin: 0; } .htmx-indicator { display: none; } .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline-flex; } .node { cursor: pointer; } .node:focus { outline: 2px solid #2563EB; outline-offset: 2px; }</style><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { colors: { "primary-container": "#1e40af", "on-primary": "#ffffff", "surface": "#f8f9ff", "card": "#ffffff", "on-surface": "#0b1c30", "secondary": "#565e74" } }, fontFamily: { "sans": ["Inter"], "mono": ["JetBrains Mono"] } } } };</script><script src="https://unpkg.com/htmx.org@1.9.12"></script></head>
+<body class="bg-surface text-on-surface font-sans min-h-screen flex flex-col" style="font-feature-settings: 'tnum';">
+<header class="h-16 bg-card border-b border-[#E2E8F0] px-4 flex items-center justify-between gap-3 shrink-0">
+<div class="flex items-center gap-3 min-w-0"><a href="../stitch_facility_maintenance_platform_ui/asset_detail_spare_parts_inventory_ledger/code.html" class="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg bg-[#EFF4FF]" aria-label="Back to asset detail"><span class="material-symbols-outlined">arrow_back</span></a><div class="min-w-0"><h1 class="text-base font-semibold truncate">BIM · <span class="font-mono text-[#1E40AF]">AST-HVAC-004</span></h1><p class="text-xs text-secondary truncate">Trane EarthWise CVHE · CUP BASEMENT L2 · SECTOR WEST · 38 telemetry nodes</p></div></div>
+<div class="flex items-center gap-2 shrink-0"><a class="hidden sm:inline-flex h-9 px-3 rounded-lg bg-[#EFF4FF] text-sm font-semibold items-center gap-1" href="work-order-detail.html"><span class="material-symbols-outlined text-base">assignment</span>WO-2026-0894</a><a class="h-9 px-3 rounded-lg bg-primary-container text-on-primary text-sm font-semibold inline-flex items-center" href="../stitch_facility_maintenance_platform_ui/asset_registry_lifecycle_management_ledger/code.html">Registry</a></div>
+</header>
+<div class="flex-1 flex flex-col lg:flex-row min-h-0">
+<!-- VIEWPORT -->
+<main class="flex-1 p-4 flex flex-col gap-3 min-w-0" aria-label="BIM viewport">
+<div class="flex flex-wrap items-center gap-2" role="group" aria-label="Layers">
+<button type="button" class="layer-btn h-9 px-3 rounded-lg text-sm font-semibold bg-primary-container text-on-primary" data-layer="mech" aria-pressed="true">Mechanical</button>
+<button type="button" class="layer-btn h-9 px-3 rounded-lg text-sm font-semibold bg-[#EFF4FF]" data-layer="elec" aria-pressed="true">Electrical</button>
+<button type="button" class="layer-btn h-9 px-3 rounded-lg text-sm font-semibold bg-[#EFF4FF]" data-layer="tele" aria-pressed="true">Telemetry</button>
+<span class="text-xs text-secondary ml-auto">Click a node → detail drawer · ESC closes</span>
+</div>
+<div class="flex-1 min-h-[420px] bg-[#0B1C30] rounded-xl border border-[#0B1C30] overflow-hidden relative">
+<svg id="bim-svg" viewBox="0 0 800 460" class="w-full h-full" role="img" aria-label="Schematic plan of CUP basement L2 sector west">
+<defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#1E293B" stroke-width="1"/></pattern></defs>
+<rect width="800" height="460" fill="#0B1C30"/><rect width="800" height="460" fill="url(#grid)"/>
+<text x="24" y="34" font-family="JetBrains Mono" font-size="12" fill="#93C5FD" letter-spacing="2">CUP BASEMENT L2 · SECTOR WEST · PLAN +2.40m</text>
+<g id="layer-mech">
+<rect x="60" y="70" width="280" height="150" rx="6" fill="#13294B" stroke="#3B82F6" stroke-width="2"/>
+<text x="80" y="100" font-family="Inter" font-size="14" font-weight="700" fill="#EAF1FF">CHILLER #04 [CRITICAL]</text>
+<text x="80" y="120" font-family="JetBrains Mono" font-size="11" fill="#93C5FD">AST-HVAC-004 · Trane EarthWise CVHE</text>
+<text x="80" y="140" font-family="JetBrains Mono" font-size="11" fill="#F87171">SEAL REFRIG LEAK · WO-2026-0894</text>
+<rect x="380" y="70" width="200" height="150" rx="6" fill="#13294B" stroke="#334155" stroke-width="2"/>
+<text x="400" y="100" font-family="Inter" font-size="14" font-weight="700" fill="#EAF1FF">CHILLER #03</text>
+<text x="400" y="120" font-family="JetBrains Mono" font-size="11" fill="#93C5FD">NOMINAL · 96.4% HX eff</text>
+<line x1="90" y1="250" x2="550" y2="250" stroke="#1E40AF" stroke-width="10" stroke-linecap="round"/>
+<line x1="90" y1="280" x2="550" y2="280" stroke="#00563A" stroke-width="10" stroke-linecap="round"/>
+<text x="90" y="245" font-family="JetBrains Mono" font-size="10" fill="#93C5FD">PRIMARY CHILLED WATER RETURN (DN300 / 6.2 BAR)</text>
+<text x="90" y="305" font-family="JetBrains Mono" font-size="10" fill="#5BCF9E">PRIMARY CHILLED WATER SUPPLY (DN300 / 7.1 BAR)</text>
+</g>
+<g id="layer-elec">
+<rect x="620" y="70" width="120" height="150" rx="6" fill="#13294B" stroke="#F59E0B" stroke-width="2"/>
+<text x="634" y="100" font-family="Inter" font-size="13" font-weight="700" fill="#EAF1FF">PANEL DP-02</text>
+<text x="634" y="120" font-family="JetBrains Mono" font-size="11" fill="#FCD34D">M-44 · #4092</text>
+<text x="634" y="140" font-family="JetBrains Mono" font-size="11" fill="#FCD34D">0.0V · LOTO</text>
+<line x1="620" y1="145" x2="580" y2="145" stroke="#F59E0B" stroke-width="2" stroke-dasharray="6 4"/>
+</g>
+<g id="layer-tele" font-family="JetBrains Mono" font-size="10">
+<g class="node" data-node="TT-04A" tabindex="0" role="button" aria-label="Node TT-04A seal cavity temperature"><circle cx="140" cy="180" r="10" fill="#DC2626" stroke="#fff" stroke-width="2"/><text x="156" y="184" fill="#FCA5A5">TT-04A 84.1°C</text></g>
+<g class="node" data-node="VT-04B" tabindex="0" role="button" aria-label="Node VT-04B bearing vibration"><circle cx="230" cy="180" r="10" fill="#DC2626" stroke="#fff" stroke-width="2"/><text x="246" y="184" fill="#FCA5A5">VT-04B 7.8mm/s</text></g>
+<g class="node" data-node="GS-04C" tabindex="0" role="button" aria-label="Node GS-04C refrigerant sniff"><circle cx="320" cy="250" r="10" fill="#D97706" stroke="#fff" stroke-width="2"/><text x="336" y="254" fill="#FCD34D">GS-04C 18.4ppm</text></g>
+<g class="node" data-node="PT-03A" tabindex="0" role="button" aria-label="Node PT-03A discharge pressure"><circle cx="460" cy="180" r="10" fill="#059669" stroke="#fff" stroke-width="2"/><text x="476" y="184" fill="#6EE7B7">PT-03A 118PSI</text></g>
+<g class="node" data-node="EL-DP02" tabindex="0" role="button" aria-label="Node EL-DP02 panel DP-02 voltage"><circle cx="680" cy="180" r="10" fill="#059669" stroke="#fff" stroke-width="2"/><text x="640" y="210" fill="#6EE7B7">EL-DP02 0.0V</text></g>
+</g>
+<text x="24" y="440" font-family="JetBrains Mono" font-size="10" fill="#64748B">38 nodes connected · showing 5 critical-path nodes · Modbus 192.168.4.112:502</text>
+</svg>
+</div>
+<div class="flex flex-wrap gap-2 text-xs"><span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#FEF2F2] text-[#991B1B] font-semibold"><span class="w-2 h-2 rounded-full bg-[#DC2626]"></span>ALARM (2)</span><span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#FFFBEB] text-[#92400E] font-semibold"><span class="w-2 h-2 rounded-full bg-[#D97706]"></span>WARNING (1)</span><span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#ECFDF5] text-[#065F46] font-semibold"><span class="w-2 h-2 rounded-full bg-[#059669]"></span>NOMINAL (35)</span></div>
+</main>
+<!-- NODE DRAWER -->
+<aside id="node-drawer" class="hidden lg:flex w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l border-[#E2E8F0] bg-card p-4 flex-col gap-3" aria-label="Node detail">
+<div id="node-empty"><h2 class="text-base font-semibold">Node Detail</h2><p class="text-sm text-secondary">Select a telemetry node on the plan. Detail opens here (drawer pattern).</p><a class="text-sm font-semibold text-[#1E40AF] hover:underline" href="../stitch_facility_maintenance_platform_ui/asset_detail_spare_parts_inventory_ledger/code.html">Open full asset ledger</a></div>
+<div id="node-filled" class="hidden flex-col gap-2">
+<div class="flex items-start justify-between"><div><h2 id="node-title" class="text-base font-semibold font-mono">TT-04A</h2><p id="node-sub" class="text-xs text-secondary">Seal cavity temperature</p></div><button type="button" id="node-close" class="w-9 h-9 flex items-center justify-center rounded-lg bg-[#EFF4FF]" aria-label="Close detail"><span class="material-symbols-outlined">close</span></button></div>
+<p id="node-value" class="text-3xl font-bold" style="font-feature-settings: 'tnum';">84.1°C</p>
+<ul class="text-sm flex flex-col gap-1"><li class="flex justify-between"><span class="text-secondary">Status</span><strong id="node-status">ALARM</strong></li><li class="flex justify-between"><span class="text-secondary">Asset</span><span class="font-mono">AST-HVAC-004</span></li><li class="flex justify-between"><span class="text-secondary">Work order</span><a class="font-mono text-[#1E40AF] font-semibold hover:underline" href="work-order-detail.html">WO-2026-0894</a></li><li class="flex justify-between"><span class="text-secondary">Updated</span><span>14:41 WIB · live</span></li></ul>
+<button type="button" id="node-refresh" class="h-10 rounded-lg bg-primary-container text-on-primary text-sm font-semibold" hx-get="/api/v1/assets/AST-HVAC-004/nodes" hx-target="#node-value" hx-swap="innerHTML" hx-indicator="#hx-node-spin">Refresh Reading <span id="hx-node-spin" class="htmx-indicator">…</span></button>
+</div>
+</aside>
+</div>
+<script>
+var NODES = { 'TT-04A': ['Seal cavity temperature', '84.1°C', 'ALARM — above 80°C trip watch'], 'VT-04B': ['Bearing vibration', '7.8 mm/s', 'ALARM — at safety trip'], 'GS-04C': ['Refrigerant sniff R-134a', '18.4 ppm', 'WARNING — exceeds 5 ppm limit'], 'PT-03A': ['Discharge pressure', '118 PSI', 'NOMINAL — envelope 110–130'], 'EL-DP02': ['Panel DP-02 voltage', '0.0V', 'NOMINAL — LOTO verified #4092'] };
+function pick(id){ var n = NODES[id]; if(!n) return; document.getElementById('node-empty').classList.add('hidden'); var f = document.getElementById('node-filled'); f.classList.remove('hidden'); f.classList.add('flex'); document.getElementById('node-title').textContent = id; document.getElementById('node-sub').textContent = n[0]; document.getElementById('node-value').textContent = n[1]; document.getElementById('node-status').textContent = n[2]; }
+document.querySelectorAll('.node').forEach(function(g){ g.addEventListener('click', function(){ pick(g.getAttribute('data-node')); }); g.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pick(g.getAttribute('data-node')); } }); });
+document.getElementById('node-close').addEventListener('click', function(){ document.getElementById('node-filled').classList.add('hidden'); document.getElementById('node-filled').classList.remove('flex'); document.getElementById('node-empty').classList.remove('hidden'); });
+document.querySelectorAll('.layer-btn').forEach(function(b){ b.addEventListener('click', function(){ var layer = document.getElementById('layer-' + b.getAttribute('data-layer')); var off = layer.style.display === 'none'; layer.style.display = off ? '' : 'none'; b.setAttribute('aria-pressed', off ? 'true' : 'false'); b.className = 'layer-btn h-9 px-3 rounded-lg text-sm font-semibold ' + (off ? 'bg-primary-container text-on-primary' : 'bg-[#EFF4FF]'); }); });
+document.getElementById('node-refresh').addEventListener('click', function(e){ e.preventDefault(); document.getElementById('node-value').textContent = document.getElementById('node-value').textContent; });
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape'){ document.getElementById('node-close').click(); } });
+document.body.addEventListener('htmx:sendError', function(){ /* standalone: readings stay live-mocked */ });
+</script>
+</body></html>
