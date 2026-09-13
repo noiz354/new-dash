@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!--
+  Apex Ops — Login (M3)
+  Route: (auth)/login | File: web/login.html
+  System A. Standalone HTML + Tailwind Play CDN + HTMX via CDN.
+  CANON: tenant APX-NUSA-01; SSO (SAML/OIDC) + MFA Enforced + SCIM v2.4
+  (org hub); 6 Roles; WIB. Tanpa sidebar (layar auth mandiri).
+-->
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>Sign in — Apex Ops</title><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<style>body { margin: 0; } .htmx-indicator { display: none; } .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline-flex; }</style><script src="https://cdn.tailwindcss.com"></script><script>tailwind.config = { theme: { extend: { colors: { "primary-container": "#1e40af", "on-primary": "#ffffff", "surface": "#f8f9ff", "surface-low": "#eff4ff", "card": "#ffffff", "on-surface": "#0b1c30", "secondary": "#565e74", "outline": "#c4c5d5", "error": "#ba1a1a", "ok": "#00563a", "warn": "#92400E", "warn-bg": "#FFFBEB" } }, fontFamily: { "sans": ["Inter"], "mono": ["JetBrains Mono"] } } } };</script><script src="https://unpkg.com/htmx.org@1.9.12"></script></head>
+<body class="bg-surface text-on-surface font-sans min-h-screen flex items-center justify-center p-4" style="font-feature-settings: 'cv02','cv03','cv04','cv11','tnum';">
+<main class="w-full max-w-md flex flex-col gap-4">
+<div class="flex flex-col items-center gap-2 text-center">
+<svg class="h-12 w-auto" viewBox="0 0 160 40" fill="none" role="img" aria-label="Apex Ops logo"><rect width="36" height="36" rx="8" fill="#1E40AF"/><path d="M18 8L27 24H9L18 8Z" stroke="#60A5FA" stroke-width="2.5" stroke-linejoin="round"/><circle cx="18" cy="20" r="2.5" fill="#FFFFFF"/><path d="M12 28H24" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/><text x="44" y="23" font-family="system-ui, sans-serif" font-weight="700" font-size="15" fill="#0F172A" letter-spacing="-0.02em">APEX<tspan fill="#2563EB">OPS</tspan></text><text x="44" y="32" font-family="system-ui, sans-serif" font-weight="600" font-size="8.5" fill="#64748B" letter-spacing="0.08em">FACILITY &amp; ASSETS</text></svg>
+<h1 class="text-2xl font-semibold tracking-tight">Sign in to Apex Ops</h1>
+<p class="text-sm text-secondary">Tenant <span class="font-mono font-semibold text-on-surface">APX-NUSA-01</span> · Nusantara Tower · WIB (UTC+7)</p>
+</div>
+
+<!-- STEP 1: credentials -->
+<section id="step-login" class="bg-card border border-[#E2E8F0] rounded-lg p-6 flex flex-col gap-4" aria-labelledby="login-h">
+<h2 id="login-h" class="sr-only">Credentials</h2>
+<form id="form-login" class="flex flex-col gap-3" novalidate>
+<div class="flex flex-col gap-1"><label class="text-xs font-semibold" for="login-email">Work email</label><input id="login-email" type="email" autocomplete="username" value="e.voronova@apexops.io" class="h-10 px-3 border border-[#CBD5E1] rounded text-sm outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"/><p id="login-email-error" class="hidden text-xs font-semibold text-error">Enter a valid work email.</p></div>
+<div class="flex flex-col gap-1"><label class="text-xs font-semibold" for="login-pass">Password</label><input id="login-pass" type="password" autocomplete="current-password" value="demo-pass-4821" class="h-10 px-3 border border-[#CBD5E1] rounded text-sm outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"/><p id="login-pass-error" class="hidden text-xs font-semibold text-error">Password is required.</p></div>
+<p id="login-state" class="text-xs text-secondary" role="status">MFA is enforced on this tenant — a 6-digit code follows.</p>
+<button type="submit" class="h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-[#1D4ED8] flex items-center justify-center gap-2" hx-post="/api/v1/auth/login" hx-target="#login-state" hx-swap="innerHTML" hx-indicator="#hx-login-spin"><span id="hx-login-spin" class="htmx-indicator"><svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg></span>Continue with Email</button>
+</form>
+<div class="flex items-center gap-2 text-xs text-secondary"><span class="flex-1 h-px bg-[#E2E8F0]"></span>or<span class="flex-1 h-px bg-[#E2E8F0]"></span></div>
+<button type="button" id="btn-sso" class="h-10 rounded border border-[#CBD5E1] bg-card text-sm font-semibold hover:bg-surface-low flex items-center justify-center gap-2" hx-get="/api/v1/auth/sso/start" hx-target="#login-state" hx-swap="innerHTML" hx-indicator="#hx-login-spin"><span class="material-symbols-outlined text-base">vpn_key</span>Continue with SSO (SAML / OIDC)</button>
+<p class="text-xs text-secondary text-center">SSO &amp; Security Policies · SCIM v2.4 provisioning · <a class="text-[#1E40AF] font-semibold hover:underline" href="../stitch_facility_maintenance_platform_ui/organization_rbac_governance_hub/code.html">Open org hub</a></p>
+</section>
+
+<!-- STEP 2: MFA -->
+<section id="step-mfa" class="hidden bg-card border border-[#E2E8F0] rounded-lg p-6 flex-col gap-4" aria-labelledby="mfa-h">
+<h2 id="mfa-h" class="text-lg font-semibold">Two-factor verification</h2>
+<p class="text-sm text-secondary">Enter the 6-digit code from your authenticator. Demo code: <span class="font-mono font-bold text-on-surface">482 916</span></p>
+<label class="text-xs font-semibold" for="mfa-code">6-digit code</label><input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" class="h-12 px-3 border-2 border-[#1E40AF] rounded text-center font-mono text-xl tracking-[0.4em] outline-none"/>
+<p id="mfa-error" class="hidden text-xs font-semibold text-error">Wrong code — try again. Attempts are rate-limited.</p>
+<p id="mfa-state" class="text-xs text-secondary" role="status">MFA Enforced · codes rotate every 30s.</p>
+<div class="flex gap-2"><button type="button" id="btn-mfa-back" class="h-10 px-4 rounded bg-surface-low text-sm font-semibold">Back</button><button type="button" id="btn-mfa-verify" class="flex-1 h-10 rounded bg-primary-container text-on-primary text-sm font-semibold hover:bg-[#1D4ED8]" hx-post="/api/v1/auth/mfa/verify" hx-target="#mfa-state" hx-swap="innerHTML">Verify &amp; Sign In</button></div>
+</section>
+
+<!-- STEP 3: success -->
+<section id="step-done" class="hidden bg-card border border-[#059669] rounded-lg p-6 flex-col gap-3 text-center" aria-labelledby="done-h">
+<span class="material-symbols-outlined text-5xl text-[#059669]">verified_user</span>
+<h2 id="done-h" class="text-lg font-semibold">Signed in</h2>
+<p class="text-sm text-secondary">Elena Voronova · Senior Field Tech · Shift A<br/>Session APX-NUSA-01 · <a class="text-[#1E40AF] font-semibold hover:underline" href="user-profile.html">Manage sessions</a></p>
+<a class="h-10 rounded bg-primary-container text-on-primary text-sm font-semibold inline-flex items-center justify-center" href="../stitch_facility_maintenance_platform_ui/operations_dashboard/code.html">Open Operations Dashboard</a>
+</section>
+
+<p class="text-xs text-secondary text-center">Apex Ops CMMS v4.18-p3 · <a class="font-semibold hover:underline" href="../stitch_facility_maintenance_platform_ui/settings_system_configuration/code.html">System status</a> · API v1</p>
+</main>
+<script>
+function show(id){ ['step-login','step-mfa','step-done'].forEach(function(s){ var e = document.getElementById(s); var on = s === id; e.classList.toggle('hidden', !on); e.classList.toggle('flex', on); }); }
+document.getElementById('form-login').addEventListener('submit', function(e){ e.preventDefault(); var em = document.getElementById('login-email').value.trim(); var pw = document.getElementById('login-pass').value; var okEm = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em); var okPw = pw.length > 0; document.getElementById('login-email-error').classList.toggle('hidden', okEm); document.getElementById('login-pass-error').classList.toggle('hidden', okPw); if(okEm && okPw) show('step-mfa'); });
+document.getElementById('btn-sso').addEventListener('click', function(){ document.getElementById('login-state').textContent = 'Redirecting to identity provider (SAML)… then back to MFA.'; setTimeout(function(){ show('step-mfa'); }, 900); });
+document.getElementById('btn-mfa-back').addEventListener('click', function(){ show('step-login'); });
+document.getElementById('btn-mfa-verify').addEventListener('click', function(e){ e.preventDefault(); var ok = document.getElementById('mfa-code').value.replace(/\s/g,'') === '482916'; document.getElementById('mfa-error').classList.toggle('hidden', ok); if(ok) show('step-done'); });
+document.body.addEventListener('htmx:sendError', function(){ document.getElementById('login-state').textContent = 'Standalone demo — continuing without backend.'; });
+</script>
+</body></html>
