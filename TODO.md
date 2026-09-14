@@ -83,10 +83,10 @@
 - [x] Kontrak komponen: Button/Badge/Input/Skeleton/Dialog/ConfirmDialog/Logo/EmptyState/OfflineBanner/Banner/ErrorToast/TableSkeleton/SlaCountdown/LaborStopwatch + lib/canon.ts
 - [x] Full rebuild: `/` dashboard (dispatch terverifikasi) + `/work-orders/[id]` H1 port (seed WO-2026-0894)
 - [x] 22 route wave-2 live (EmptyState jujur, zero dead link) · tsc + build hijau · smoke-test OK
-- [ ] Wave-2: 6 layar penuh tersisa (lihat Fase 2 — satu layar = satu unit)
+- [x] Wave-2: 18/18 layar + 2 non-halaman selesai (Fase 2: 20/20 ✅) · sisa 4 stub list-page di luar 20 unit (/work-orders, /service-requests, /purchasing, /vendors → kandidat Fase 3)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (16/20 prod + 5 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (20/20 prod ✅ · 4 stub list-page di luar 20 unit)
 
 Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3) · [x] `/shifts/plan` (L1: handover) · [x] `/profile` (L2: sessions/revoke/print-badge) · [x] `/assets/[id]/bim` (M6: skematik+drawer).
 
@@ -108,10 +108,10 @@ Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 14. [x] `organization_rbac_governance_hub` (1052) → `/organization` prod (roster 6, diagnostics+guard, matrix 15×6, ABAC, SSO, provision SCIM)
 15. [x] `audit_trail_system_logs_hub` (777) → `/audit-trail` prod (stream 6 event, live probe, diff inspector TXN-88120, Merkle verify, export)
 16. [x] `notifications_sla_alerts_hub` (701) → `/notifications` prod (5 alert, P1 countdown live, PO/stock/WO/security actions, routing+escalation, debugger)
-17. [ ] `reports_analytics_hub` (868)
-18. [ ] `settings_system_configuration` (920)
-19. [ ] `ui_state_variants_patterns` (451) — jadikan komponen reusable, bukan halaman
-20. [ ] `apex_ops_logo` (7) — jadikan aset/SVG komponen
+17. [x] `reports_analytics_hub` (868) → `/reports` prod (KPI, bar OPEX + alokasi Σ-valid, SLA, 4 dossier, query builder + SQL live)
+18. [x] `settings_system_configuration` (920) → `/settings` prod (5 tab: org+numbering, seed+backup, integrasi+webhook, units, security C21)
+19. [x] `ui_state_variants_patterns` (451) → komponen reusable, bukan halaman (Banner/EmptyState/ErrorToast/OfflineBanner/TableSkeleton/Skeleton/Dialog/ConfirmDialog ✅)
+20. [x] `apex_ops_logo` (7) → `components/Logo.tsx` (Logo + LogoMark SVG ✅)
 
 DoD tiap layar: lihat `AGENTS.md` §8.
 

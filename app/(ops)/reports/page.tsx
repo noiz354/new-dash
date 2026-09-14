@@ -1,13 +1,5 @@
-import Link from 'next/link';
-import { EmptyState } from '@/components/ops/EmptyState';
-import { Button } from '@/components/ui/button';
+import { ReportsHub } from '@/components/reports/ReportsHub';
 
-export default function Page() {
-  return (
-    <EmptyState
-      title="Reports & Analytics"
-      description="Dossiers + dispatch. Full rebuild ships in wave 2."
-      action={(<div className="flex gap-2"><Link href="/"><Button variant="secondary">Back to dashboard</Button></Link></div>)}
-    />
-  );
+export default function ReportsPage() {
+  return <ReportsHub />;
 }
