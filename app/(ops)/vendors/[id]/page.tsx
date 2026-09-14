@@ -1,13 +1,29 @@
 import Link from 'next/link';
-import { EmptyState } from '@/components/ops/EmptyState';
+import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ops/EmptyState';
+import { VendorDetail } from '@/components/vendors/VendorDetail';
+import { CANON } from '@/lib/canon';
 
-export default function Page({ params }: { params: { id: string } }) {
-  return (
-    <EmptyState
-      title={"Vendor {id}".replace('{id}', params.id)}
-      description="MSA-2024-TRN-09 ACTIVE 312d. Full rebuild ships in wave 2."
-      action={(<div className="flex gap-2"><Link href="/purchasing/PO-2026-0298"><Button variant="secondary">Open PO-2026-0298</Button></Link></div>)}
-    />
-  );
+export function generateStaticParams() {
+  return [{ id: CANON.vendorSlug }];
+}
+
+export default function VendorPage({ params }: { params: { id: string } }) {
+  const { id } = params;
+  if (!/^[a-z0-9-]{3,40}$/.test(id)) notFound();
+  if (id !== CANON.vendorSlug) {
+    return (
+      <EmptyState
+        title={`Vendor ${id}`}
+        description="Outside the vendor seed — full profile for this record ships in wave 2 (TODO Fase 2)."
+        action={
+          <Link href={`/vendors/${CANON.vendorSlug}`}>
+            <Button>Open {CANON.vendorName} instead</Button>
+          </Link>
+        }
+      />
+    );
+  }
+  return <VendorDetail />;
 }

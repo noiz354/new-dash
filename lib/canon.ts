@@ -30,6 +30,8 @@ export const CANON = {
   grn: 'GRN-9941',
   msa: 'MSA-2024-TRN-09',
   msaDaysLeft: 312,
+  vendorSlug: 'trane-technologies',
+  vendorName: 'Trane Technologies',
   pmPlan: 'PM-PLN-0104',
   template: 'TMPL-HVAC-CHL-02',
   engineer: 'Elena Voronova',

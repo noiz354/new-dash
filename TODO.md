@@ -86,7 +86,7 @@
 - [ ] Wave-2: 18 layar penuh (lihat Fase 2 — satu layar = satu unit)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (7/20 prod + 18 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (8/20 prod + 17 route wave-2) 🟡
 
 Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 
@@ -102,7 +102,7 @@ Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 10. [ ] `facility_locations_spatial_hierarchy_management` (773)
 11. [ ] `inventory_spare_parts_management_ledger` (725)
 12. [x] `purchasing_pos_management_hub` (719) → `/purchasing/[id]` prod (H3: tabs, SLA, GRN idem, match, quorum, print)
-13. [ ] `vendors_contractors_management_hub` (727)
+13. [x] `vendors_contractors_management_hub` (727) → `/vendors/[id]` prod (M1: PDF viewer, amend/dispatch/commend, MSA bar)
 14. [ ] `organization_rbac_governance_hub` (1052)
 15. [ ] `audit_trail_system_logs_hub` (777)
 16. [ ] `notifications_sla_alerts_hub` (701)
