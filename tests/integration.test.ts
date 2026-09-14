@@ -15,8 +15,12 @@ import { workOrderEvents } from '../db/schema';
 import { login, logout, verifyMfa } from '../lib/services/auth-service';
 import {
   createWorkOrder, getDashboard, getWorkOrder, listAssignableTechs,
-  listWorkOrders, transitionWorkOrder,
+  listWoEvents, listWorkOrders, transitionWorkOrder,
 } from '../lib/services/wo-service';
+import {
+  createServiceRequest, getServiceRequest, listServiceRequests,
+  listSrHistory, transitionServiceRequest,
+} from '../lib/services/sr-service';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
@@ -272,4 +276,107 @@ test('dashboard: KPIs computed from real rows, events feed populated', async () 
   assert.ok(data.rows.length === 5);
   assert.ok(data.rows.every((r) => !r.isTerminal));
   assert.ok(data.events.length >= 3, 'lifecycle produced HOLD/RESUME/COMPLETE events');
+});
+
+// ---------------------------------------------------------------------------
+// Service-request flow (slice 2): intake → triage → convert → close
+// ---------------------------------------------------------------------------
+test('sr: seeded queue is tenant-scoped; canon SR links to the seal WO', async () => {
+  const rows = await listServiceRequests(db, admin);
+  assert.equal(rows.length, 5);
+  const canon = rows.find((r) => r.number === 'SR-2026-0894');
+  assert.ok(canon);
+  assert.equal(canon.status, 'CONVERTED');
+  assert.equal(canon.convertedWoNumber, 'WO-2026-0894');
+  assert.equal(canon.slaLabel, '—'); // terminal → no clock
+
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.equal((await listServiceRequests(db, decoy)).length, 0);
+  await expectDomainError(
+    () => getServiceRequest(db, decoy, 'SR-2026-0894'),
+    404, 'SERVICE_REQUEST_NOT_FOUND',
+  );
+});
+
+test('sr: create → triage → convert creates a real WO in one transaction', async () => {
+  const created = await createServiceRequest(db, admin, {
+    title: 'AHU-7 bearing noise after PM', requesterName: 'Front Desk · Dana Priya', priority: 'P2', assetCode: 'AST-HVAC-003',
+  });
+  assert.equal(created.number, 'SR-2026-0895'); // sequence continues after the 5 seeded
+  assert.equal(created.status, 'OPEN');
+  assert.equal(created.slaLabel.includes('BREACH'), false);
+
+  const triaged = await transitionServiceRequest(db, admin, created.number, { action: 'triage' });
+  assert.equal(triaged.sr.status, 'TRIAGED');
+
+  const converted = await transitionServiceRequest(db, admin, created.number, {
+    action: 'convert', woTitle: 'AHU-7 bearing replacement', woPriority: 'P1',
+  });
+  assert.equal(converted.sr.status, 'CONVERTED');
+  assert.ok(converted.workOrder);
+  assert.match(converted.workOrder.number, /^WO-2026-\d{4}$/);
+  assert.equal(converted.sr.convertedWoNumber, converted.workOrder.number);
+  assert.equal(converted.workOrder.status, 'OPEN');
+  assert.equal(converted.workOrder.priority, 'P1');
+  assert.equal(converted.workOrder.title, 'AHU-7 bearing replacement');
+
+  // The WO is a first-class row: readable, transitionable, event-logged.
+  const wo = await getWorkOrder(db, admin, converted.workOrder.number);
+  assert.equal(wo.number, converted.workOrder.number);
+  const events = await listWoEvents(db, admin, wo.number);
+  assert.equal(events[0].action, 'CREATE');
+  assert.equal(events[0].reason, `Converted from ${created.number}`);
+
+  // One-time conversion: second attempt (new idempotency key) → 409.
+  await expectDomainError(
+    () => transitionServiceRequest(db, admin, created.number, { action: 'convert' }),
+    409, 'SR_INVALID_TRANSITION',
+  );
+
+  // Real history from the audit trail.
+  const history = await listSrHistory(db, admin, created.number);
+  const actions = history.map((h) => h.action);
+  for (const expected of ['SR_CREATE', 'SR_TRIAGE', 'SR_CONVERT']) {
+    assert.ok(actions.includes(expected), `missing history ${expected}`);
+  }
+});
+
+test('sr: close requires a reason and is terminal', async () => {
+  const created = await createServiceRequest(db, admin, {
+    title: 'Duplicate: dock door sensor flicker', requesterName: 'Logistics', priority: 'P3',
+  });
+  assert.equal(created.number, 'SR-2026-0896');
+
+  await expectDomainError(
+    () => transitionServiceRequest(db, admin, created.number, { action: 'close' }),
+    400, 'SR_REASON_REQUIRED',
+  );
+
+  const closed = await transitionServiceRequest(db, admin, created.number, {
+    action: 'close', reason: 'Duplicate of SR-2026-0893',
+  });
+  assert.equal(closed.sr.status, 'CLOSED');
+
+  await expectDomainError(
+    () => transitionServiceRequest(db, admin, created.number, { action: 'triage' }),
+    409, 'SR_INVALID_TRANSITION',
+  );
+
+  // Re-read proves persistence.
+  const fresh = await getServiceRequest(db, admin, created.number);
+  assert.equal(fresh.status, 'CLOSED');
+});
+
+test('sr: idempotent convert replay does NOT create a second WO', async () => {
+  const created = await createServiceRequest(db, admin, {
+    title: 'Idempotent convert probe', requesterName: 'QA Desk', priority: 'P2',
+  });
+  const key = 'sr-convert-idem-0001';
+  const first = await transitionServiceRequest(db, admin, created.number, { action: 'convert' }, { idempotencyKey: key });
+  const replay = await transitionServiceRequest(db, admin, created.number, { action: 'convert' }, { idempotencyKey: key });
+  assert.equal(replay.sr.convertedWoNumber, first.sr.convertedWoNumber);
+
+  const rows = await listWorkOrders(db, admin);
+  const matching = rows.filter((r) => r.number === first.sr.convertedWoNumber);
+  assert.equal(matching.length, 1, 'exactly one WO row for the replayed convert');
 });

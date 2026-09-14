@@ -150,4 +150,17 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE1.md`. Ringkasan deliverable:
 - [x] **Tests**: `npm test` = 28/28 pass (17 unit: TOTP vektor RFC, scrypt, RBAC, rate limit, state machine, SLA, hash kanonik; 11 integrasi PGlite temp: auth penuh, single-use challenge, revoke, isolasi tenant list/get/mutasi, lifecycle + events, assign, numbering, idempotency, persistensi sesi, dashboard KPI)
 - [x] **Infra**: scripts `db:generate|db:setup|db:reset|test`; `.env.example` (PGDATA_DIR, SEED_*, DEMO_MFA_HINT); `.data/` gitignored; CI + step test (`ci/ci.yml`)
 
-Sisa Phase 1 (slice berikutnya): SR/inspections flow ke DB · parts ledger + evidence storage · checklist DB-driven · notifikasi vendor · Playwright E2E · rate limit storage bersama · migrasi Postgres hosted. Roadmap penuh: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4.
+## Fase P1 — Slice 2 ✅ Selesai (2026-09-14)
+
+Dokumentasi lengkap: `docs/PHASE1_SLICE2.md`. Ringkasan deliverable:
+
+- [x] **Flow SR → WO PASS kedua**: state machine SR (triage/convert/close; konversi **satu-kali** transaksional — WO + SR + event + audit commit bersama; double-convert → 409); jendela triage dari bukti kanon (P1 15m, P2 45m, P3 2h [ASUMSI-OTOMATIS])
+- [x] **API**: GET/POST `/api/service-requests` + POST `/api/service-requests/[id]/transitions` (Idempotency-Key, optimistic guard, envelope + kode error `SR_*`)
+- [x] **RBAC**: permission baru `sr.transition` (Enterprise Admin, Facility Director, Engineering Lead)
+- [x] **Helper numbering bersama** `lib/services/sequence.ts` (WO/SR/PO/INS/FND) — refactor `wo-service` ikut pakai
+- [x] **UI live**: SR list (create/triage/convert/close + toast server + `router.refresh()`), SR detail utk SEMUA tiket (status/SLA nyata, link WO konversi, riwayat dari `audit_events`), kartu **Transition History** di detail WO (`work_order_events`); `dialogs.tsx` requests palsu dihapus; "Export Ticket Log" dilabeli not-implemented (jujur)
+- [x] **Next 16 hygiene**: `middleware.ts` → `proxy.ts` (warning deprecated hilang); `getSessionContext()` re-throw `DYNAMIC_SERVER_USAGE` → build log bersih (0 error)
+- [x] **Tests**: `npm test` = 36/36 (8 test SR baru: unit state machine/SLA/RBAC + integrasi create→triage→convert→WO nyata, close wajib reason, replay convert tanpa WO kedua, isolasi tenant SR)
+- [x] **E2E curl**: SR-2026-0895 create→triage→convert→WO-2026-0910; close 400 tanpa reason; **persisten lintas restart dev server** (cookie sesi lama tetap valid, rows tetap)
+
+Sisa Phase 1 (slice 3+): audit-trail page live (`audit_events`) · dossier WO generik (checklist/parts DB-driven) · inspections/assets/inventory dari DB · notifikasi vendor · evidence storage foto · Playwright E2E di CI · rate limit storage bersama · migrasi Postgres hosted. Roadmap penuh: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4.

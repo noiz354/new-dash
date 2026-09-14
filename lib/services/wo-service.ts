@@ -6,7 +6,7 @@
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db, Tx } from '../../db/client';
-import { auditEvents, sequences, users, workOrderEvents, workOrders } from '../../db/schema';
+import { auditEvents, users, workOrderEvents, workOrders } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
 import { DomainError, invalidTransition, notFound, staleState } from '../domain/errors';
 import {
@@ -14,6 +14,7 @@ import {
   type WoAction, type WoStatus,
 } from '../domain/work-orders';
 import { requestHash, withIdempotency } from './idempotency';
+import { nextNumber } from './sequence';
 
 export interface WoRow {
   number: string;
@@ -97,13 +98,7 @@ export async function createWorkOrder(
       requestHash(input),
       async () => {
         // Atomic canon numbering (sequences table, UPDATE...RETURNING).
-        const [seq] = await tx
-          .update(sequences)
-          .set({ nextVal: sql`${sequences.nextVal} + 1` })
-          .where(and(eq(sequences.organizationId, ctx.orgId), eq(sequences.entity, 'WO'), eq(sequences.year, year)))
-          .returning({ v: sequences.nextVal });
-        if (!seq) throw new DomainError(500, 'SEQUENCE_MISSING', `No WO sequence for org ${ctx.orgId} year ${year}`);
-        const number = `WO-${year}-${String(seq.v - 1).padStart(4, '0')}`;
+        const number = await nextNumber(tx, ctx.orgId, 'WO', year);
         const now = new Date();
         const [wo] = await tx
           .insert(workOrders)
@@ -326,4 +321,33 @@ export async function listAssignableTechs(db: Db, ctx: AuthContext): Promise<{ n
     .where(and(eq(users.organizationId, ctx.orgId), eq(users.isActive, true)))
     .orderBy(users.name);
   return rows;
+}
+
+// ------------------------------------------------------------ wo history --
+
+export interface WoHistoryEntry {
+  ts: string;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  actorName: string;
+  reason: string | null;
+}
+
+/** Real transition timeline for one work order (work_order_events, newest first). */
+export async function listWoEvents(db: Db, ctx: AuthContext, number: string): Promise<WoHistoryEntry[]> {
+  const rows = await db
+    .select({
+      ts: workOrderEvents.ts,
+      action: workOrderEvents.action,
+      fromStatus: workOrderEvents.fromStatus,
+      toStatus: workOrderEvents.toStatus,
+      actorName: workOrderEvents.actorName,
+      reason: workOrderEvents.reason,
+    })
+    .from(workOrderEvents)
+    .where(and(eq(workOrderEvents.organizationId, ctx.orgId), eq(workOrderEvents.workOrderNumber, number)))
+    .orderBy(sql`${workOrderEvents.ts} desc`, sql`${workOrderEvents.id} desc`)
+    .limit(30);
+  return rows.map((r) => ({ ...r, ts: r.ts.toISOString() }));
 }

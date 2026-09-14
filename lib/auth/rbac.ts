@@ -9,7 +9,7 @@ export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = [
   'wo.read', 'wo.create', 'wo.transition',
-  'sr.read', 'sr.create',
+  'sr.read', 'sr.create', 'sr.transition',
   'assets.read',
   'inventory.read', 'inventory.mutate',
   'po.read', 'po.approve',
@@ -31,12 +31,12 @@ export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
   'Enterprise Admin': ['*'],
   'Facility Director': [
     ...READ_ALL,
-    'wo.create', 'wo.transition', 'sr.create',
+    'wo.create', 'wo.transition', 'sr.create', 'sr.transition',
     'inventory.mutate', 'po.approve', 'org.manage',
   ],
   'Engineering Lead': [
     ...READ_ALL,
-    'wo.create', 'wo.transition', 'sr.create', 'inventory.mutate',
+    'wo.create', 'wo.transition', 'sr.create', 'sr.transition', 'inventory.mutate',
   ],
   'Senior Field Tech': [
     'wo.read', 'wo.transition', 'sr.read', 'sr.create',

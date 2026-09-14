@@ -8,7 +8,7 @@ import { HoldDialog, EscalateDialog, ResumeDialog, SignoffDialog, ExportDialog, 
 import { getSessionContext } from '@/lib/auth/context';
 import { can } from '@/lib/auth/rbac';
 import { getDb } from '@/db/client';
-import { getWorkOrder } from '@/lib/services/wo-service';
+import { getWorkOrder, listWoEvents } from '@/lib/services/wo-service';
 import { DomainError } from '@/lib/domain/errors';
 import { CANON } from '@/lib/canon';
 
@@ -35,7 +35,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
     return (
       <EmptyState
         title={`Work order ${id}`}
-        description="Full dossier UI ships for this record in slice #2 — its status, SLA, and transitions are already live from the Work Orders list."
+        description="Full dossier UI ships for this record in a later slice — its status, SLA, transitions, and history are already live from the Work Orders list."
         action={
           <Link href="/work-orders">
             <Button>Back to Work Orders</Button>
@@ -60,6 +60,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
     }
     throw err;
   }
+  const history = await listWoEvents(getDb(), ctx, id);
 
   const breached = wo.slaLabel.includes('BREACH');
   const dueAt = wo.slaDueAt ? new Date(wo.slaDueAt) : null;
@@ -188,6 +189,25 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
               <li className="flex justify-between"><span className="text-muted">Lockout point</span><span className="apex-id">{CANON.lotoPoint} · {CANON.lotoPanel}</span></li>
               <li className="flex justify-between"><span className="text-muted">Integrity SHA-256</span><span className="apex-id">7f8c92a10b48…</span></li>
             </ul>
+          </section>
+          <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-2 shadow-card" aria-label="Transition history">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Transition History</h2>
+              <span className="apex-id text-muted">work_order_events · WIB</span>
+            </div>
+            <ol className="flex flex-col gap-0 border-l-2 border-border-subtle ml-1">
+              {history.map((h, i) => (
+                <li key={`${h.ts}-${i}`} className="pl-4 py-1 relative">
+                  <span className={`absolute -left-[7px] top-3 w-3 h-3 rounded-full ${h.action === 'COMPLETE' ? 'bg-pass' : h.action === 'HOLD' || h.action === 'ESCALATE' ? 'bg-fail' : h.action === 'CREATE' ? 'bg-warn-dot' : 'bg-cobalt-deep'}`} />
+                  <p className="text-[13px]">
+                    <strong className="apex-id">{new Date(h.ts).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong>
+                    {' '}— {h.action}{h.fromStatus && h.toStatus ? ` ${h.fromStatus} → ${h.toStatus}` : ''} · {h.actorName}
+                    {h.reason && <span className="text-muted"> — {h.reason}</span>}
+                  </p>
+                </li>
+              ))}
+              {history.length === 0 && <li className="pl-4 text-[13px] text-muted">No transitions recorded yet.</li>}
+            </ol>
           </section>
         </div>
       </div>

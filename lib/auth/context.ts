@@ -16,7 +16,14 @@ export async function getSessionContext(): Promise<AuthContext | null> {
     if (!token) return null;
     return await verifySession(getDb(), token);
   } catch (err) {
-    log('error', 'session_context_failed', { error: err instanceof Error ? err.message : String(err) });
+    const msg = err instanceof Error ? err.message : String(err);
+    const digest = (err as { digest?: string } | null)?.digest;
+    // Expected during `next build` prerender probes: cookies() throws so the
+    // route is marked dynamic. Re-throw — do NOT log as an application error.
+    if (digest === 'DYNAMIC_SERVER_USAGE' || msg.includes('Dynamic server usage')) {
+      throw err;
+    }
+    log('error', 'session_context_failed', { error: msg });
     return null;
   }
 }

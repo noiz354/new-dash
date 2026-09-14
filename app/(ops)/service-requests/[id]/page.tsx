@@ -1,37 +1,69 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ops/EmptyState';
 import { ServiceRequestDetail } from '@/components/requests/ServiceRequestDetail';
-import { CANON, ID_FORMATS } from '@/lib/canon';
+import { getSessionContext } from '@/lib/auth/context';
+import { can } from '@/lib/auth/rbac';
+import { getDb } from '@/db/client';
+import { getServiceRequest, listSrHistory } from '@/lib/services/sr-service';
+import { getWorkOrder } from '@/lib/services/wo-service';
+import { DomainError } from '@/lib/domain/errors';
+import { ID_FORMATS } from '@/lib/canon';
 
-export function generateStaticParams() {
-  return [{ id: CANON.serviceRequest }, { id: 'SR-2026-0893' }, { id: 'SR-2026-0892' }, { id: 'SR-2026-0887' }, { id: 'SR-2026-0885' }];
-}
-
-export default async function ServiceRequestPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ asset?: string }>;
-}) {
+/** SR detail — LIVE record for ANY seeded/created ticket (not just canon). */
+export default async function ServiceRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  if (!ID_FORMATS.serviceRequest.test(id)) notFound();
-  if (id !== CANON.serviceRequest) {
+  const ctx = await getSessionContext();
+  if (!ctx) redirect('/login');
+
+  // NOTE: deliberately EmptyState (HTTP 200) instead of notFound() — with the
+  // segment's loading.tsx the shell is streamed before the page resolves, so a
+  // thrown notFound() can no longer set the 404 status. Consistent with the
+  // WO detail page's behavior.
+  if (!ID_FORMATS.serviceRequest.test(id)) {
     return (
       <EmptyState
-        title={`Service request ${id}`}
-        description="Outside the triage seed — full ticket for this record ships in wave 2 (TODO Fase 2)."
-        action={
-          <Link href={`/service-requests/${CANON.serviceRequest}`}>
-            <Button>Open {CANON.serviceRequest} instead</Button>
-          </Link>
-        }
+        title="Invalid ticket format"
+        description={`"${id}" is not a service-request number (expected SR-YYYY-NNNN).`}
+        action={<Link href="/service-requests"><Button>Back to Service Requests</Button></Link>}
       />
     );
   }
-  const { asset } = await searchParams;
-  const initialAsset = asset && ID_FORMATS.asset.test(asset) ? asset : CANON.assetSeal;
-  return <ServiceRequestDetail initialAsset={initialAsset} />;
+
+  const db = getDb();
+  let sr;
+  try {
+    sr = await getServiceRequest(db, ctx, id);
+  } catch (err) {
+    if (err instanceof DomainError && err.status === 404) {
+      return (
+        <EmptyState
+          title={`Service request ${id} not found`}
+          description="This ticket does not exist in your organization's database (cross-tenant reads are denied as 404). Run npm run db:setup if the dev database was wiped."
+          action={<Link href="/service-requests"><Button>Back to Service Requests</Button></Link>}
+        />
+      );
+    }
+    throw err;
+  }
+
+  const [history, wo] = await Promise.all([
+    listSrHistory(db, ctx, id),
+    sr.convertedWoNumber
+      ? getWorkOrder(db, ctx, sr.convertedWoNumber).catch((err) => {
+          if (err instanceof DomainError && err.status === 404) return null;
+          throw err;
+        })
+      : Promise.resolve(null),
+  ]);
+
+  return (
+    <ServiceRequestDetail
+      sr={sr}
+      history={history}
+      wo={wo}
+      can={{ transition: can(ctx.role, 'sr.transition') }}
+    />
+  );
 }

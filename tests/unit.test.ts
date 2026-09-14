@@ -12,6 +12,9 @@ import { rateLimit } from '../lib/auth/limits';
 import {
   SLA_WINDOW_MS, isTerminal, slaLabel, validateTransition,
 } from '../lib/domain/work-orders';
+import {
+  SR_SLA_WINDOW_MS, validateSrTransition,
+} from '../lib/domain/service-requests';
 import { requestHash } from '../lib/services/idempotency';
 
 // ---------------------------------------------------------------------------
@@ -167,4 +170,49 @@ test('sla: canon windows P1=4h P2=8h P3=24h', () => {
 test('idempotency: requestHash is stable, key-order-insensitive, body-sensitive', () => {
   assert.equal(requestHash({ a: 1, b: 'x' }), requestHash({ b: 'x', a: 1 }));
   assert.notEqual(requestHash({ a: 1 }), requestHash({ a: 2 }));
+});
+
+// ---------------------------------------------------------------------------
+// Service-request state machine (slice 2)
+// ---------------------------------------------------------------------------
+test('sr: valid transitions per rules', () => {
+  assert.deepEqual(validateSrTransition('OPEN', 'triage'), { ok: true, to: 'TRIAGED' });
+  assert.deepEqual(validateSrTransition('BREACHED', 'triage'), { ok: true, to: 'TRIAGED' });
+  assert.deepEqual(validateSrTransition('OPEN', 'convert'), { ok: true, to: 'CONVERTED' });
+  assert.deepEqual(validateSrTransition('TRIAGED', 'convert'), { ok: true, to: 'CONVERTED' });
+  assert.deepEqual(validateSrTransition('BREACHED', 'close', 'duplicate'), { ok: true, to: 'CLOSED' });
+});
+
+test('sr: terminal + reason + unknown-action handling', () => {
+  const done = validateSrTransition('CONVERTED', 'convert');
+  assert.equal(done.ok, false);
+  if (!done.ok) assert.equal(done.code, 'SR_INVALID_TRANSITION');
+
+  const closed = validateSrTransition('CLOSED', 'triage');
+  assert.equal(closed.ok, false);
+
+  const noReason = validateSrTransition('OPEN', 'close');
+  assert.equal(noReason.ok, false);
+  if (!noReason.ok) assert.equal(noReason.code, 'SR_REASON_REQUIRED');
+
+  const triagedTriage = validateSrTransition('TRIAGED', 'triage');
+  assert.equal(triagedTriage.ok, false);
+
+  const unknown = validateSrTransition('OPEN', 'reopen' as never);
+  assert.equal(unknown.ok, false);
+  if (!unknown.ok) assert.equal(unknown.code, 'SR_UNKNOWN_ACTION');
+});
+
+test('sr: canon triage windows P1=15m P2=45m P3=2h', () => {
+  assert.equal(SR_SLA_WINDOW_MS.P1, 15 * 60_000);
+  assert.equal(SR_SLA_WINDOW_MS.P2, 45 * 60_000);
+  assert.equal(SR_SLA_WINDOW_MS.P3, 2 * 3_600_000);
+});
+
+test('rbac: sr.transition for leads/admin, not for field techs', () => {
+  assert.ok(can('Enterprise Admin', 'sr.transition'));
+  assert.ok(can('Engineering Lead', 'sr.transition'));
+  assert.ok(can('Facility Director', 'sr.transition'));
+  assert.ok(!can('Senior Field Tech', 'sr.transition'));
+  assert.ok(!can('Read-Only Auditor', 'sr.transition'));
 });
