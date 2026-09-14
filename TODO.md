@@ -121,3 +121,21 @@ DoD tiap layar: lihat `AGENTS.md` §8.
 - [ ] State mock → API contract (schema WO, Asset, Inventory, Vendor, RBAC, Audit)
 - [ ] Responsif 3 breakpoint + uji kontras status badge
 - [ ] Hapus semua CDN Play, ganti build Tailwind proper
+
+## Fase P0 — Stop-the-Bleeding (dari `docs/AUDIT_SAAS_E2E.md` §K) ✅ Selesai (2026-09-14)
+
+- [x] Upgrade `next` 14.2.13 → **16.3.5** (tuntas CVE critical/high; `npm audit` prod & all = **0 vulnerabilities**) — React 18.3.1 dipertahankan (peer Next 16 mengizinkan ^18.2)
+- [x] Migrasi 6 halaman `[id]` ke async `params: Promise<{id}>` (wajib Next 16)
+- [x] Hapus `eslint`/`eslint-config-next` + script `lint` (tidak pernah ada config; `next lint` dihapus di Next 16; sekaligus menuntaskan CVE dev `glob`)
+- [x] Banner global **`DemoBanner`** (fixed h-7, `no-print`, di root layout) + offset `top-7` di TopBar/SideNav/3 header field/impersonation banner + padding main disesuaikan
+- [x] Ganti indikator fiktif: chip "HTMX Server: Connected" → "DEMO DATA · no backend"; "Modbus … · synced" → "Simulated telemetry · demo data"; "Live Dispatch/Chiller" → label simulasi; tombol/toast "HTMX" → "simulated" (5 kontrol); klaim "MFA Enforced/rate-limited/rotate 30s" di login → pernyataan demo jujur. (2 sisa = data record fiktif di AuditTrail/OrgHub KPI, dinaungi banner)
+- [x] Unifikasi persona sesi (audit fix #13): `CANON.sessionUser/Role/Email/Initials` = Marcus Vance · VP Operations & Facilities · m.vance@apexops.io · MV — dipakai LoginForm (ganti `e.lindqvist@…`), TopBar (ganti avatar "SK"), ProfileSessions (ganti "SK" + email `e.voronova@…` yang salah)
+- [x] CI **`ci/ci.yml`** (siap pakai): `npm ci` → typecheck → `npm audit --omit=dev --audit-level=high` (blocking) → audit all (informational) → build. ⚠ Aktivasi tertunda: push `.github/workflows/` ditolak GitHub App sandbox (tanpa permission `workflows`) — maintainer salin `ci/ci.yml` → `.github/workflows/ci.yml` (instruksi di header file)
+- [x] Untrack `.headroom/ccr.sqlite` + entry `.gitignore`
+- [x] Fix bug nyata: `stroke-width` → `strokeWidth` di `Logo.tsx:22` (warning React SSR)
+- [x] README ditulis ulang: status **design prototype** eksplisit + quick start + peta repo
+- [x] Verifikasi: typecheck ✅ · build ✅ (49/49 halaman) · 26 route smoke 200/404 ✅ · banner ada di ops/auth/field/print ✅ · log dev tanpa warning ✅
+
+## Fase P1+ — Make Core Journey Reliable (belum mulai)
+
+Lihat roadmap lengkap: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4 (DB multi-tenant dari kanon, auth nyata, API 5 critical path, field offline outbox, observability, billing).

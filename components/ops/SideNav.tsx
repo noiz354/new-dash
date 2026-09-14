@@ -59,7 +59,7 @@ const GROUPS = [
 export function SideNav({ active }: { active: string }) {
   const pathname = usePathname();
   return (
-    <aside className="fixed left-0 top-0 h-screen w-72 bg-[#213145] z-50 hidden desktop:flex flex-col justify-between overflow-y-auto">
+    <aside className="fixed left-0 top-7 h-[calc(100vh-1.75rem)] w-72 bg-[#213145] z-50 hidden desktop:flex flex-col justify-between overflow-y-auto">
       <div className="flex flex-col">
         <div className="h-16 px-4 flex items-center gap-2">
           <LogoMark />

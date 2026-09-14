@@ -476,7 +476,7 @@ export function NotificationsHub() {
                 <span className="apex-id text-xs text-pass font-bold">WS-PUSH: 12ms</span>
               </div>
               <p className="text-muted">Inject a real-time synthetic P1 telemetry alarm into the live message bus to test dispatch triggers.</p>
-              <Button onClick={injectTest}><Zap size={15} /> Trigger Test P1 Alert (HTMX)</Button>
+              <Button onClick={injectTest}><Zap size={15} /> Trigger Test P1 Alert (simulated)</Button>
               <p className="text-xs text-muted">WebSocket: Channel: sha256-aes-gcm · {extra.length}/3 synthetic on bus</p>
             </div>
 

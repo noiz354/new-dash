@@ -47,8 +47,8 @@ export default function DashboardPage() {
 
       <section className="bg-card border border-border-subtle rounded-lg shadow-card overflow-hidden" aria-label="Dispatch queue">
         <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
-          <h2 className="text-base font-semibold">Live Dispatch Queue</h2>
-          <span className="apex-id text-muted">Modbus 192.168.4.112:502 · synced</span>
+          <h2 className="text-base font-semibold">Dispatch Queue</h2>
+          <span className="apex-id text-muted">Simulated telemetry · demo data</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -86,7 +86,7 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-card border border-border-subtle rounded-lg p-4 shadow-card">
-          <h2 className="text-base font-semibold mb-2">Chiller #04 — Live Telemetry</h2>
+          <h2 className="text-base font-semibold mb-2">Chiller #04 — Telemetry (simulated)</h2>
           <ul className="text-[13px] flex flex-col gap-2">
             <li className="flex justify-between"><span className="text-muted">Seal cavity temp</span><strong className="tabular-nums text-fail">84.1°C ▲</strong></li>
             <li className="flex justify-between"><span className="text-muted">Bearing vibration</span><strong className="tabular-nums text-fail">7.8 mm/s ▲</strong></li>

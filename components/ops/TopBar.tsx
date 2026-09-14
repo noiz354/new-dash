@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { Bell, Building2, ChevronDown, Plus, Search } from 'lucide-react';
+import { CANON } from '@/lib/canon';
 
 export function TopBar({ onPalette }: { onPalette: () => void }) {
   return (
-    <header className="fixed top-0 left-0 desktop:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-card z-40 px-4 flex items-center justify-between gap-4">
+    <header className="fixed top-7 left-0 desktop:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-card z-40 px-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 flex-1 max-w-2xl min-w-0">
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#EFF4FF]">
           <Building2 size={16} className="text-cobalt-deep" />
@@ -28,10 +29,10 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
         </button>
       </div>
       <div className="flex items-center gap-3">
-        <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded bg-[#EFF4FF]">
-          <span className="w-2 h-2 rounded-full bg-pass" />
-          <span className="apex-id text-muted">
-            HTMX Server: <span className="text-pass font-semibold">Connected</span>
+        <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded bg-warn-bg" role="status">
+          <span className="w-2 h-2 rounded-full bg-warn-dot" />
+          <span className="apex-id text-warn-ink">
+            DEMO DATA · <span className="font-semibold">no backend</span>
           </span>
         </div>
         <button
@@ -52,11 +53,11 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
         </Link>
         <Link href="/profile" className="flex items-center gap-2" aria-label="User profile">
           <span className="w-8 h-8 rounded-full bg-cobalt-deep text-white text-[13px] font-bold flex items-center justify-center">
-            SK
+            {CANON.sessionInitials}
           </span>
           <span className="hidden md:flex flex-col text-left">
-            <span className="text-[13px] font-semibold leading-tight">Marcus Vance</span>
-            <span className="apex-label-caps text-muted leading-tight">VP Operations &amp; Facilities</span>
+            <span className="text-[13px] font-semibold leading-tight">{CANON.sessionUser}</span>
+            <span className="apex-label-caps text-muted leading-tight">{CANON.sessionRole}</span>
           </span>
         </Link>
       </div>

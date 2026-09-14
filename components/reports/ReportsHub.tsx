@@ -49,7 +49,7 @@ const METRICS = [
   { n: 'Contractor Fees', sql: 'SUM(contractor_fees)' },
   { n: 'SLA Exposure', sql: 'AVG(mttr_hours)' },
 ] as const;
-const OUTPUTS = ['PDF Executive Dossier', 'Formatted Excel (.xlsx)', 'Raw CSV / Parquet', 'Live HTMX Data Grid'] as const;
+const OUTPUTS = ['PDF Executive Dossier', 'Formatted Excel (.xlsx)', 'Raw CSV / Parquet', 'Live Data Grid (simulated)'] as const;
 
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1400;

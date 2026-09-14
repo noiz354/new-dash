@@ -15,10 +15,10 @@ const DEMO_CODE = '482916';
 /** Sign in — M3 port (reference: web/login.html). SSO + enforced MFA + done. */
 export function LoginForm() {
   const [step, setStep] = useState<Step>('login');
-  const [email, setEmail] = useState('e.lindqvist@apexops.io');
+  const [email, setEmail] = useState<string>(CANON.sessionEmail);
   const [pass, setPass] = useState('demo-pass-4821');
   const [touched, setTouched] = useState(false);
-  const [loginState, setLoginState] = useState('MFA is enforced on this tenant — a 6-digit code follows.');
+  const [loginState, setLoginState] = useState('Demo flow — simulated MFA follows. No real authentication.');
   const [ssoBusy, setSsoBusy] = useState(false);
   const [code, setCode] = useState('');
   const [mfaError, setMfaError] = useState(false);
@@ -35,7 +35,7 @@ export function LoginForm() {
   const sso = () => {
     if (ssoBusy) return;
     setSsoBusy(true);
-    setLoginState('Redirecting to identity provider (SAML)… then back to MFA.');
+    setLoginState('Simulating SAML redirect… then demo MFA.');
     setTimeout(() => {
       setSsoBusy(false);
       setStep('mfa');
@@ -125,8 +125,8 @@ export function LoginForm() {
             onKeyDown={(e) => { if (e.key === 'Enter') verify(); }}
             className="h-12 px-3 border-2 border-cobalt-deep rounded text-center font-mono text-xl tracking-[0.4em] outline-none"
           />
-          {mfaError && <p className="text-xs font-semibold text-fail">Wrong code — try again. Attempts are rate-limited.</p>}
-          <p className="text-xs text-muted" role="status">MFA Enforced · codes rotate every 30s.</p>
+          {mfaError && <p className="text-xs font-semibold text-fail">Wrong code — try again.</p>}
+          <p className="text-xs text-muted" role="status">Demo MFA · static code · no real authentication.</p>
           <div className="flex gap-2">
             <Button variant="secondary" className="h-10 px-4" onClick={() => setStep('login')}>Back</Button>
             <Button className="flex-1 h-10" onClick={verify}>Verify &amp; Sign In</Button>
@@ -139,8 +139,8 @@ export function LoginForm() {
           <BadgeCheck size={48} className="text-pass mx-auto" />
           <h2 id="done-h" className="text-lg font-semibold">Signed in</h2>
           <p className="text-sm text-muted">
-            {CANON.engineer} · Senior Field Tech · Shift A<br />
-            Session {CANON.tenant} · <Link className="text-cobalt-deep font-semibold hover:underline" href="/profile">Manage sessions</Link>
+            {CANON.sessionUser} · {CANON.sessionRole}<br />
+            Demo session {CANON.tenant} · <Link className="text-cobalt-deep font-semibold hover:underline" href="/profile">Manage sessions</Link>
           </p>
           <Link href="/">
             <Button className="h-10 w-full">Open Operations Dashboard</Button>
@@ -149,7 +149,7 @@ export function LoginForm() {
       )}
 
       <p className="text-xs text-muted text-center">
-        Apex Ops CMMS v4.18-p3 · <Link className="font-semibold hover:underline" href="/settings">System status</Link> · API v1
+        Apex Ops CMMS — demo prototype (no backend) · <Link className="font-semibold hover:underline" href="/settings">Simulated system status</Link>
       </p>
     </main>
   );

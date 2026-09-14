@@ -9,8 +9,8 @@ export function generateStaticParams() {
   return [{ id: CANON.assetSeal }];
 }
 
-export default function AssetBimPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function AssetBimPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!ID_FORMATS.asset.test(id)) notFound();
   if (id !== CANON.assetSeal) {
     return (

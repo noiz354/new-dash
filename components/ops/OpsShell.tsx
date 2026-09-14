@@ -46,7 +46,7 @@ export function OpsShell({ children }: { children: React.ReactNode }) {
       <SideNav active={activeFromPath(pathname)} />
       <div className="desktop:pl-72">
         <TopBar onPalette={open} />
-        <main className="relative pt-16 min-h-screen px-4 py-6">
+        <main className="relative pt-[92px] min-h-screen px-4 py-6">
           <div className="flex flex-col gap-6 max-w-[1600px] mx-auto">{children}</div>
         </main>
       </div>
