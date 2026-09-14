@@ -86,9 +86,9 @@
 - [ ] Wave-2: 18 layar penuh (lihat Fase 2 — satu layar = satu unit)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (8/20 prod + 14 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (8/20 prod + 13 route wave-2) 🟡
 
-Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3) · [x] `/shifts/plan` (L1: handover) · [x] `/profile` (L2: sessions/revoke/print-badge).
+Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3) · [x] `/shifts/plan` (L1: handover) · [x] `/profile` (L2: sessions/revoke/print-badge) · [x] `/assets/[id]/bim` (M6: skematik+drawer).
 
 Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 
