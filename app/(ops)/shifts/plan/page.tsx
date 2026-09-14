@@ -1,13 +1,5 @@
-import Link from 'next/link';
-import { EmptyState } from '@/components/ops/EmptyState';
-import { Button } from '@/components/ui/button';
+import { ShiftPlan } from '@/components/shifts/ShiftPlan';
 
-export default function Page() {
-  return (
-    <EmptyState
-      title="Shift Plan"
-      description="Handover A→B queue. Full rebuild ships in wave 2."
-      action={(<div className="flex gap-2"><Link href="/work-orders/WO-2026-0894"><Button variant="secondary">Open WO-2026-0894</Button></Link></div>)}
-    />
-  );
+export default function ShiftPlanPage() {
+  return <ShiftPlan />;
 }

@@ -49,6 +49,13 @@ body {
   .no-print {
     display: none !important;
   }
+  .only-print {
+    display: flex !important;
+  }
+}
+
+.only-print {
+  display: none;
 }
 
 /* System B safe-area insets for fixed field chrome. */
