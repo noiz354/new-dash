@@ -88,6 +88,8 @@
 
 ## Fase 2 — Rebuild Layar (8/20 prod + 17 route wave-2) 🟡
 
+Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3).
+
 Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 
 1. [x] `operations_dashboard` → `/` prod (sidebar + KPI + dispatch terverifikasi + telemetri + feed)
