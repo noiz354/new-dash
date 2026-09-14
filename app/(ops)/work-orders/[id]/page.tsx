@@ -4,11 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ops/EmptyState';
 import { SlaCountdown, LaborStopwatch } from '@/components/ops/WoTimers';
-import { HoldDialog, EscalateDialog, ResumeDialog, SignoffDialog, ExportDialog, PrintButton } from '@/components/ops/WoDialogs';
+import { HoldDialog, EscalateDialog, ResumeDialog, CancelDialog, SignoffDialog, ExportDialog, PrintButton } from '@/components/ops/WoDialogs';
 import { getSessionContext } from '@/lib/auth/context';
 import { can } from '@/lib/auth/rbac';
 import { getDb } from '@/db/client';
 import { getWorkOrder, listWoEvents } from '@/lib/services/wo-service';
+import { findSrByConvertedWo } from '@/lib/services/asset-service';
 import { DomainError } from '@/lib/domain/errors';
 import { CANON } from '@/lib/canon';
 
@@ -29,22 +30,6 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
   const ctx = await getSessionContext();
   if (!ctx) redirect('/login');
 
-  if (id !== CANON.workOrderSeal) {
-    // Other numbers exist as rows (list page transitions work on them), but
-    // the full dossier UI is seeded only for the canon seal record.
-    return (
-      <EmptyState
-        title={`Work order ${id}`}
-        description="Full dossier UI ships for this record in a later slice — its status, SLA, transitions, and history are already live from the Work Orders list."
-        action={
-          <Link href="/work-orders">
-            <Button>Back to Work Orders</Button>
-          </Link>
-        }
-      />
-    );
-  }
-
   let wo;
   try {
     wo = await getWorkOrder(getDb(), ctx, id);
@@ -53,19 +38,114 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
       return (
         <EmptyState
           title={`Work order ${id} not found`}
-          description="This record does not exist in your organization's database. Run npm run db:setup if the dev database was wiped."
+          description="This record does not exist in your organization's database (cross-tenant reads are denied as 404). Run npm run db:setup if the dev database was wiped."
           action={<Link href="/work-orders"><Button>Back to Work Orders</Button></Link>}
         />
       );
     }
     throw err;
   }
-  const history = await listWoEvents(getDb(), ctx, id);
+
+  const [history, originSr] = await Promise.all([
+    listWoEvents(getDb(), ctx, id),
+    findSrByConvertedWo(getDb(), ctx, id),
+  ]);
 
   const breached = wo.slaLabel.includes('BREACH');
   const dueAt = wo.slaDueAt ? new Date(wo.slaDueAt) : null;
   const startSec = dueAt ? Math.max(0, Math.floor((dueAt.getTime() - Date.now()) / 1000)) : 0;
   const transitionable = can(ctx.role, 'wo.transition');
+
+  if (id !== CANON.workOrderSeal) {
+    // ------------------------------------------------- generic live dossier --
+    return (
+      <>
+        <nav className="flex items-center gap-2 text-sm" aria-label="Breadcrumb">
+          <Link className="text-muted hover:text-cobalt font-medium" href="/work-orders">Work Orders</Link>
+          <span className="text-muted">/</span>
+          <span className="font-semibold apex-id">{wo.number}</span>
+        </nav>
+
+        <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-labelledby="wo-title-g">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex flex-col gap-2 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={wo.isTerminal ? 'pass' : wo.status === 'ON_HOLD' || wo.status === 'ESCALATED' ? 'fail' : 'warn'}>{wo.statusLabel}</Badge>
+                <Badge variant={wo.priority === 'P1' ? 'fail' : wo.priority === 'P2' ? 'warn' : 'info'}>{wo.priority}</Badge>
+                {breached && !wo.isTerminal && <Badge variant="fail" pulse>SLA BREACH</Badge>}
+              </div>
+              <h1 id="wo-title-g" className="text-2xl font-semibold tracking-tight">
+                {wo.title} <span className="apex-id text-cobalt font-semibold">{wo.number}</span>
+              </h1>
+              <p className="text-[13px] text-muted">
+                {wo.location || 'Location not recorded'}
+                {wo.assetCode && <> · asset <Link className="apex-id text-cobalt font-semibold hover:underline" href={`/assets/${wo.assetCode}`}>{wo.assetCode}</Link></>}
+                {wo.tech && <> · assigned <strong className="text-ink">{wo.tech}</strong></>}
+              </p>
+              {originSr && (
+                <p className="apex-id text-muted">
+                  Origin: <Link className="text-cobalt font-semibold hover:underline" href={`/service-requests/${originSr.number}`}>{originSr.number}</Link> — {originSr.title}
+                </p>
+              )}
+              {wo.holdReason && (
+                <p className="text-[13px] font-semibold text-warn-ink bg-warn-bg rounded px-2 py-1 w-fit">ON HOLD — {wo.holdReason}</p>
+              )}
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="apex-label-caps text-muted">SLA Countdown (real due {dueAt ? dueAt.toISOString().slice(11, 16) + ' UTC' : '—'})</span>
+              <SlaCountdown startSec={startSec} breached={breached || wo.isTerminal} />
+              <span className="apex-id text-muted">{wo.slaLabel}</span>
+            </div>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <section className="xl:col-span-7 bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-3 shadow-card" aria-label="Transition history">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Transition History</h2>
+              <span className="apex-id text-muted">work_order_events · WIB</span>
+            </div>
+            <ol className="flex flex-col gap-0 border-l-2 border-border-subtle ml-1">
+              {history.map((h, i) => (
+                <li key={`${h.ts}-${i}`} className="pl-4 py-1 relative">
+                  <span className={`absolute -left-[7px] top-3 w-3 h-3 rounded-full ${h.action === 'COMPLETE' ? 'bg-pass' : h.action === 'HOLD' || h.action === 'ESCALATE' || h.action === 'CANCEL' ? 'bg-fail' : h.action === 'CREATE' ? 'bg-warn-dot' : 'bg-cobalt-deep'}`} />
+                  <p className="text-[13px]">
+                    <strong className="apex-id">{new Date(h.ts).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong>
+                    {' '}— {h.action}{h.fromStatus && h.toStatus ? ` ${h.fromStatus} → ${h.toStatus}` : ''} · {h.actorName}
+                    {h.reason && <span className="text-muted"> — {h.reason}</span>}
+                  </p>
+                </li>
+              ))}
+              {history.length === 0 && <li className="pl-4 text-[13px] text-muted">No transitions recorded yet.</li>}
+            </ol>
+            <p className="text-[11px] text-muted" role="note">
+              Checklist, parts ledger, and telemetry dossiers are canon-seeded for {CANON.workOrderSeal} only — DB-driven
+              execution records (tasks/parts/evidence) for every WO ship with the inventory &amp; evidence slice.
+            </p>
+          </section>
+          <section className="xl:col-span-5 bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-2 shadow-card" aria-label="Record">
+            <h2 className="text-base font-semibold">Record</h2>
+            <ul className="text-[13px] flex flex-col gap-1">
+              <li className="flex justify-between"><span className="text-muted">Number</span><span className="apex-id font-semibold">{wo.number}</span></li>
+              <li className="flex justify-between"><span className="text-muted">Priority / SLA window</span><span className="apex-id">{wo.priority} · {wo.priority === 'P1' ? '4h' : wo.priority === 'P2' ? '8h' : '24h'}</span></li>
+              <li className="flex justify-between"><span className="text-muted">Status</span><span className="apex-id">{wo.statusLabel}{wo.isTerminal ? ' (terminal)' : ''}</span></li>
+              <li className="flex justify-between"><span className="text-muted">Assignee</span><span>{wo.tech ?? 'Unassigned'}</span></li>
+              <li className="flex justify-between"><span className="text-muted">Last update</span><span className="apex-id">{new Date(wo.updatedAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB</span></li>
+            </ul>
+          </section>
+        </div>
+
+        <section className="no-print bg-[#213145] rounded-lg p-4 flex flex-wrap items-center gap-2" aria-label="Execution toolbar">
+          <HoldDialog number={wo.number} status={wo.status} enabled={transitionable} />
+          <EscalateDialog number={wo.number} status={wo.status} enabled={transitionable} />
+          <ResumeDialog number={wo.number} status={wo.status} enabled={transitionable} />
+          <SignoffDialog number={wo.number} status={wo.status} enabled={transitionable} />
+          <CancelDialog number={wo.number} status={wo.status} enabled={transitionable} />
+          <PrintButton />
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
@@ -217,6 +297,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
         <EscalateDialog number={wo.number} status={wo.status} enabled={transitionable} />
         <ResumeDialog number={wo.number} status={wo.status} enabled={transitionable} />
         <SignoffDialog number={wo.number} status={wo.status} enabled={transitionable} />
+        <CancelDialog number={wo.number} status={wo.status} enabled={transitionable} />
         <Link href="/shifts/plan"><Button variant="secondary">Shift Handover</Button></Link>
         <ExportDialog />
         <PrintButton />

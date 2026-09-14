@@ -148,6 +148,38 @@ export function ResumeDialog({ number, status, enabled }: TransitionProps) {
   );
 }
 
+/** Cancel — terminal, reason required (client AND server enforced). */
+export function CancelDialog({ number, status, enabled }: TransitionProps) {
+  const [reason, setReason] = useState('');
+  const [open, setOpen] = useState(false);
+  const { busy, error, done, post, reset } = useTransition(number);
+  if (isTerminal(status)) return null;
+  return (
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+      <DialogTrigger asChild>
+        <Button variant="secondary" disabled={!enabled} title={enabled ? undefined : 'Your role lacks wo.transition'}>Cancel WO</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>Cancel {number}</DialogTitle>
+        <DialogDescription>Cancellation is terminal — the work order cannot be reopened (current status {status}).</DialogDescription>
+        <label className="text-xs font-semibold" htmlFor="wo-cancel-reason">Reason (required — persisted with the transition)</label>
+        <textarea id="wo-cancel-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Asset decommissioned / duplicate of another WO"
+          className="w-full p-2 border border-border-strong rounded text-sm outline-none focus:border-cobalt focus:ring-1 focus:ring-cobalt" />
+        {!reason.trim() && <p className="text-[11px] font-semibold text-fail">A reason is required to cancel.</p>}
+        <ErrorLine error={error} />
+        {done && <Badge variant="info">{done} — persisted</Badge>}
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setOpen(false)}>Keep Open</Button>
+          <Button disabled={!reason.trim() || busy} onClick={async () => { if (await post('cancel', reason)) setTimeout(() => setOpen(false), 600); }}>
+            {busy && <LoaderCircle size={16} className="animate-spin" />} Confirm Cancel
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** WOD-06 sign-off — photo gate still simulated (storage lands in slice #2); the COMPLETE transition is real. */
 export function SignoffDialog({ number, status, enabled }: TransitionProps) {
   const [photo, setPhoto] = useState(false);

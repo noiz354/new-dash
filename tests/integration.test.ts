@@ -21,6 +21,8 @@ import {
   createServiceRequest, getServiceRequest, listServiceRequests,
   listSrHistory, transitionServiceRequest,
 } from '../lib/services/sr-service';
+import { listAuditEvents } from '../lib/services/audit-service';
+import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
@@ -379,4 +381,64 @@ test('sr: idempotent convert replay does NOT create a second WO', async () => {
   const rows = await listWorkOrders(db, admin);
   const matching = rows.filter((r) => r.number === first.sr.convertedWoNumber);
   assert.equal(matching.length, 1, 'exactly one WO row for the replayed convert');
+});
+
+// ---------------------------------------------------------------------------
+// Audit ledger + asset registry (slice 3)
+// ---------------------------------------------------------------------------
+test('audit: ledger holds real events from every flow, tenant-scoped', async () => {
+  const page = await listAuditEvents(db, admin);
+  assert.ok(page.total >= 10, `expected a populated ledger, got ${page.total}`);
+  assert.equal(page.rows.length <= 500, true);
+  const actions = new Set(page.rows.map((r) => r.action));
+  for (const expected of ['AUTH_MFA_OK', 'WO_HOLD', 'WO_COMPLETE', 'SR_CREATE', 'SR_CONVERT', 'SR_CLOSE']) {
+    assert.ok(actions.has(expected), `ledger missing ${expected}`);
+  }
+  const types = new Set(page.counts.map((c) => c.entityType));
+  assert.ok(types.has('work_order') && types.has('service_request') && types.has('auth'));
+
+  // Rows are newest-first and carry entity references.
+  assert.ok(page.rows[0].ts >= page.rows[page.rows.length - 1].ts);
+  const woHold = page.rows.find((r) => r.action === 'WO_HOLD');
+  assert.ok(woHold);
+  assert.equal(woHold.entityType, 'work_order');
+  assert.equal(woHold.entityId, 'WO-2026-0894');
+  assert.ok((woHold.after as { reason?: string }).reason?.includes('bearing kit'));
+
+  // Decoy tenant sees only its own (auth) events — never canon ledger rows.
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  const decoyPage = await listAuditEvents(db, decoy);
+  assert.ok(decoyPage.total < page.total);
+  assert.ok(decoyPage.rows.every((r) => r.entityId === null || !r.entityId.startsWith('WO-2026-08')));
+});
+
+test('assets: registry with real workload counts; dossier relations; cross-tenant 404', async () => {
+  const rows = await listAssets(db, admin);
+  assert.ok(rows.length >= 4);
+  const seal = rows.find((r) => r.code === 'AST-HVAC-004');
+  assert.ok(seal);
+  assert.equal(seal.health, 68); // canon C-score
+  assert.equal(seal.status, 'DEGRADED');
+
+  // The SR-2026-0895 conversion created an OPEN WO on AST-HVAC-003.
+  const ahu = rows.find((r) => r.code === 'AST-HVAC-003');
+  assert.ok(ahu);
+  assert.ok(ahu.openWos >= 1, 'converted WO should count as open workload');
+  assert.ok(ahu.totalWos >= 1);
+
+  const dossier = await getAssetDossier(db, admin, 'AST-HVAC-004');
+  assert.ok(dossier.wos.some((w) => w.number === 'WO-2026-0894' && w.status === 'COMPLETED'));
+  assert.ok(dossier.srs.some((s) => s.number === 'SR-2026-0894' && s.status === 'CONVERTED'));
+
+  // Origin cross-link: the seal WO came from the canon SR.
+  const origin = await findSrByConvertedWo(db, admin, 'WO-2026-0894');
+  assert.ok(origin);
+  assert.equal(origin.number, 'SR-2026-0894');
+
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.equal((await listAssets(db, decoy)).length, 0);
+  await expectDomainError(
+    () => getAssetDossier(db, decoy, 'AST-HVAC-004'),
+    404, 'ASSET_NOT_FOUND',
+  );
 });

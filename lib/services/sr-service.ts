@@ -240,6 +240,7 @@ export async function transitionServiceRequest(
             number: wo.number,
             title: wo.title,
             location: wo.location,
+            assetCode: wo.assetCode,
             priority: wo.priority as WoRow['priority'],
             status: 'OPEN',
             statusLabel: 'OPEN',

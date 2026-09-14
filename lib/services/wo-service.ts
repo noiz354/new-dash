@@ -20,6 +20,7 @@ export interface WoRow {
   number: string;
   title: string;
   location: string;
+  assetCode: string | null;
   priority: 'P1' | 'P2' | 'P3';
   status: WoStatus;
   statusLabel: string;
@@ -39,6 +40,7 @@ function toDto(row: WoJoinRow, now = new Date()): WoRow {
     number: row.wo.number,
     title: row.wo.title,
     location: row.wo.location,
+    assetCode: row.wo.assetCode,
     priority: row.wo.priority as WoRow['priority'],
     status,
     statusLabel: WO_LABELS[status],

@@ -163,4 +163,17 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE2.md`. Ringkasan deliverable:
 - [x] **Tests**: `npm test` = 36/36 (8 test SR baru: unit state machine/SLA/RBAC + integrasi create→triage→convert→WO nyata, close wajib reason, replay convert tanpa WO kedua, isolasi tenant SR)
 - [x] **E2E curl**: SR-2026-0895 create→triage→convert→WO-2026-0910; close 400 tanpa reason; **persisten lintas restart dev server** (cookie sesi lama tetap valid, rows tetap)
 
-Sisa Phase 1 (slice 3+): audit-trail page live (`audit_events`) · dossier WO generik (checklist/parts DB-driven) · inspections/assets/inventory dari DB · notifikasi vendor · evidence storage foto · Playwright E2E di CI · rate limit storage bersama · migrasi Postgres hosted. Roadmap penuh: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4.
+## Fase P1 — Slice 3 ✅ Selesai (2026-09-14)
+
+Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
+
+- [x] **`/audit-trail` live**: `audit_events` nyata (aktor/aksi/entitas/before-after JSON + `requestId` yang sama dengan log server), counts per scope via SQL GROUP BY, filter (search/entity/action/principal/severity), export CSV/JSON = baris persisten nyata, gating permission `audit.read` (403-EmptyState utk role tanpa izin). **Fiksi dibuang**: Merkle verify, hash karangan, rollback simulasi, synthetic live probe, signed proof, angka 184.9k → diganti pernyataan integritas jujur (append-only + transaksional; hash-chain = hardening masa depan)
+- [x] **`/assets` live**: rows dari tabel `assets` + **workload nyata per asset** (open/total WO, active SR — subquery SQL, bukan angka tempelan); filter kelas/status + CSV; jujur read-only (mutasi health/BOM menunggu inventory slice)
+- [x] **`/assets/[id]` live utk SEMUA asset**: dossier field registry + relasi WO & SR yang mereferensikan asset (link hidup) + canon chain seal (finding→SR→WO) + link BIM (simulated, berlabel); `AssetDetail.tsx` statis (403 baris, orphan) dihapus
+- [x] **Dossier WO generik**: setiap nomor WO kini punya dossier operasional nyata (status/SLA countdown, **origin SR** via lookup `converted_wo_number`, Transition History, kartu Record) + toolbar penuh; canon dossier (checklist/parts/telemetry) tetap utk seal saja dan berlabel
+- [x] **`CancelDialog`** baru (reason wajib, terminal) — 7 aksi state machine kini semua terjangkau dari UI
+- [x] **Service baru**: `audit-service.ts` (listAuditEvents + counts + truncated flag), `asset-service.ts` (listAssets, getAssetDossier, findSrByConvertedWo); `WoRow.assetCode` ditambahkan ke DTO
+- [x] **Tests**: `npm test` = 38/38 (2 test integrasi baru: ledger berisi semua jenis event + before/after hold reason + isolasi tenant decoy; registry + workload AST-HVAC-003 dari konversi SR + dossier relasi seal + origin cross-link + cross-tenant 404 ASSET_NOT_FOUND)
+- [x] **E2E curl**: audit/assets/dossier/403-RBAC field tech/EmptyState format invalid ✅ · build hijau · log bersih
+
+Sisa Phase 1 (slice 4+): inventory & parts (link part↔asset/BOM, pergerakan stok, requisition dari WO) · checklist/tasks WO DB-driven utk semua WO · evidence storage (foto sign-off) · observability (server-side pagination audit, metrik) · notifikasi vendor · Playwright E2E di CI · rate limit storage bersama · migrasi Postgres hosted. Roadmap penuh: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4.
