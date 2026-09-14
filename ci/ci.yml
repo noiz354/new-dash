@@ -10,7 +10,8 @@
 #   git push
 #
 # Phase 0 (docs/AUDIT_SAAS_E2E.md §K): minimum safety net.
-# Gates: typecheck, dependency security audit (prod deps, high+), production build.
+# Phase 1: + real test suite (unit + integration against throwaway PGlite).
+# Gates: typecheck, tests, dependency security audit (prod deps, high+), production build.
 name: CI
 
 on:
@@ -24,7 +25,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck · Audit · Build
+    name: Typecheck · Test · Audit · Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,6 +42,11 @@ jobs:
 
       - name: Typecheck (tsc --noEmit)
         run: npm run typecheck
+
+      # Unit + integration tests. Integration spins up its own throwaway
+      # PGlite database under .data/ (no external services needed in CI).
+      - name: Test (node --test via tsx)
+        run: npm test
 
       # Fail on high+ advisories in production deps. Dev deps are reported
       # (non-blocking) so regressions stay visible without blocking merges.

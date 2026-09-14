@@ -1,31 +1,41 @@
-# new-dash — Apex Ops CMMS (design prototype)
+# new-dash — Apex Ops CMMS (demo — Phase 1 berjalan)
 
-> **Status: PROTOTIPE UI / DEMO — bukan SaaS produksi.**
-> Tidak ada backend, API, database, auth, billing, worker, maupun integrasi apa pun.
-> Semua data **simulasi hardcoded** dan **tidak ada yang persisten** (refresh = kembali ke awal).
-> Banner "DEMO PROTOTYPE" tampil global di aplikasi. Audit end-to-end lengkap (verdict,
-> scorecard readiness, roadmap Phase 0–4): **[`docs/AUDIT_SAAS_E2E.md`](docs/AUDIT_SAAS_E2E.md)**.
+> **Status: DEMO dengan backend nyata untuk auth + flow Work Order (Phase 1 slice 1).**
+> Database PostgreSQL (PGlite/WASM repo-lokal), auth nyata (scrypt + sesi DB + TOTP MFA +
+> RBAC + rate limit), API tervalidasi, dan transisi work order yang **persisten**.
+> Layar di luar dashboard/work-order masih menampilkan data kanon statis (jujur berlabel).
+> Detail slice: **[`docs/PHASE1_SLICE1.md`](docs/PHASE1_SLICE1.md)** · Audit end-to-end +
+> roadmap Phase 0–4: **[`docs/AUDIT_SAAS_E2E.md`](docs/AUDIT_SAAS_E2E.md)**.
 
 Platform **Facility Maintenance / CMMS "Apex Ops"** — rebuild UI dari mockup Stitch
-(20 layar, 2 design system) menjadi app Next.js: 28 route demo (ops desktop + field mobile).
+(20 layar, 2 design system) menjadi app Next.js: 28 route (ops desktop + field mobile).
 
 ## Quick Start
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000 — banner DEMO selalu tampil
+npm run db:setup   # migrasi + seed database demo (idempoten; dev server harus STOP)
+npm run dev        # http://localhost:3000 → redirect ke /login
+npm test           # 28 unit + integration test (PGlite temp, aman paralel dgn dev)
 npm run typecheck  # tsc --noEmit
-npm run build      # next build (static/SSG)
+npm run build      # next build
+npm run db:reset   # wipe + setup ulang database demo
 ```
 
-Login demo: kredensial apa pun (pre-filled) → kode MFA statis `482916` (dicetak di layar).
-Tidak ada session yang dibuat — ini simulasi UI, lihat audit §E.
+Login demo: `m.vance@apexops.io` / `demo-pass-4821` (sudah pre-filled) → **Continue** →
+kode MFA 6 digit ditampilkan sebagai *dev hint* di layar (TOTP RFC 6238 nyata; hint mati
+otomatis di production build). Sesi persisten di database — refresh/restart tidak me-reset.
 
 ## Struktur Repo
 
 | Path | Keterangan |
 |---|---|
-| `app/` | Next.js App Router — `(ops)` desktop shell, `(field)` mobile shell, `(auth)` login |
+| `app/` | Next.js App Router — `(ops)` desktop shell, `(field)` mobile shell, `(auth)` login, `app/api/*` (7 route JSON) |
+| `middleware.ts` | Gate murah: tanpa cookie sesi → `/login` (verifikasi sebenarnya di layout server) |
+| `db/` | `schema.ts` (16 tabel multi-tenant Drizzle), `client.ts` (PGlite), `seed.ts`/`setup.ts`/`reset.ts`, `migrations/` (SQL, committed) |
+| `lib/auth/` | scrypt password, TOTP RFC 6238, RBAC 6 role, rate limit, sesi DB + cookie |
+| `lib/api/`, `lib/services/`, `lib/domain/` | Envelope HTTP + guard, service transaksional (auth, WO, idempotency), state machine WO + error domain |
+| `tests/` | `npm test` — unit (domain/auth) + integration (PGlite temp: auth, isolasi tenant, lifecycle WO, idempotency) |
 | `components/` | Komponen React; design system **A** (desktop/dispatch) & **B** (field/rugged) |
 | `lib/canon.ts` | Kanon data (sumber tunggal ID/harga/persona/tenant `APX-NUSA-01`) |
 | `web/` | Prototipe HTML standalone (arsip Fase B–E; wiring `hx-*` menunjuk API yang **tidak ada**) |

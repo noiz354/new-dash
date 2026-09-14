@@ -1,12 +1,11 @@
 import { TriangleAlert } from 'lucide-react';
 
 /**
- * Phase 0 (docs/AUDIT_SAAS_E2E.md §K) — global honesty banner.
- * This app is a DESIGN PROTOTYPE: simulated data, no backend/API/database/
- * auth, nothing persists. The banner is rendered once from the root layout
- * and occupies a fixed 28px strip (h-7) at the top; every fixed header in
- * the shells offsets by `top-7` so nothing is covered. `no-print` keeps
- * print dossiers clean.
+ * Global honesty banner (Phase 0 §K, wording updated for Phase 1 slice 1).
+ * The auth + work-order flow is now REAL (Postgres/PGlite, persisted);
+ * most other screens still show canon-seeded static content. The banner is
+ * rendered once from the root layout in a fixed 28px strip (h-7); every
+ * fixed header offsets by `top-7`. `no-print` keeps print dossiers clean.
  */
 export function DemoBanner() {
   return (
@@ -16,8 +15,8 @@ export function DemoBanner() {
     >
       <TriangleAlert size={13} className="shrink-0" aria-hidden="true" />
       <p className="truncate">
-        DEMO PROTOTYPE — simulated data · no backend / API / database / auth · nothing persists ·{' '}
-        <span className="apex-id">docs/AUDIT_SAAS_E2E.md</span>
+        DEMO — real auth + work-order flow (Postgres) · other screens still simulated ·{' '}
+        <span className="apex-id">docs/PHASE1_SLICE1.md</span>
       </p>
     </div>
   );

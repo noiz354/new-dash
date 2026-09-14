@@ -283,6 +283,8 @@ Definisi: 0=absent · 1=prototype · 2=fragile · 3=usable · 4=production ready
 5. Tegaskan posisi repo secara eksplisit di README: *design prototype* (sudah sebagian ada) agar tidak ada klaim "produk jadi".
 
 ### Phase 1 — Make Core Journey Reliable (L–XL) *inti pembangunan produk*
+
+> **STATUS 2026-09-14: Slice 1 ✅ SELESAI** — poin 1 (skema multi-tenant Postgres/PGlite + migrasi + seed kanon), poin 2 (auth nyata: scrypt + sesi DB + TOTP MFA + RBAC + rate limit), poin 3 (API layer: envelope, validasi Zod, CSRF, idempotency transaksional), dan flow PASS pertama (Work Orders list/detail/transitions persisten, 28/28 test). Bukti & runbook: `docs/PHASE1_SLICE1.md`. Poin 4+ (SR/inspections/PM/field offline) = slice berikutnya.
 1. **Skema data dari kanon**: Postgres + migrasi (Prisma/Drizzle). Entitas: Organization/Site, User+Role, Asset(+BOM), Part/Bin/Movement, WorkOrder (+status machine CREATED→DISPATCHED→IN_PROGRESS→ON_HOLD→COMPLETED/CANCELLED, transisi valid di server), ServiceRequest, Inspection/ChecklistStep/Finding, PurchaseRequest/PO/GRN/InvoiceMatch, Vendor/MSA, Shift/Handover, AuditEvent (append-only). `organization_id` + index di setiap tabel sejak hari-1; unique constraint untuk idempotency (mis. GRN per PO, konversi Finding→WO satu kali).
 2. **Auth nyata**: signup/login/verify/reset (atau Auth.js/Clerk), session httpOnly, middleware guard, RBAC server-side (6 role kanon → permission map), rate limit.
 3. **API layer** untuk 5 critical path (lihat §Critical Path di bawah) dengan validasi server (Zod), error code terstruktur, transaction boundary (mutasi stok + ledger + WO dalam satu transaksi).

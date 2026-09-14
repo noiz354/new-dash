@@ -2,23 +2,37 @@
 
 import { useEffect, useState } from 'react';
 
-/** Live SLA countdown (WIB display). Starts at 42m15s canon seed. */
-export function SlaCountdown({ startSec = 42 * 60 + 15 }: { startSec?: number }) {
+/**
+ * SLA countdown driven by the REAL sla_due_at from the database.
+ * Counts down to zero, then keeps counting into breach (−HH:MM:SS BREACH).
+ */
+export function SlaCountdown({ startSec = 0, breached = false }: { startSec?: number; breached?: boolean }) {
   const [sec, setSec] = useState(startSec);
   useEffect(() => {
-    const t = setInterval(() => setSec((s) => (s > 0 ? s - 1 : 0)), 1000);
+    setSec(startSec);
+    const t = setInterval(() => setSec((s) => s - 1), 1000);
     return () => clearInterval(t);
-  }, []);
-  const m = Math.floor(sec / 60);
-  const s = String(sec % 60).padStart(2, '0');
+  }, [startSec]);
+
+  const inBreach = breached || sec < 0;
+  const abs = Math.abs(Math.min(sec, 0));
+  const h = String(Math.floor(abs / 3600)).padStart(2, '0');
+  const m = String(Math.floor((abs % 3600) / 60)).padStart(2, '0');
+  const s = String(abs % 60).padStart(2, '0');
+  const mm = Math.floor(Math.max(sec, 0) / 60);
+  const ss = String(Math.max(sec, 0) % 60).padStart(2, '0');
+
   return (
-    <span role="timer" className="text-4xl font-bold tabular-nums text-fail font-mono tracking-tight">
-      {m}m {s}s
+    <span
+      role="timer"
+      className={`font-bold tabular-nums font-mono tracking-tight ${inBreach ? 'text-3xl text-fail' : 'text-4xl'}`}
+    >
+      {inBreach ? `\u2212${h}:${m}:${s} BREACH` : `${mm}m ${ss}s`}
     </span>
   );
 }
 
-/** Labor stopwatch. Starts at 01:42:18 canon seed. */
+/** Labor stopwatch (simulated until the time-clock slice ships). */
 export function LaborStopwatch({ startSec = 1 * 3600 + 42 * 60 + 18 }: { startSec?: number }) {
   const [sec, setSec] = useState(startSec);
   useEffect(() => {

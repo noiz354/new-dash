@@ -24,7 +24,17 @@ function activeFromPath(pathname: string): string {
   return 'operations-dashboard';
 }
 
-export function OpsShell({ children }: { children: React.ReactNode }) {
+export interface SessionUserView {
+  name: string;
+  initials: string;
+  role: string;
+  title: string;
+  email: string;
+  orgId: string;
+  orgName: string;
+}
+
+export function OpsShell({ children, user }: { children: React.ReactNode; user: SessionUserView }) {
   const [palette, setPalette] = useState(false);
   const pathname = usePathname();
   const open = useCallback(() => setPalette(true), []);
@@ -45,7 +55,7 @@ export function OpsShell({ children }: { children: React.ReactNode }) {
     <>
       <SideNav active={activeFromPath(pathname)} />
       <div className="desktop:pl-72">
-        <TopBar onPalette={open} />
+        <TopBar onPalette={open} user={user} />
         <main className="relative pt-[92px] min-h-screen px-4 py-6">
           <div className="flex flex-col gap-6 max-w-[1600px] mx-auto">{children}</div>
         </main>

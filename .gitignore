@@ -59,3 +59,6 @@ trace.json.gz
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Phase 1: PGlite database files (local dev data — never commit)
+.data/

@@ -136,6 +136,18 @@ DoD tiap layar: lihat `AGENTS.md` §8.
 - [x] README ditulis ulang: status **design prototype** eksplisit + quick start + peta repo
 - [x] Verifikasi: typecheck ✅ · build ✅ (49/49 halaman) · 26 route smoke 200/404 ✅ · banner ada di ops/auth/field/print ✅ · log dev tanpa warning ✅
 
-## Fase P1+ — Make Core Journey Reliable (belum mulai)
+## Fase P1 — Make Core Journey Reliable · Slice 1 ✅ Selesai (2026-09-14)
 
-Lihat roadmap lengkap: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4 (DB multi-tenant dari kanon, auth nyata, API 5 critical path, field offline outbox, observability, billing).
+Dokumentasi lengkap: `docs/PHASE1_SLICE1.md`. Ringkasan deliverable:
+
+- [x] **DB multi-tenant**: PGlite (Postgres 18 WASM) + Drizzle ORM; 16 tabel (orgs, users, sessions, mfa_challenges, idempotency_keys, audit_events, sequences, assets, parts, work_orders, work_order_events, service_requests, inspections, findings, vendors, purchase_orders); migrasi SQL committed (`db/migrations/`); seed kanon idempotent + tenant decoy untuk uji isolasi
+- [x] **Auth nyata**: scrypt password hashing; sesi DB (opaque token, sha256 at-rest, cookie httpOnly `apex_session`); TOTP MFA RFC 6238 (challenge 5 mnt, 5 percobaan, single-use, dev hint non-prod); rate limit login (8/email + 24/IP per 10 mnt); RBAC 6 role × permission map; logout revoke + audit
+- [x] **Guard berlapis**: `middleware.ts` (cookie presence) + layout `(ops)`/`(field)` server-side `getSessionContext()` fail-closed → redirect `/login`; login page redirect balik jika sudah auth
+- [x] **API layer**: 7 route (`/api/auth/login|mfa|logout|session`, `/api/health`, `/api/work-orders` GET+POST, `/api/work-orders/[id]/transitions`); envelope `{ok,data,error}` + requestId; validasi Zod server-side; CSRF Origin-vs-Host; `withRoute` (log + authN + RBAC + error mapping DomainError/ZodError)
+- [x] **Flow WO PASS pertama**: state machine 8 status × 7 aksi (`lib/domain/work-orders.ts`); transisi transaksional + optimistic guard (409 stale) + event log + audit trail; idempotency key (replay OK, reuse beda body 422); numbering server via `sequences` (WO-2026-0910 pertama); SLA due nyata + countdown live + label BREACH
+- [x] **UI tersambung**: dashboard KPI dari rows nyata (SLA compliance `—` sampai ada completion) + execution feed dari `work_order_events`; WO list dari DB (filter/create/reassign riil + toast error server + `router.refresh()`); WO detail dossier canon dengan status/SLA/toolbar riil (Hold/Escalate/Resume/Sign-off → API); LoginForm fetch nyata + step MFA + devHint; TopBar user riil + logout
+- [x] **Error boundary + loading**: `app/(ops)/error.tsx` (retry + petunjuk db:setup) + `loading.tsx` — menggantikan failure mode spinner abadi
+- [x] **Tests**: `npm test` = 28/28 pass (17 unit: TOTP vektor RFC, scrypt, RBAC, rate limit, state machine, SLA, hash kanonik; 11 integrasi PGlite temp: auth penuh, single-use challenge, revoke, isolasi tenant list/get/mutasi, lifecycle + events, assign, numbering, idempotency, persistensi sesi, dashboard KPI)
+- [x] **Infra**: scripts `db:generate|db:setup|db:reset|test`; `.env.example` (PGDATA_DIR, SEED_*, DEMO_MFA_HINT); `.data/` gitignored; CI + step test (`ci/ci.yml`)
+
+Sisa Phase 1 (slice berikutnya): SR/inspections flow ke DB · parts ledger + evidence storage · checklist DB-driven · notifikasi vendor · Playwright E2E · rate limit storage bersama · migrasi Postgres hosted. Roadmap penuh: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4.
