@@ -86,13 +86,13 @@
 - [ ] Wave-2: 18 layar penuh (lihat Fase 2 — satu layar = satu unit)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (6/20 prod + 19 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (7/20 prod + 18 route wave-2) 🟡
 
 Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 
 1. [x] `operations_dashboard` → `/` prod (sidebar + KPI + dispatch terverifikasi + telemetri + feed)
 2. [x] `work_order_management_execution_hub` → `/work-orders/[id]` prod (port H1: checklist, labor, ledger $1,765, OSHA, dialog WOD-05/06/12)
-3. [ ] `service_requests_triage_hub` (650)
+3. [x] `service_requests_triage_hub` (650) → `/service-requests/[id]` prod (M2: convert idem, zone, asset-M5, history)
 4. [ ] `asset_registry_lifecycle_management_ledger` (858)
 5. [ ] `asset_detail_spare_parts_inventory_ledger` (985)
 6. [ ] `preventive_maintenance_scheduling_automation_hub` (957)

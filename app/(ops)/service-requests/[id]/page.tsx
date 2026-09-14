@@ -1,13 +1,37 @@
 import Link from 'next/link';
-import { EmptyState } from '@/components/ops/EmptyState';
+import { notFound } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ops/EmptyState';
+import { ServiceRequestDetail } from '@/components/requests/ServiceRequestDetail';
+import { CANON, ID_FORMATS } from '@/lib/canon';
 
-export default function Page({ params }: { params: { id: string } }) {
-  return (
-    <EmptyState
-      title={"Service Request {id}".replace('{id}', params.id)}
-      description="SR detail + conversion result. Seeded record: SR-2026-0894 → WO-2026-0894."
-      action={(<div className="flex gap-2"><Link href="/work-orders/WO-2026-0894"><Button variant="secondary">Open converted WO-2026-0894</Button></Link></div>)}
-    />
-  );
+export function generateStaticParams() {
+  return [{ id: CANON.serviceRequest }, { id: 'SR-2026-0893' }, { id: 'SR-2026-0892' }];
+}
+
+export default async function ServiceRequestPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ asset?: string }>;
+}) {
+  const { id } = await params;
+  if (!ID_FORMATS.serviceRequest.test(id)) notFound();
+  if (id !== CANON.serviceRequest) {
+    return (
+      <EmptyState
+        title={`Service request ${id}`}
+        description="Outside the triage seed — full ticket for this record ships in wave 2 (TODO Fase 2)."
+        action={
+          <Link href={`/service-requests/${CANON.serviceRequest}`}>
+            <Button>Open {CANON.serviceRequest} instead</Button>
+          </Link>
+        }
+      />
+    );
+  }
+  const { asset } = await searchParams;
+  const initialAsset = asset && ID_FORMATS.asset.test(asset) ? asset : CANON.assetSeal;
+  return <ServiceRequestDetail initialAsset={initialAsset} />;
 }
