@@ -6,7 +6,7 @@ import { PurchaseDetail, type PurchaseTab } from '@/components/purchasing/Purcha
 import { CANON } from '@/lib/canon';
 
 export function generateStaticParams() {
-  return [{ id: CANON.purchaseOrder }, { id: 'PO-2026-0302' }, { id: 'PO-2026-0285' }];
+  return [{ id: CANON.purchaseOrder }, { id: 'PO-2026-0302' }, { id: 'PO-2026-0285' }, { id: 'PO-2026-0315' }, { id: 'PR-2026-0314' }, { id: 'PR-2026-0309' }, { id: 'PR-2026-0295' }];
 }
 
 const TABS: PurchaseTab[] = ['review', 'receiving', 'match', 'signatures'];
@@ -19,7 +19,7 @@ export default async function PurchasePage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
-  if (!/^PO-\d{4}-\d{4}$/.test(id)) notFound();
+  if (!/^(PO|PR)-\d{4}-\d{4}$/.test(id)) notFound();
   if (id !== CANON.purchaseOrder) {
     return (
       <EmptyState

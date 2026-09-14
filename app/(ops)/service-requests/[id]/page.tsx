@@ -6,7 +6,7 @@ import { ServiceRequestDetail } from '@/components/requests/ServiceRequestDetail
 import { CANON, ID_FORMATS } from '@/lib/canon';
 
 export function generateStaticParams() {
-  return [{ id: CANON.serviceRequest }, { id: 'SR-2026-0893' }, { id: 'SR-2026-0892' }];
+  return [{ id: CANON.serviceRequest }, { id: 'SR-2026-0893' }, { id: 'SR-2026-0892' }, { id: 'SR-2026-0887' }, { id: 'SR-2026-0885' }];
 }
 
 export default async function ServiceRequestPage({

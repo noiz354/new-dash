@@ -83,10 +83,10 @@
 - [x] Kontrak komponen: Button/Badge/Input/Skeleton/Dialog/ConfirmDialog/Logo/EmptyState/OfflineBanner/Banner/ErrorToast/TableSkeleton/SlaCountdown/LaborStopwatch + lib/canon.ts
 - [x] Full rebuild: `/` dashboard (dispatch terverifikasi) + `/work-orders/[id]` H1 port (seed WO-2026-0894)
 - [x] 22 route wave-2 live (EmptyState jujur, zero dead link) · tsc + build hijau · smoke-test OK
-- [x] Wave-2: 18/18 layar + 2 non-halaman selesai (Fase 2: 20/20 ✅) · sisa 4 stub list-page di luar 20 unit (/work-orders, /service-requests, /purchasing, /vendors → kandidat Fase 3)
+- [x] Wave-2: 18/18 layar + 2 non-halaman selesai (Fase 2: 20/20 ✅) · 4 list-page di luar 20 unit ikut selesai (Chunk 13+14: /work-orders, /service-requests, /purchasing, /vendors → 22/22 route prod, stub 0)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (20/20 prod ✅ · 4 stub list-page di luar 20 unit)
+## Fase 2 — Rebuild Layar (20/20 prod ✅ · 4 list-page luar unit ikut prod ✅ → 22/22 route, stub 0)
 
 Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3) · [x] `/shifts/plan` (L1: handover) · [x] `/profile` (L2: sessions/revoke/print-badge) · [x] `/assets/[id]/bim` (M6: skematik+drawer).
 

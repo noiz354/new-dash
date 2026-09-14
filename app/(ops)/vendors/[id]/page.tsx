@@ -6,7 +6,7 @@ import { VendorDetail } from '@/components/vendors/VendorDetail';
 import { CANON } from '@/lib/canon';
 
 export function generateStaticParams() {
-  return [{ id: CANON.vendorSlug }];
+  return [{ id: CANON.vendorSlug }, { id: 'abb-grid-power-automation' }, { id: 'siemens-building-technologies' }, { id: 'johnson-controls-tyco-fire' }, { id: 'grainger-industrial-supply' }];
 }
 
 export default function VendorPage({ params }: { params: { id: string } }) {
