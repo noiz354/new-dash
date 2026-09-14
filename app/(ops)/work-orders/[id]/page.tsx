@@ -13,8 +13,8 @@ const PARTS = [
 ];
 
 /** Work Order Detail — Fase F rebuild of H1 (reference: web/work-order-detail.html). */
-export default function WorkOrderDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (id !== CANON.workOrderSeal) {
     return (
       <EmptyState
@@ -67,7 +67,7 @@ export default function WorkOrderDetailPage({ params }: { params: { id: string }
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <span className="apex-label-caps text-muted">Live Chiller Telemetry Stream</span>
+            <span className="apex-label-caps text-muted">Chiller Telemetry Stream (simulated)</span>
             <span className="apex-id text-muted">Modbus Bus: 192.168.4.112:502</span>
           </div>
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">

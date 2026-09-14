@@ -285,8 +285,8 @@ export function AuditTrail() {
           <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold">Live Activity Stream <span className="text-xs font-normal text-muted">(6 Recent Focused Events)</span></h2>
-              <Button variant="secondary" onClick={() => { setLive((l) => !l); push(true, live ? 'Polling paused' : 'Live polling on', live ? 'HTMX 5s poll suspended.' : 'HTMX polling (5s) · synthetic probes prepended.'); }}>
-                {live ? <Pause size={15} /> : <Play size={15} />} {live ? 'Pause' : 'Live HTMX Polling (5s)'}
+              <Button variant="secondary" onClick={() => { setLive((l) => !l); push(true, live ? 'Polling paused' : 'Simulated polling on', live ? 'Simulated 5s poll suspended.' : 'Simulated polling (5s) · synthetic probes prepended.'); }}>
+                {live ? <Pause size={15} /> : <Play size={15} />} {live ? 'Pause' : 'Simulated Polling (5s)'}
               </Button>
             </div>
             <ol className="flex flex-col gap-2">

@@ -9,8 +9,8 @@ export function generateStaticParams() {
   return [{ id: CANON.finding }, { id: 'FND-2026-0185' }, { id: 'FND-2026-0182' }];
 }
 
-export default function FindingPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function FindingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!ID_FORMATS.finding.test(id)) notFound();
   if (id !== CANON.finding) {
     return (

@@ -9,8 +9,8 @@ export function generateStaticParams() {
   return [{ id: CANON.assetSeal }, { id: 'AST-PUMP-101' }, { id: 'AST-GEN-001' }];
 }
 
-export default function AssetPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function AssetPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!ID_FORMATS.asset.test(id)) notFound();
   if (id !== CANON.assetSeal) {
     return (
