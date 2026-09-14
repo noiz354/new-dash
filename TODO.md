@@ -176,4 +176,116 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [x] **Tests**: `npm test` = 38/38 (2 test integrasi baru: ledger berisi semua jenis event + before/after hold reason + isolasi tenant decoy; registry + workload AST-HVAC-003 dari konversi SR + dossier relasi seal + origin cross-link + cross-tenant 404 ASSET_NOT_FOUND)
 - [x] **E2E curl**: audit/assets/dossier/403-RBAC field tech/EmptyState format invalid ✅ · build hijau · log bersih
 
-Sisa Phase 1 (slice 4+): inventory & parts (link part↔asset/BOM, pergerakan stok, requisition dari WO) · checklist/tasks WO DB-driven utk semua WO · evidence storage (foto sign-off) · observability (server-side pagination audit, metrik) · notifikasi vendor · Playwright E2E di CI · rate limit storage bersama · migrasi Postgres hosted. Roadmap penuh: `docs/AUDIT_SAAS_E2E.md` §K Phase 1–4.
+## SISA PEKERJAAN — MASTER LIST (update 2026-09-14, pasca Slice 3)
+
+> Sumber kebenaran roadmap: `docs/AUDIT_SAAS_E2E.md` §K. Status selesai: Phase 0 ✅ · Phase 1 Slice 1–3 ✅ (`docs/PHASE1_SLICE1..3.md`).
+> Urutan pengerjaan = urutan nomor di bawah (slice Phase 1 dulu, lalu Phase 2–4). Setiap slice WAJIB memenuhi DoD di bagian bawah.
+> Master prompt siap-tempel untuk agent berikutnya: `docs/MASTER_PROMPT_CLAUDE_CODE.md`.
+
+### A. Phase 1 sisa — Make Core Journey Reliable (slice 4 → 10)
+
+**Slice 4 — Inventory & Parts (mutasi stok nyata pertama; Critical Path #3 bagian "parts issue")**
+- [ ] Skema: link part↔asset (tabel BOM/`asset_parts` atau kolom `asset_code` di `parts`) + tabel `part_movements` (append-only: issue/receive/adjust/reserve, ref WO/PO, aktor, qty, idempotency)
+- [ ] Service `inventory-service.ts`: issue part ke WO (transaksional: stok −qty + movement + event WO; guard stok < 0 → 422), receive dari PO, adjust (reason wajib), reserve/release
+- [ ] API: GET `/api/parts` (+stok per bin), POST `/api/parts/movements` (Idempotency-Key)
+- [ ] UI `/inventory` live: stok nyata, ledger pergerakan, dialog issue-from-WO (guardrail kanon: SKU CRITICAL unit-terakhir vs WO-2026-0894), KPI dari DB; buang angka fiktif
+- [ ] Seed: stok awal konsisten kanon (PART-SEAL-8821 Pack-of-2 di CRIB-B/Bay 01, ledger $1,765 = 1.450+195+2×120)
+- [ ] Test: issue/receive/adjust + guard stok negatif + idempotency + isolasi tenant
+
+**Slice 5 — WO Execution Checklist DB-driven + Evidence (Critical Path #3 bagian "sign-off")**
+- [ ] Skema: `wo_tasks` (steps per WO: urutan, judul, instruksi, status, verified_by/at, requires_photo) + `evidence` (file lokal `.data/evidence/` atau objek storage; hash, mime, uploader, ref task/WO)
+- [ ] Seed checklist canon WO-2026-0894 (Step 01–05, Step 04 ACTIVE + photo gate, Step 05 LOCKED) sebagai data, bukan JSX
+- [ ] Service + API: update task status (guard urutan/lock), upload evidence (multipart, validasi mime/ukuran), sign-off gate nyata (foto wajib sebelum complete bila task requires_photo)
+- [ ] UI: seksi checklist dossier seal → dari DB; generic dossier mendapat checklist kosong yang bisa diisi; `SignoffDialog` photo gate → upload nyata (buang label "simulated")
+- [ ] Test: lock/unlock step, photo-gate menolak complete tanpa evidence, upload persisten
+
+**Slice 6 — Inspections & Findings → konversi otomatis (Critical Path #2)**
+- [ ] Skema tambah: `inspection_tasks`/`checklist_answers` bila perlu (temuan INS-2026-1092 @87% + FND-2026-0188 CRITICAL sudah di-seed)
+- [ ] Flow field: run checklist (Sistem B: PIN override, guard FAIL), submit inspection → progress nyata, finding baru → konversi **satu-kali** finding→SR/WO (pola idempotency sama dengan SR convert; unique constraint konversi)
+- [ ] API + UI `/field/audits`, `/field/audits/[id]/run`, `/field/findings/[id]` live; auto-WO conversion dari finding CRITICAL (kanon: FND-2026-0188 → SR-2026-0894 → WO-2026-0894 sebagai seed chain, chain baru live)
+- [ ] Test: submit inspection menggerakkan progress, konversi finding satu-kali, PIN override tercatat di audit
+
+**Slice 7 — Procurement: PR → PO → GRN → 3-way match (Critical Path #4)**
+- [ ] Skema tambah: line items PR/PO, `grns`, `invoice_matches` bila belum ada (PO/PR seed: PO-2026-0301 DISPATCHED, PR-2026-0300 APPROVED, PO-2026-0285 PARTIAL, PO-2026-0315 PENDING_APPROVAL, PR-2026-0295 REJECTED; sequences PO=316)
+- [ ] State machine PR (DRAFT→PENDING_APPROVAL→APPROVED/REJECTED→PO) + PO (PENDING_APPROVAL→APPROVED→DISPATCHED→PARTIAL/RECEIVED) + approval berjenjang (cap kanon: VP $850? sesuai C-kanon purchasing) — validasi server, bukan UI
+- [ ] GRN idempoten (satu GRN per pengiriman; unique per PO+barcode), 3-way match (PO vs GRN vs invoice: qty/harga toleransi), dampak stok → panggil inventory-service (receive)
+- [ ] UI `/purchasing` + detail live dari DB (buang string demo); KPI open commitment dari agregat nyata
+- [ ] Test: approval chain + cap, GRN duplikat ditolak, 3-way match mismatch → flag, stok bertambah saat receive
+
+**Slice 8 — Preventive Maintenance (PM) nyata**
+- [ ] Skema: `pm_rules` (asset/kelas, interval, checklist template) + generator job (worker ringan via node-cron/script): rule → WO terjadwal (numbering server, SCHEDULED)
+- [ ] Kanon: PM auto-batch WO-2026-0906..0909 dijelaskan oleh rule seed (bukan nomor gaib)
+- [ ] UI `/preventive-maintenance` live: rules dari DB, next-due dihitung, riwayat generation; dialog pause/resume rule → mutasi nyata
+- [ ] Test: generator membuat WO idempoten per periode (tidak dobel), pause menghentikan generasi
+
+**Slice 9 — Layar sisa jadi live (read + mutate sesuai domain)**
+- [ ] `/vendors`: MSA expiry nyata (dispatch lock saat MSA expired — guardrail kanon H3), on-time% dari agregat WO vendor
+- [ ] `/reports`: agregat nyata (MTTR, SLA compliance per periode, top assets) — ganti "query builder" fiksi dengan report definitions sederhana dari DB
+- [ ] `/notifications`: SLA-at-risk dihitung nyata dari `sla_due_at` (bukan daftar statis); mark-read persisten
+- [ ] `/organization`: user CRUD nyata (invite/deactivate, role assignment → `users`), ROLES6 permission matrix dari `rbac.ts` (bukan hardcode UI); audit row per perubahan
+- [ ] `/settings`: konfigurasi org persisten (tabel `org_settings` jsonb), API key display last4 (C21), rotasi = revoke sesi
+- [ ] `/profile` + ProfileSessions: daftar sesi DB nyata + revoke per sesi (token id), badge QR = data user
+- [ ] Command palette ⌘K: pencarian nyata (WO/SR/asset by number/title, tenant-scoped) via endpoint `/api/search`
+- [ ] `/shifts/plan`: handover shift persisten (tabel sederhana) atau label jujur "not implemented"
+- [ ] Field shell sisa (`/field/sync`): status sync nyata bila outbox ada (lihat A.10), selain itu label jujur
+
+**Slice 10 — Pagination & filter server-side**
+- [ ] Semua tabel besar (WO, SR, audit, inventory, purchasing) → paging server-side (cursor/offset + total count), filter di query (bukan client atas 500 row)
+- [ ] Audit trail: window 500 → server-side pagination + filter tanggal (flag `truncated` dihapus saat selesai)
+- [ ] Test: paging konsisten + filter tenant-scoped
+
+**Item lintas-slice Phase 1 (utang eksplisit)**
+- [ ] A.10 Field offline outbox: antrian mutasi lokal (IndexedDB) + flush dengan Idempotency-Key saat online; UI `/field/sync` nyata (partial failure + retry key sama = kanon H3)
+- [ ] A.11 Notifikasi vendor saat escalate (email dev/log + outbox → webhook fan-out menyusul di Phase 4)
+- [ ] A.12 Rate limit ke storage bersama (DB table/Redis) — multi-instance safe; saat ini in-memory per proses
+- [ ] A.13 CSRF token per-sesi (bila ada kebutuhan cross-origin/API client pihak ketiga)
+- [ ] A.14 Playwright E2E di CI: login (devHint) → create SR → convert → WO hold → refresh assert persisten; smoke 5 critical screens
+- [ ] A.15 Migrasi Postgres hosted (neon/supabase/self-host): driver swap di `db/client.ts` (pglite → pg), CI matrix PGlite+Postgres, dokumentasi cutover
+- [ ] A.16 Aktivasi CI oleh maintainer: `cp ci/ci.yml .github/workflows/ci.yml` (GitHub App sandbox tidak punya permission `workflows` — hanya maintainer)
+
+### B. Phase 2 — Make SaaS Operable
+
+- [ ] B.1 Structured logging pino (JSON, level env-driven) + OTel tracing browser→API→DB (requestId sudah ada → naikkan jadi trace_id; span per service call)
+- [ ] B.2 Sentry (client+server) atau equivalente open-source; `/api/health` → readiness mendalam (cek query DB, migrasi up-to-date, disk .data)
+- [ ] B.3 Metrik RED (rate/errors/duration per route) + saturasi + queue depth; alerting nyata (Slack/webhook) — ganti dekorasi UI notifications
+- [ ] B.4 Audit hardening: hash-chain (kolom `prev_hash`, verifikasi berantai, endpoint verify) + admin/support console: user/tenant/WO/PO lookup, job retry, event replay, suspend account (supportability §16 audit)
+- [ ] B.5 Backup/restore DB nyata (dump/restore PGlite→file; terjadwal; uji restore) + UI backup yang sudah digambar → berfungsi
+- [ ] B.6 Session hardening: rotation pasca-MFA (sudah), absolute timeout, "sign out all devices" (revoke by user_id)
+
+### C. Phase 3 — Improve Growth
+
+- [ ] C.1 Signup + onboarding (Critical Path #1): landing → create org (multi-tenant provisioning: org row + sequences + admin user) → invite user → wizard (site → aset pertama → user pertama) → email verification
+- [ ] C.2 Activation event terdefinisi & terinstrumentasi: **WO pertama ditutup** (atau inspeksi pertama disubmit) → kolom `activated_at` per org + funnel
+- [ ] C.3 Product analytics (PostHog/Plausible): event funnel §G audit; dashboard activation/adoption/churn internal
+- [ ] C.4 Billing (Critical Path #5): Stripe checkout + webhook (signature verify; aman duplikat/out-of-order), entitlement **server-side** (middleware plan → feature gate), invoice/receipt, dunning (grace period, downgrade otomatis)
+- [ ] C.5 Retention loop nyata: email SLA-at-risk (dari data notifications slice 9), scheduled report, digest PM
+
+### D. Phase 4 — Scale
+
+- [ ] D.1 Read replica / OLAP untuk reports + materialized views KPI (ganti agregat inline berat)
+- [ ] D.2 Queue/worker nyata (BullMQ/SQS): notifikasi, PM generator, sync fan-out, webhook + DLQ + retry policy
+- [ ] D.3 Caching (Redis/HTTP ETag) untuk list & KPI
+- [ ] D.4 Load test jalur kritis (login, dashboard, list WO, submit inspeksi, checkout) — **dilarang klaim throughput sebelum terukur**
+- [ ] D.5 Multi-region/HA sesuai kebutuhan tenant (data SCADA/fasilitas sensitif latensi lokal)
+- [ ] D.6 Telemetry ingestion nyata (SCADA/Modbus → timeseries; ganti kartu "simulated" terakhir)
+
+### E. Debt & hygiene (lintas fase — kerjakan oportunistik per slice)
+
+- [ ] E.1 4 advisory moderate di rantai dev-dep `drizzle-kit` (esbuild ≤0.24.2, GHSA-67mh-4wv8-2f99) — dev-only, gate prod hijau; upgrade saat drizzle-kit rilis fix (jangan `audit fix --force` → downgrade breaking)
+- [ ] E.2 Konsistensi zod v4: ganti sisa `.string().uuid()/.email()` deprecated → `z.uuid()/z.email()` (audit grep per slice)
+- [ ] E.3 `next-env.d.ts` churn (dev menulis path `.next/dev/types`) — jangan pernah ikut ter-commit (sudah dikawal manual; pertimbangkan hook)
+- [ ] E.4 DemoBanner & README: perbarui klaim setiap slice (bagian yang masih "simulated" menyusut — jaga kejujuran)
+- [ ] E.5 Komponen statis tersisa yang belum tersentuh slice: `OrgHub` (KPI fiktif), `AuditTrail` fiksi sudah dibuang ✅, field `AuditQueue`/`SyncStatus` (jadi nyata di A.10/Slice 6), `ProfileSessions` (Slice 9), purchase/vendor dialogs (Slice 7)
+- [ ] E.6 Hapus `web/` (arsip prototipe HTML standalone) + `stitch_facility_maintenance_platform_ui/` **hanya atas persetujuan user** (folder beku AGENTS.md) — kandidat setelah Phase 2
+- [ ] E.7 Secrets: `SEED_TOTP_SECRET`/`SEED_USER_PASSWORD` via env di deployment nyata; `.env.example` sudah menyiapkan; jangan commit `.env`
+- [ ] E.8 i18n label status (WO_LABELS/SR_LABELS English) vs UI dwibahasa — putuskan saat Phase 3 landing page
+
+### Definition of Done per slice (WAJIB semua)
+
+1. `npm run typecheck` hijau · `npm test` hijau (test baru untuk domain/service yang ditambah) · `npm run build` hijau (0 log level error)
+2. `npm run db:setup` bila ada migrasi/seed baru (dev server STOPPED saat db scripts — PGlite single-writer)
+3. E2E nyata: dev server + curl (atau Playwright bila A.14 selesai) membuktikan aksi → state → persisten → UI → gagal-terdiagnosis
+4. Kejujuran: fitur masih simulasi WAJIB berlabel; tidak ada klaim performa tanpa pengukuran; fiksi baru dilarang
+5. Docs: `docs/PHASE1_SLICEn.md` (atau fase bersangkutan) + baris `PROGRESS.md` + update `TODO.md` + `docs/AUDIT_SAAS_E2E.md` §K bila fase tuntas
+6. Git: commit deskriptif per unit + `git push origin <branch>`; bila push gagal → catat `PUSH-BLOCKED` di `PROGRESS.md`, lanjut kerja
+7. Definisi PASS audit §2 untuk tiap flow: user action → backend state benar → data persisten → UI merefleksikan → kegagalan terdiagnosis → business outcome
