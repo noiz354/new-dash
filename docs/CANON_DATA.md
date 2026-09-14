@@ -33,9 +33,9 @@
 | C5 | Skor kesehatan `AST-HVAC-004` | `68/100 NEEDS OVERHAUL` (teks eksplisit registry) vs donat `88` (svg asset-detail) | **68/100 NEEDS OVERHAUL** | Konsisten dengan DEFECT ACTIVE + status CRITICAL. Donat 88 = artefak |
 | C6 | ID tenant | `APX-NUSA-01` (org hub + audit trail) vs `APX-GL-9021` (settings saja) | **APX-NUSA-01** | Konsisten operasi Nusantara/Jakarta. Settings diperbaiki |
 | C7 | Ambang PM meter | Aturan tertulis `RUN_HOURS >= 5000` (PM hub) vs sel matriks `2.500` | **5000 jam** | Aturan tertulis menang. Sel 2.500 diperbaiki. `PM-PLN-0104` = batch parent (pass-2) |
-| C8 | Bin suku cadang | `CRIB-B / Bay 01` (audit-trail GRN + purchasing autofill) vs `SUB-LCK-4B` (klaim tak terkonfirmasi via grep) | **CRIB-B / Bay 01** | Dua sumber vs nol sumber. `SUB-LCK-4B` verifikasi saat seeding |
-| C9 | Bearing SKU `6205 vs 6204` | Kedua varian **tak ditemukan via grep** (`PART-BRG-620[45]` nol hasil) | **DITUNDA — verifikasi saat seeding** | Klaim audit belum terkonfirmasi. Format tetap `PART-BRG-NNNN` |
-| C10 | Klaim `CHILL-NUSA-04` / `WO-0894` pendek | Keduanya **tak ditemukan via grep** (`CHILL` = kata "Chiller" biasa) | **DITUNDA — kanon tetap `AST-HVAC-004` / format penuh** | Aturan format penuh (§ atas) mencegah singkatan |
+| C8 | Bin suku cadang | `CRIB-B / Bay 01` (audit-trail GRN + purchasing autofill) vs `SUB-LCK-4B` (klaim tak terkonfirmasi via grep) | **CRIB-B / Bay 01** | Dua sumber vs nol sumber. AMEND Chunk 9: `SUB-LCK-4B` TERVERIFIKASI sebagai bin filter (PART-FLTR-401 @ SUB-LCK-4B/Bay 01, arsip inventory) — bin berbeda, bukan bin seal |
+| C9 | Bearing SKU `6205 vs 6204` | Kedua varian **tak ditemukan via grep** (`PART-BRG-620[45]` nol hasil) | **CLOSED Chunk 9 — keduanya TERKONFIRMASI** | PART-BRG-6204 di BOM aset (Chunk 8) + PART-BRG-6205 di seed inventory (Chunk 9). Pasangan lengkap, JANGAN pernah digabung |
+| C10 | Klaim `CHILL-NUSA-04` / `WO-0894` pendek | Keduanya TERKONFIRMASI ADA: `CHILL-NUSA-04` (purchasing:599 Critical Asset); `WO-0894` (facility SVG:408); bonus `WO-9042` (ui-states:403) | **GUGUR — artefak, di-rewire**: `CHILL-NUSA-04`→`AST-HVAC-004`; `WO-0894`→`WO-2026-0894`; `WO-9042`→`WO-2026-0904` | Fase A: klaim (tak ditemukan) DICABUT. Format penuh (§ atas) ditegakkan di semua file baru |
 | C11 | Sisa MSA Trane | Tabel `ACTIVE (312d left)` + `MSA-2024-TRN-09` vs kartu lifecycle `288d` | **312d, MSA-2024-TRN-09** | Status tabel + kode MSA menang. Kartu diperbaiki |
 | C12 | Progres `INS-2026-0412` | Klaim 65% (hub) vs 50% (mobile), angka **tak terkonfirmasi via grep** | **Sementara 65% (hub antrean otoritatif), VERIFIKASI ULANG** | Antrean hub pemilik progres. Mobile diperbaiki setelah verifikasi |
 
@@ -44,7 +44,7 @@
 | # | Konflik | Bukti rg | Keputusan kanon |
 |---|---|---|---|
 | C13 | Nama engineer | `Elena Voronova` 5+ file (audit-trail, vendors, org, notifications) vs `Rostova` 1× (ui-states) | **Elena Voronova**. `Rostova` = typo, diperbaiki |
-| C14 | `Elena Moreno` (SR triage) | 1 layar, tak ada kaitan lain | **PERLU KEPUTUSAN USER**: persona terpisah atau alias Voronova |
+| C14 | `Elena Moreno` (SR triage) | 1 layar: service-requests:367 (`Elena Moreno`, requestor) — tanpa kaitan lain; Voronova 5+ file (engineer lapangan); `Rostova` = typo (ui-states:443, findings:267, field:316) | **[ASUMSI-OTOMATIS] Persona TERPISAH**: `Elena Moreno` = requestor/front-desk di SR triage; `Elena Voronova` = engineer lapangan. Jangan digabung (default CODEX.md §0) | Menunggu konfirmasi user saat review; bila user menyatakan alias, kanon direvisi |
 | C15 | Jumlah roles | Org hub (pemilik RBAC) `6 Roles` vs settings `8 Roles` | **6 Roles**. Settings diperbaiki |
 | C16 | Shift A | `07:00–15:30 WIB` (notifications + opsi SR "Shift A") vs kartu ABAC `06:00–22:00` vs work-week settings `07:00–22:00 Sab` | **Shift A = 07:00–15:30 WIB**. Kartu ABAC diperbaiki. Work-week settings = jam operasional site (Sen–Sab 07:00–22:00), bukan definisi shift |
 | C17 | Teknisi contoh `TECH-094` | Hanya ui-states | **Ganti format `RFID-*`** sesuai follower RFID repo |
@@ -68,11 +68,15 @@
 ## 5. Klausa CANON (tempel ke semua prompt Opsi 1–6)
 
 ```text
-CANON (docs/CANON_DATA.md, wajib dipatuhi): WO seal = WO-2026-0894 @
-AST-HVAC-004 (Trane EarthWise CVHE, skor 68 NEEDS OVERHAUL); LOTO padlock
-#4092 (M-44 = titik lockout Panel DP-02); seal PART-SEAL-8821 = $1,450.00
-@ CRIB-B/Bay 01; tenant APX-NUSA-01; 6 Roles; Shift A 07:00-15:30 WIB;
-Elena Voronova; API v1; UI WIB (UTC khusus ledger); telepon +62; secret
-(last4 + rotasi seed bocor). C9/C10/C12/C14 TERTUNDA — tandai [ASUMSI] bila
-menyentuhnya. PR-* (request) vs PO-* (order) jangan dicampur.
+CANON (docs/CANON_DATA.md Fase A final, wajib dipatuhi): WO seal =
+WO-2026-0894 @ AST-HVAC-004 (Trane EarthWise CVHE S/N TRA-99201-B, skor 68
+NEEDS OVERHAUL); LOTO padlock #4092 (M-44 = titik lockout Panel DP-02);
+seal PART-SEAL-8821 = $1,450.00 @ CRIB-B/Bay 01 (ledger H1 total $1,765.00);
+bearing PART-BRG-6204 vs PART-BRG-6205 = DUA SKU BERBEDA (jangan digabung);
+tenant APX-NUSA-01; 6 Roles; Shift A 07:00-15:30 WIB; INS-2026-0412 = 65%;
+Elena Voronova (engineer) vs Elena Moreno (requestor SR, persona terpisah
+[ASUMSI-OTOMATIS]); API v1; UI WIB (UTC khusus ledger); telepon +62;
+secret last4 + rotasi. ID SELALU format penuh (WO-2026-0894, AST-HVAC-004,
+WO-2026-0904 — singkatan WO-0894/CHILL-NUSA-04/WO-9042 = ARTEFAK GUGUR).
+PR-* (request) vs PO-* (order) jangan dicampur.
 ```
