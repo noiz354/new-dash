@@ -133,8 +133,9 @@ export function DispatchDialog({ push }: { push: Push }) {
             onClick={() => {
               setTouched(true);
               if (!ok || !assetOk) return;
-              // Prototype numbers the draft WO-2026-0904, but that ID is already the
-              // verified pharma-lab dispatch on the dashboard — 0905 keeps ledger integrity.
+              // Prototype numbers the draft WO-2026-0904, but C10 reserves that ID
+              // (ui-states glycol-pump demo row; dashboard pharma is WO-2024-0904,
+              // different year) — 0905 keeps ledger integrity.
               setState(`WO-2026-0905 drafted · vendor-locked · ${pri.split(' ')[0]} SLA armed.`);
               push(true, 'WO drafted', `WO-2026-0905 · ${asset.trim()} · ${pri} · vendor-locked.`);
             }}
