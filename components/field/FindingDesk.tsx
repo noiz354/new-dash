@@ -16,12 +16,12 @@ interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 100;
 
 const BOM = [
-  { sku: CANON.sealSku, desc: 'Silicon Carbide Shaft Seal Assembly 2.5"', qty: '1 ea', bin: 'CRIB-B / Bin C-04', cost: '$1,450.00' },
+  { sku: CANON.sealSku, desc: 'Silicon Carbide Shaft Seal Assembly 2.5"', qty: '1 ea', bin: 'CRIB-B / Bay 01', cost: '$1,450.00' },
   { sku: 'PART-LUB-09', desc: 'Synthetic POE Refrigeration Lubricant ISO 68', qty: '1 pail (5 gal)', bin: 'CRIB-CHEM / Rack 02', cost: '$195.00' },
 ];
 
 const OTHERS = [
-  { id: 'FND-2026-0185', title: 'Emergency Starter Battery Bank Float Voltage', asset: 'AST-GEN-01', meta: '21.4 VDC vs 24.0 nominal · T. Chen · INS-2026-0409 · 2h ago' },
+  { id: 'FND-2026-0185', title: 'Emergency Starter Battery Bank Float Voltage', asset: 'AST-GEN-001', meta: '21.4 VDC vs 24.0 nominal · T. Chen · INS-2026-0409 · 2h ago' },
   { id: 'FND-2026-0182', title: 'Static Differential Pressure Across Stage 2 Filter', asset: 'AST-ENV-108', meta: '340 Pa vs 280 max · E. Voronova · INS-2026-0415 · 4h ago' },
 ];
 
@@ -238,7 +238,7 @@ export function FindingDesk() {
           <ul className="flex flex-col divide-y divide-surface-subtle text-[13px]">
             {OTHERS.map((o) => (
               <li key={o.id} className="py-2 flex items-center justify-between gap-2">
-                <span><span className="apex-id font-bold text-cobalt">{o.id}</span> · <strong>{o.title}</strong> <span className="text-muted">— {o.meta}</span></span>
+                <span><span className="apex-id font-bold text-cobalt">{o.id}</span> · <span className="apex-id">{o.asset}</span> · <strong>{o.title}</strong> <span className="text-muted">— {o.meta}</span></span>
                 <Link className="text-cobalt font-semibold hover:underline shrink-0" href={`/field/findings/${o.id}`}>Triage →</Link>
               </li>
             ))}

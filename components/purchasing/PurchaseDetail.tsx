@@ -66,8 +66,8 @@ export function PurchaseDetail({ initialTab }: { initialTab: PurchaseTab }) {
     setGrnMsg('Posting GRN-9941…');
     setTimeout(() => {
       setGrn('posted');
-      setGrnMsg('GRN-9941 POSTED · +100 stock to CRIB-B / Bay 01.');
-      push(true, 'GRN posted', 'GRN-9941 · +100 stock · ledger updated.');
+      setGrnMsg('GRN-9941 POSTED · +2 seal kits to CRIB-B / Bay 01.');
+      push(true, 'GRN posted', 'GRN-9941 · +2 seal kits · ledger updated.');
     }, 900);
   };
 
@@ -176,7 +176,7 @@ export function PurchaseDetail({ initialTab }: { initialTab: PurchaseTab }) {
               <ul className="flex flex-col divide-y divide-surface-subtle text-sm">
                 <li className="py-2 flex items-center justify-between gap-2"><span><span className="apex-id font-semibold text-cobalt">PO-2026-0302</span> · CREATED from PR-2026-0309</span><Link className="text-cobalt font-semibold hover:underline" href="/purchasing/PO-2026-0302">Review</Link></li>
                 <li className="py-2 flex items-center justify-between gap-2"><span><span className="apex-id font-semibold text-cobalt">PO-2026-0285</span> · PARTIAL RECEIPT</span><Link className="text-cobalt font-semibold hover:underline" href={`/purchasing/${CANON.purchaseOrder}?tab=receiving`}>Receive</Link></li>
-                <li className="py-2 flex items-center justify-between gap-2"><span><span className="apex-id font-semibold text-cobalt">GRN-9941</span> · POSTED · +100 stock · CRIB-B / Bay 01</span><button className="text-cobalt font-semibold hover:underline" onClick={() => showTab('receiving')}>Audit</button></li>
+                <li className="py-2 flex items-center justify-between gap-2"><span><span className="apex-id font-semibold text-cobalt">GRN-9941</span> · POSTED · +2 seal kits · CRIB-B / Bay 01</span><button className="text-cobalt font-semibold hover:underline" onClick={() => showTab('receiving')}>Audit</button></li>
               </ul>
             </div>
           </div>
