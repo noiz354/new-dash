@@ -86,7 +86,7 @@
 - [ ] Wave-2: 6 layar penuh tersisa (lihat Fase 2 — satu layar = satu unit)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (14/20 prod + 7 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (16/20 prod + 5 route wave-2) 🟡
 
 Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3) · [x] `/shifts/plan` (L1: handover) · [x] `/profile` (L2: sessions/revoke/print-badge) · [x] `/assets/[id]/bim` (M6: skematik+drawer).
 
@@ -106,8 +106,8 @@ Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 12. [x] `purchasing_pos_management_hub` (719) → `/purchasing/[id]` prod (H3: tabs, SLA, GRN idem, match, quorum, print)
 13. [x] `vendors_contractors_management_hub` (727) → `/vendors/[id]` prod (M1: PDF viewer, amend/dispatch/commend, MSA bar)
 14. [x] `organization_rbac_governance_hub` (1052) → `/organization` prod (roster 6, diagnostics+guard, matrix 15×6, ABAC, SSO, provision SCIM)
-15. [ ] `audit_trail_system_logs_hub` (777)
-16. [ ] `notifications_sla_alerts_hub` (701)
+15. [x] `audit_trail_system_logs_hub` (777) → `/audit-trail` prod (stream 6 event, live probe, diff inspector TXN-88120, Merkle verify, export)
+16. [x] `notifications_sla_alerts_hub` (701) → `/notifications` prod (5 alert, P1 countdown live, PO/stock/WO/security actions, routing+escalation, debugger)
 17. [ ] `reports_analytics_hub` (868)
 18. [ ] `settings_system_configuration` (920)
 19. [ ] `ui_state_variants_patterns` (451) — jadikan komponen reusable, bukan halaman

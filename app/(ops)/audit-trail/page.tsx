@@ -1,13 +1,5 @@
-import Link from 'next/link';
-import { EmptyState } from '@/components/ops/EmptyState';
-import { Button } from '@/components/ui/button';
+import { AuditTrail } from '@/components/audit/AuditTrail';
 
-export default function Page() {
-  return (
-    <EmptyState
-      title="Audit Trail & Logs"
-      description="Hash-chained ledger (UTC). Full rebuild ships in wave 2."
-      action={(<div className="flex gap-2"><Link href="/work-orders/WO-2026-0894"><Button variant="secondary">Open WO-2026-0894</Button></Link></div>)}
-    />
-  );
+export default function AuditTrailPage() {
+  return <AuditTrail />;
 }
