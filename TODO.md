@@ -86,7 +86,7 @@
 - [ ] Wave-2: 18 layar penuh (lihat Fase 2 — satu layar = satu unit)
 - [ ] QA wave-1: 3 breakpoint, empty/loading/error/offline, WIB, +62 (parsial: komponen + 2 route lolos smoke)
 
-## Fase 2 — Rebuild Layar (8/20 prod + 13 route wave-2) 🟡
+## Fase 2 — Rebuild Layar (10/20 prod + 11 route wave-2) 🟡
 
 Bonus di luar 20 unit: [x] `/login` prod (M3: SSO + MFA enforced) · [x] `/field/sync` prod (H2) · [x] `/purchasing/[id]/print` (L3) · [x] `/shifts/plan` (L1: handover) · [x] `/profile` (L2: sessions/revoke/print-badge) · [x] `/assets/[id]/bim` (M6: skematik+drawer).
 
@@ -95,8 +95,8 @@ Urutan disarankan (dashboard dulu sebagai kerangka navigasi):
 1. [x] `operations_dashboard` → `/` prod (sidebar + KPI + dispatch terverifikasi + telemetri + feed)
 2. [x] `work_order_management_execution_hub` → `/work-orders/[id]` prod (port H1: checklist, labor, ledger $1,765, OSHA, dialog WOD-05/06/12)
 3. [x] `service_requests_triage_hub` (650) → `/service-requests/[id]` prod (M2: convert idem, zone, asset-M5, history)
-4. [ ] `asset_registry_lifecycle_management_ledger` (858)
-5. [ ] `asset_detail_spare_parts_inventory_ledger` (985)
+4. [x] `asset_registry_lifecycle_management_ledger` (858) → `/assets` prod (filter, CSV nyata, register, QR, transfer, lifecycle, docs)
+5. [x] `asset_detail_spare_parts_inventory_ledger` (985) → `/assets/[id]` prod (health 68, tab lifecycle, BOM+ledger, rewire C4/C5/C8)
 6. [ ] `preventive_maintenance_scheduling_automation_hub` (957)
 7. [x] `field_inspections_audit_queue_hub` (653) → `/field/audits` prod (H2: antrean, skeleton, filter, offline)
 8. [x] `inspection_findings_auto_wo_conversion_desk` (543) → `/field/findings/[id]` prod (triage, BOM, convert, dismiss-guard)
