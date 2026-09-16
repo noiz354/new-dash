@@ -221,7 +221,8 @@ export function SignoffDialog({ number, status, enabled }: TransitionProps) {
 }
 
 /** WOD-12 export — still a simulated background job (no worker yet; slice #2+). */
-export function ExportDialog() {
+export function ExportDialog({ number }: { number?: string }) {
+  const woNumber = number ?? CANON.workOrderSeal;
   const [pct, setPct] = useState(0);
   const [running, setRunning] = useState(false);
   const start = () => {
@@ -244,7 +245,7 @@ export function ExportDialog() {
       <DialogTrigger asChild><Button variant="secondary">Export WO Log (simulated)</Button></DialogTrigger>
       <DialogContent>
         <DialogTitle>Export WO Log</DialogTitle>
-        <DialogDescription>{CANON.workOrderSeal} · CSV + evidence manifest — simulated background job (real exports ship with the worker slice)</DialogDescription>
+        <DialogDescription>{woNumber} · CSV + evidence manifest — simulated background job (real exports ship with the worker slice)</DialogDescription>
         <div className="h-2 rounded-full bg-surface-subtle overflow-hidden">
           <div className="h-full bg-cobalt-deep transition-all" style={{ width: `${pct}%` }} />
         </div>

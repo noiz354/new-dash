@@ -53,9 +53,8 @@ export async function PATCH(
 
     await db.insert(auditEvents).values({
       organizationId: ctx!.orgId,
-      actorId: ctx!.userId,
-      actorName: ctx!.userName,
-      actorRole: ctx!.role,
+      actorUserId: ctx!.userId,
+      actorName: ctx!.name,
       action: input.isActive === false ? 'USER_DEACTIVATE' : 'USER_UPDATE',
       entityType: 'user',
       entityId: id,

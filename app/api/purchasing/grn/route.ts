@@ -6,9 +6,9 @@ import { postGoodsReceipt } from '@/lib/services/procurement-service';
 
 const PostGrnSchema = z.object({
   poNumber: z.string().min(1),
-  grnNumber: z.string().nullish(),
+  grnNumber: z.string().nullish().transform((v) => v ?? undefined),
   waybill: z.string().min(1).max(100),
-  dockLocation: z.string().max(100).nullish(),
+  dockLocation: z.string().max(100).nullish().transform((v) => v ?? undefined),
   skuReceived: z.string().min(1),
   qtyReceived: z.number().int().positive(),
 });

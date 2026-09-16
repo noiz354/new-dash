@@ -101,7 +101,6 @@ export async function provisionOrganization(
       organizationId: orgId,
       actorUserId: admin.id,
       actorName: admin.name,
-      actorRole: 'Enterprise Admin',
       action: 'ORG_PROVISION',
       entityType: 'organization',
       entityId: orgId,

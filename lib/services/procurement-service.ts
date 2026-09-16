@@ -194,9 +194,8 @@ export async function createRequisition(
 
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: 'PR_CREATE',
       entityType: 'purchase_requisition',
       entityId: number,
@@ -235,7 +234,8 @@ export async function postGoodsReceipt(
       .limit(1);
 
     if (existing.length > 0) {
-      throw new DomainError('DUPLICATE_RECEIPT', `GRN ${grnId} already verified on dock`, 409);
+      throw new DomainError(409, 'DUPLICATE_RECEIPT',
+          `GRN ${grnId} already verified on dock`);
     }
 
     const [grn] = await tx
@@ -247,7 +247,7 @@ export async function postGoodsReceipt(
         waybill: input.waybill,
         dockLocation: input.dockLocation || 'Dock Bay 02',
         status: 'RECEIVED',
-        verifiedBy: ctx.userName,
+        verifiedBy: ctx.name,
       })
       .returning();
 
@@ -289,5 +289,11 @@ export async function postGoodsReceipt(
   }
 
   const hash = requestHash(input);
-  return withIdempotency(db, ctx.orgId, opts.idempotencyKey, hash, async (tx) => exec(tx));
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'procurement.grn', hash, async () => {
+      const body = await exec(tx);
+      return { status: 201, body };
+    });
+    return res.body;
+  });
 }

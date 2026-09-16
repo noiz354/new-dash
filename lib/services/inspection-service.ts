@@ -8,7 +8,8 @@ import type { Db, Tx } from '../../db/client';
 import { auditEvents, findings, inspections, workOrderEvents, workOrders } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
 import { DomainError, notFound } from '../domain/errors';
-import { SLA_WINDOW_MS, slaLabel, type WoRow } from '../domain/work-orders';
+import { SLA_WINDOW_MS, slaLabel } from '../domain/work-orders';
+import type { WoRow } from './wo-service';
 import { requestHash, withIdempotency } from './idempotency';
 import { nextNumber } from './sequence';
 
@@ -88,7 +89,7 @@ export async function createInspection(
         organizationId: ctx.orgId,
         number,
         title: input.title.slice(0, 200),
-        auditorName: input.auditorName ?? ctx.userName,
+        auditorName: input.auditorName ?? ctx.name,
         progressPct: 0,
         status: 'SCHEDULED',
       })
@@ -96,9 +97,8 @@ export async function createInspection(
 
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: 'INSPECTION_CREATE',
       entityType: 'inspection',
       entityId: number,
@@ -229,9 +229,8 @@ export async function createFinding(
 
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: 'FINDING_CREATE',
       entityType: 'finding',
       entityId: number,
@@ -281,7 +280,8 @@ export async function convertFindingToWo(
     const fnd = fndRows[0];
 
     if (fnd.status === 'CONVERTED' || fnd.convertedWoNumber) {
-      throw new DomainError('ALREADY_CONVERTED', `Finding ${findingNumber} has already been converted to ${fnd.convertedWoNumber}`, 409);
+      throw new DomainError(409, 'ALREADY_CONVERTED',
+          `Finding ${findingNumber} has already been converted to ${fnd.convertedWoNumber}`);
     }
 
     const now = new Date();
@@ -309,7 +309,7 @@ export async function convertFindingToWo(
       organizationId: ctx.orgId,
       workOrderNumber: woNumber,
       actorUserId: ctx.userId,
-      actorName: ctx.userName,
+      actorName: ctx.name,
       action: 'CREATE',
       fromStatus: null,
       toStatus: 'OPEN',
@@ -328,9 +328,8 @@ export async function convertFindingToWo(
 
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: 'FINDING_CONVERT_WO',
       entityType: 'finding',
       entityId: findingNumber,
@@ -376,5 +375,11 @@ export async function convertFindingToWo(
   }
 
   const hash = requestHash(input);
-  return withIdempotency(db, ctx.orgId, opts.idempotencyKey, hash, async (tx) => exec(tx));
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'inspection.convert', hash, async () => {
+      const body = await exec(tx);
+      return { status: 201, body };
+    });
+    return res.body;
+  });
 }

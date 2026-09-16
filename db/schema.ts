@@ -487,6 +487,53 @@ export const rateLimits = pgTable(
   },
 );
 
+// ---------------------------------------------------------------- push / webauthn --
+
+/** FP-18/TASK-27 — Web Push subscriptions (VAPID). Tenant+user scoped; endpoint unik. */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    /** RFC 8291 subscription keys (base64url). */
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('push_sub_endpoint_uq').on(t.endpoint),
+    index('push_sub_user_idx').on(t.userId, t.organizationId),
+  ],
+);
+
+/** FP-19/TASK-28 — WebAuthn passkey credentials (SimpleWebAuthn server stores). */
+export const webauthnCredentials = pgTable(
+  'webauthn_credentials',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** Credential ID (base64url). */
+    credentialId: text('credential_id').notNull(),
+    /** COSE public key (base64url). */
+    publicKey: text('public_key').notNull(),
+    counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+    transports: text('transports'), // comma-separated: 'internal', 'usb', 'nfc'...
+    aaguid: text('aaguid'),
+    friendlyName: text('friendly_name').notNull().default('Passkey'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('webauthn_cred_id_uq').on(t.credentialId),
+    index('webauthn_user_idx').on(t.userId, t.organizationId),
+  ],
+);
+
 
 
 

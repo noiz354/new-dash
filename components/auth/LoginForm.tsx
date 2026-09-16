@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { startAuthentication } from '@simplewebauthn/browser';
+import { Fingerprint } from 'lucide-react';
+import { has } from '@/lib/platform/capability';
 import { Lock, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CANON } from '@/lib/canon';
@@ -96,6 +99,37 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
     }
   };
 
+  /** TASK-28 — passkey login: two-step assertion di server, MFA tetap dijalankan bila enrolled. */
+  const submitPasskey = async () => {
+    if (busy || !emailOk) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const options = (await apiFetch<{ challenge: string; rpId: string; allowCredentials: { type: string; id: string }[] }>('/api/auth/passkeys/login', {
+        method: 'POST',
+        body: { orgId: CANON.tenant, email },
+      })) as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'];
+      const assertion = await startAuthentication({ optionsJSON: options });
+      const data = await apiFetch<LoginResponse>('/api/auth/passkeys/login', {
+        method: 'PUT',
+        body: { assertion },
+      });
+      if (data.status === 'mfa_required') {
+        setChallengeId(data.challengeId ?? '');
+        setStep('mfa');
+      } else if (data.status === 'ok') {
+        window.location.href = redirectTo;
+      }
+    } catch (err) {
+      setError({
+        code: err instanceof ApiError ? err.code : 'PASSKEY_ERROR',
+        message: err instanceof ApiError ? err.message : 'Passkey assertion failed — use password + TOTP.',
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <form
       className="bg-card border border-border-subtle rounded-lg shadow-card p-8 w-full max-w-sm flex flex-col gap-4"
@@ -125,6 +159,12 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <Lock size={16} />}
             {busy ? 'Verifying credentials…' : 'Continue'}
           </Button>
+
+          {has.webAuthn() && (
+            <Button type="button" variant="secondary" disabled={busy || !emailOk} onClick={submitPasskey}>
+              <Fingerprint size={16} /> Passkey
+            </Button>
+          )}
           <Button type="button" variant="ghost" disabled title="SSO is not configured yet (Phase 1b)">SSO not configured (Phase 1b)</Button>
         </>
       )}

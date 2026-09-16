@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/queue/jobs — enqueue new background job or run queue cycle */
 export async function POST(req: NextRequest) {
-  return withRoute({ op: 'queue.jobs.create', method: 'POST', permission: 'org.manage' }, req, async (ctx) => {
+  return withRoute<unknown>({ op: 'queue.jobs.create', method: 'POST', permission: 'org.manage' }, req, async (ctx) => {
     const body = await req.json();
 
     if (body.action === 'run_cycle') {

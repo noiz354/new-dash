@@ -145,8 +145,8 @@ export function NotificationsHub() {
     ? snapshot.notifications.map((n) => ({
         id: n.id,
         cls: 'WO' as Cls,
-        sev: n.sev,
-        kick: `LIVE SLA WATCH · ${n.sev} LIVE STREAM`,
+        sev: n.severity,
+        kick: `LIVE SLA WATCH · ${n.severity} LIVE STREAM`,
         time: new Date(n.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
         title: n.title,
         lines: [n.subtitle, `Snapshot: ${snapshot.snapshotAt.slice(11, 19)} WIB-lokal`],

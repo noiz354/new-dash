@@ -33,12 +33,15 @@ export function SlaCountdown({ startSec = 0, breached = false }: { startSec?: nu
 }
 
 /** Labor stopwatch (simulated until the time-clock slice ships). */
-export function LaborStopwatch({ startSec = 1 * 3600 + 42 * 60 + 18 }: { startSec?: number }) {
-  const [sec, setSec] = useState(startSec);
+export function LaborStopwatch({ startSec = 1 * 3600 + 42 * 60 + 18, initialSec, isRunning = true }: { startSec?: number; initialSec?: number; isRunning?: boolean }) {
+  // Kompat tampilan: initialSec alias startSec (dipakai halaman catalog/ui-patterns).
+  const base = initialSec ?? startSec;
+  const [sec, setSec] = useState(base);
   useEffect(() => {
+    if (!isRunning) return;
     const t = setInterval(() => setSec((s) => s + 1), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [isRunning]);
   const h = String(Math.floor(sec / 3600)).padStart(2, '0');
   const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
   const s = String(sec % 60).padStart(2, '0');

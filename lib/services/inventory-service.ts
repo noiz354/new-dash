@@ -100,7 +100,7 @@ export async function mutateStock(
   opts: { idempotencyKey?: string | null; requestId?: string } = {},
 ): Promise<PartRow> {
   if (input.qty <= 0) {
-    throw new DomainError('INVALID_QUANTITY', 'Mutation quantity must be positive', 422);
+    throw new DomainError(422, 'INVALID_QUANTITY', 'Mutation quantity must be positive');
   }
 
   const exec = async (tx: Tx): Promise<PartRow> => {
@@ -121,7 +121,8 @@ export async function mutateStock(
     switch (input.type) {
       case 'ISSUE':
         if (current.onHand < input.qty) {
-          throw new DomainError('INSUFFICIENT_STOCK', `Cannot issue ${input.qty} pcs: only ${current.onHand} on hand`, 422);
+          throw new DomainError(422, 'INSUFFICIENT_STOCK',
+          `Cannot issue ${input.qty} pcs: only ${current.onHand} on hand`);
         }
         newOnHand -= input.qty;
         break;
@@ -132,7 +133,8 @@ export async function mutateStock(
 
       case 'RESERVE':
         if (current.onHand - current.reserved < input.qty) {
-          throw new DomainError('INSUFFICIENT_AVAILABLE', `Cannot reserve ${input.qty} pcs: insufficient available stock`, 422);
+          throw new DomainError(422, 'INSUFFICIENT_AVAILABLE',
+          `Cannot reserve ${input.qty} pcs: insufficient available stock`);
         }
         newReserved += input.qty;
         break;
@@ -143,7 +145,7 @@ export async function mutateStock(
 
       case 'ADJUST':
         if (!input.reason?.trim()) {
-          throw new DomainError('REASON_REQUIRED', 'Inventory adjustment requires a mandatory business justification', 400);
+          throw new DomainError(400, 'REASON_REQUIRED', 'Inventory adjustment requires a mandatory business justification');
         }
         newOnHand = input.qty;
         break;
@@ -161,9 +163,8 @@ export async function mutateStock(
     // Record audit event
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: `PART_${input.type}`,
       entityType: 'part',
       entityId: input.sku,
@@ -186,5 +187,11 @@ export async function mutateStock(
 
   const key = opts.idempotencyKey;
   const hash = requestHash(input);
-  return withIdempotency(db, ctx.orgId, key, hash, async (tx) => exec(tx));
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, key, 'inventory.mutate', hash, async () => {
+      const body = await exec(tx);
+      return { status: 201, body };
+    });
+    return res.body;
+  });
 }

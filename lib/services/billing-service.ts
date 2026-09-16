@@ -128,9 +128,8 @@ export async function createCheckoutSession(
 
   await db.insert(auditEvents).values({
     organizationId: ctx.orgId,
-    actorId: ctx.userId,
-    actorName: ctx.userName,
-    actorRole: ctx.role,
+    actorUserId: ctx.userId,
+    actorName: ctx.name,
     action: 'BILLING_CHECKOUT_INITIATED',
     entityType: 'subscription',
     entityId: ctx.orgId,

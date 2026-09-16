@@ -67,7 +67,7 @@ const byPriorityThenDue = [
 
 export interface ListWoOpts {
   status?: string;
-  priority?: 'P1' | 'P2' | 'P3';
+  priority?: 'P1' | 'P2' | 'P3' | 'ALL';
   assetCode?: string;
   limit?: number;
   offset?: number;

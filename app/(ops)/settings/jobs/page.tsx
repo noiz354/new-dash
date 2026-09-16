@@ -174,7 +174,7 @@ export default function SettingsJobsPage() {
                 <tr key={j.id} className="hover:bg-surface-subtle">
                   <td className="p-3">
                     <span className="apex-id font-bold text-cobalt block">{j.id}</span>
-                    <Badge variant="outline" className="mt-0.5 text-[10px]">{j.type}</Badge>
+                    <Badge variant="hold" className="mt-0.5 text-[10px]">{j.type}</Badge>
                   </td>
                   <td className="p-3">
                     <strong className="text-ink block">{j.title}</strong>

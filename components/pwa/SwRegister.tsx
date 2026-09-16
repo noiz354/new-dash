@@ -22,18 +22,18 @@ export function SwRegister() {
         .register('/sw.js', { scope: '/' })
         .then((reg) => {
           if (cancelled) return;
-          mark('sw.registered', '1');
+          mark('sw.registered', 1);
           reg.addEventListener('updatefound', () => {
             const worker = reg.installing;
             if (!worker) return;
             worker.addEventListener('statechange', () => {
               if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-                mark('sw.update_available', '1');
+                mark('sw.update_available', 1);
               }
             });
           });
         })
-        .catch(() => mark('sw.register_failed', '1'));
+        .catch(() => mark('sw.register_failed', 1));
     };
 
     if (document.readyState === 'complete') register();

@@ -5,7 +5,7 @@
 import { and, asc, eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import { pmRules, workOrders } from '../../db/schema';
-import { TERMINAL_STATUSES } from '../../lib/domain/work-orders';
+import { WO_TERMINAL } from '../../lib/domain/work-orders';
 
 export interface RetentionDigest {
   organizationId: string;
@@ -46,7 +46,7 @@ export async function generateRetentionDigest(
     .where(
       and(
         eq(workOrders.organizationId, orgId),
-        notInArray(workOrders.status, [...TERMINAL_STATUSES]),
+        notInArray(workOrders.status, [...WO_TERMINAL]),
         isNotNull(workOrders.slaDueAt),
       ),
     )

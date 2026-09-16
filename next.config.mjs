@@ -1,9 +1,9 @@
 /**
  * Security headers (FP-03):
- * - CSP dalam mode REPORT-ONLY — pelanggaran dilaporkan ke /api/security/csp-report,
- *   ditriase minimal satu siklus sebelum ENFORCE (TASK-22). script-src/style-src
- *   memakai 'unsafe-inline' sementara (Next inline bootstrap + inline event handler
- *   di print pages); tightening via nonce/hash = fase lanjut.
+ * - CSP ENFORCE (TASK-22) setelah 1 siklus report-only + migrasi inline handler
+ *   print → components/print/PrintButton.tsx. 'unsafe-inline' tetap preset
+ *   untuk script bootstrap Next & style attribute sampai CSP nonce wave;
+ *   pelanggaran baru tetap dilaporkan via report-uri.
  * - Permissions-Policy default DITOLAK; geolocation=(self) dibuka untuk FP-10
  *   (stamp koordinat evidence); camera=(self) dibuka untuk FP-13 (barcode scan
  *   aset via BarcodeDetector — feature-detected, fallback manual).
@@ -13,7 +13,10 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   {
-    key: 'Content-Security-Policy-Report-Only',
+    // TASK-22: ENFORCE (inline print handler sudah dimigrasi ke komponen klien).
+    // 'unsafe-inline' tetap dipertahankan untuk script bootstrap Next + style
+    // attribute sampai wave nonce; report-uri tetap memantau blok baru.
+    key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",

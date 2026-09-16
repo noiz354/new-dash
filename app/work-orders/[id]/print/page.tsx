@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Printer, QrCode } from 'lucide-react';
+import { PrintButton } from '@/components/print/PrintButton';
 import { CANON } from '@/lib/canon';
 
 export function generateStaticParams() {
@@ -52,13 +53,10 @@ export default async function WorkOrderPrintPage({ params }: { params: Promise<{
           <Link href={`/work-orders/${id}`} className="text-xs font-semibold text-blue-700 flex items-center gap-1">
             <ArrowLeft size={14} /> Back to Work Order
           </Link>
-          <button
-            type="button"
-            onClick="window.print()"
+          <PrintButton
+            label="Print Travel Pack"
             className="h-8 px-3 rounded bg-black text-white text-xs font-bold flex items-center gap-1.5"
-          >
-            <Printer size={14} /> Print Travel Pack
-          </button>
+          />
         </div>
       </header>
 

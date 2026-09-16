@@ -180,3 +180,36 @@ function fetchWithTimeout(request, ms) {
     );
   });
 }
+
+/* ------------------------------------------------ push (TASK-27) ------- */
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { title: 'APEX Alert' }; }
+  const title = data.title ?? 'APEX Alert';
+  const options = {
+    body: data.body ?? '',
+    icon: data.icon ?? '/icons/icon-192.png',
+    badge: data.badge ?? '/icons/icon-192-maskable.png',
+    tag: data.tag ?? 'apex-push',
+    data: { url: data.url ?? '/' },
+    requireInteraction: false,
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url ?? '/';
+  event.waitUntil(
+    // Focus tab yang sudah terbuka ke URL target, atau buka baru.
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c && typeof c.focus === 'function') {
+          return c.focus().then((cc) => (cc && 'navigate' in cc ? cc.navigate(url) : clients.openWindow(url)));
+        }
+      }
+      return clients.openWindow(url);
+    }),
+  );
+});

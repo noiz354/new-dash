@@ -193,7 +193,7 @@ export default function UiPatternsGalleryPage() {
 
           <div className="border border-border-subtle rounded-lg p-4 bg-surface flex flex-col gap-1">
             <span className="apex-label-caps text-muted">Technician Labor Stopwatch</span>
-            <LaborStopwatch initialSec={6138} isRunning={true} />
+            <LaborStopwatch startSec={6138} isRunning={true} />
             <span className="text-[11px] text-pass font-medium">Running Clock: Marcus Kowalski</span>
           </div>
         </div>

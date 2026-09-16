@@ -40,6 +40,7 @@ export async function seedAll(db: Db): Promise<void> {
     { organizationId: ORG, entity: 'WO', year, nextVal: 910 },  // manual WO opens at 0910 (canon)
     { organizationId: ORG, entity: 'SR', year, nextVal: 895 },
     { organizationId: ORG, entity: 'PO', year, nextVal: 316 },
+    { organizationId: ORG, entity: 'PR', year, nextVal: 316 },
     { organizationId: ORG, entity: 'INS', year, nextVal: 1093 },
     { organizationId: ORG, entity: 'FND', year, nextVal: 189 },
   ]).onConflictDoNothing();

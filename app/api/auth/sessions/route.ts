@@ -21,8 +21,7 @@ export async function POST(req: NextRequest) {
     await db.insert(auditEvents).values({
       organizationId: ctx!.orgId,
       actorUserId: ctx!.userId,
-      actorName: ctx!.userName,
-      actorRole: ctx!.role,
+      actorName: ctx!.name,
       action: 'AUTH_SESSIONS_REVOKE_ALL',
       entityType: 'auth',
       entityId: ctx!.userId,

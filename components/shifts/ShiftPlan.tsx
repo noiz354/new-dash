@@ -228,7 +228,7 @@ export function ShiftPlan() {
             <h2 className="text-base font-semibold">Shift Handover Audit History</h2>
             <p className="text-xs text-muted">Full accountability trail of shift transitions, LOTO lockbox handoffs, and active timers.</p>
           </div>
-          <Badge variant="outline">AUDIT COMPLIANT</Badge>
+          <Badge variant="hold">AUDIT COMPLIANT</Badge>
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-border-subtle">

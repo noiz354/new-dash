@@ -52,8 +52,8 @@ const KNOWN_LINKED_WOS: Record<string, Partial<WoRow>> = {
     location: 'Central Utility Plant Floor 2',
     assetCode: 'AST-FIRE-002',
     priority: 'P2',
-    status: 'PENDING_DISPATCH',
-    statusLabel: 'PENDING DISPATCH',
+    status: 'DISPATCHED',
+    statusLabel: 'DISPATCHED (PENDING TECH)',
     tech: 'Sarah Al-Mansoor',
   },
   'WO-2026-0905': {
@@ -61,8 +61,8 @@ const KNOWN_LINKED_WOS: Record<string, Partial<WoRow>> = {
     location: 'Chiller Plant Room B-204',
     assetCode: 'AST-HVAC-001',
     priority: 'P2',
-    status: 'DRAFT',
-    statusLabel: 'DRAFT',
+    status: 'OPEN',
+    statusLabel: 'OPEN (DRAFT PLAN)',
     tech: 'Robert Langdon',
   },
   'WO-2026-0906': {

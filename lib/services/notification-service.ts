@@ -100,9 +100,8 @@ export async function sendVendorEscalation(
   // Write append-only record to audit trail
   await db.insert(auditEvents).values({
     organizationId: ctx.orgId,
-    actorId: ctx.userId,
-    actorName: ctx.userName,
-    actorRole: ctx.role,
+    actorUserId: ctx.userId,
+    actorName: ctx.name,
     action: 'VENDOR_ESCALATE_ALERT',
     entityType: 'vendor',
     entityId: input.vendorSlug,
@@ -114,6 +113,22 @@ export async function sendVendorEscalation(
       reason: input.reason,
     },
   });
+
+  // TASK-27 — SLA-P1 eskalasi memicu push ke OPT-IN recipients (precondition:
+  // reason mengindikasikan breach P1 / SLA imminent; teknisi yang meng-escalate
+  // menerima notifikasi yang sama agar konsisten dengan deep link).
+  if (input.reason?.includes('P1') || input.slaMinutesRemaining <= 30) {
+    try {
+      const { sendP1PushToUser } = await import('@/lib/push/push-service');
+      await sendP1PushToUser(ctx.orgId, ctx.userId, {
+        title: `[P1] ${input.vendorName} — ${input.workOrderNumber}`,
+        body: `SLA breach: ${input.reason}. ${input.slaMinutesRemaining}m remaining. Tanggung jawab: ${input.vendorName}.`,
+        url: `/work-orders/${input.workOrderNumber}`,
+      });
+    } catch (err) {
+      console.warn('[escalate] P1 push fanout failed (non-blocking):', (err as Error)?.message);
+    }
+  }
 
   return { status: 'queued', messageId };
 }
