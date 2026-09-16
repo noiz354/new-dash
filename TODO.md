@@ -357,6 +357,19 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [ ] Mobile: site picker (ME-7), FAIL validation rule (ME-8), Modbus fail fallback (ME-10), pinch-zoom decision (ME-12)
 - [ ] Dependensi kanon belum diputus: WO 0894/8802, LOTO #4092/#M-44, INS-412 65/50, PART-SEAL-8821, jam Shift A, GPS Kalimantan
 
+## Backlog Step 2 — Batch 2 Aset & Resource (triase PROMOTE, detail: `docs/triase-batch-2-aset.md`)
+
+> Hasil: DONE 50, PROMOTE 45, (U) 11, USANG 0 dari 106 item `docs/exp-check/part-aset.md` vs HEAD 360d525.
+
+- [ ] Asset Registry: flow + konfirmasi Decommission, flow + modal Transfer Loc, modal Register New Asset + POST, Batch QR Print massal/satuan, export async job, sinkronisasi filter/pagination ke query params (`?q=`, kalibrasi `Page 1 of 308`)
+- [ ] Asset Detail: sub-tab IoT Diagnostics / PM Schedules (12) / Compliance & Docs, Dossier PDF 360°, export full ledger 421 + hash, guardrail Issue-to-WO saat SKU DEFICIT, modal Quick Dispatch + Log Inspection, modal Add SKU to BOM, flow +PR Request baris kritis, flow +Quick PO, warehouse scope toggle, pill filter timeline, badge telemetri STALE/reconnect
+- [ ] Facilities: kontrak JSON `GET /api/v1/locations/:id` + `?locationId=` (ganti fragment HTMX), prefill Dispatch Room Audit / Log Defect via `?locationId=`, tampilan hasil `TMPL-HVAC-CHL-02`, persist polygon/rekalibrasi, Print Badge QR ruangan, link `WO-2026-0881`, pesan gagal hx-get + Retry + tile STALE + MODEL MISMATCH, unifikasi label hitungan (8 AST vs 4 Linked vs Showing 4 of 8)
+- [ ] Inventory: POST mutasi idempoten (`Idempotency-Key`, kini lokal), verifikasi PIN approver nyata (kini hardcoded `2468`), approval khusus saat available → 0, rute detail transfer/adjustment, prefill Draft PO (`?sku=`), link PM-PLN-0104
+- [ ] Purchasing: POST nyata authorize/GRN (kini simulasi fase), modal + validasi Create PR/PO, backend Flag Discrepancy / Reject / RFQ, guard mismatch qty + envelope tak cukup (server-side), rute detail GRN-9941, job export CSV/Audit + print batch
+- [ ] Vendors: flow + modal Onboard vendor/MSA + approval, flow + modal Initiate Amendment, modal Dispatch prefill `?vendorId=`, countdown renewal single-source (312d vs 288d), aksi Commendation, dossier + export compliance, footer Sync Oracle ERP gagal + Retry, viewer MSA PDF gagal + unduh langsung
+- [ ] (U) kedalaman belum terverifikasi — verifikasi saat implementasi: prefill WO/PM dari drawer registry, tombol copy tag + fallback, referensi gantung WO/PO/TO/ADJ, link simbol CHILLER #04, klik node tree spasial, polling feed inventory + badge hash, Print QR rak-bin, Expiry Ledger inline vs halaman, empty state direktori, `tel:` Direct Ring
+- [ ] Dependensi kanon belum diputus: WO seal ganda, OEM Trane vs Daikin, skor 68/88/88,4, harga PART-SEAL-8821, bin CRIB-B vs SUB-LCK-4B, MSA 312d vs 288d, label WO-0894 vs WO-2026-0894
+
 ### Definition of Done per slice (WAJIB semua)
 
 1. `npm run typecheck` hijau · `npm test` hijau (test baru untuk domain/service yang ditambah) · `npm run build` hijau (0 log level error)

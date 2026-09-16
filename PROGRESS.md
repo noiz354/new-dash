@@ -138,3 +138,11 @@
 - Sumber `docs/exp-check/part-operasi.md` (73 item) vs HEAD 4121970; detail tabel: `docs/triase-batch-1-operasi.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 1.
 - Pola: layar WO/mobile/findings sebagian besar DONE (rute + komponen inti ada); SR triage paling berlubang (10 PROMOTE).
 - (U) = kedalaman belum terverifikasi: WO-3, SR-4/6/12, PM-1/7, FI-9, ME-3/6 — verifikasi saat implementasi backlog.
+
+### Step 2 batch 2 — triase aset & resource (DONE 50 / PROMOTE 45 / (U) 11, USANG 0)
+
+- Sumber `docs/exp-check/part-aset.md` (106 item, 6 layar) vs HEAD 360d525; detail tabel: `docs/triase-batch-2-aset.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 2.
+- Pola berulang: dialog/dokumen/validasi client-side KAYA (banyak DONE — dossier live, GeoJSON export, mutation desk, authorize dialog, MSA lock), persist backend + guard server-side + rute detail bernomor (GRN/TRF/ADJ) = PROMOTE. Tidak ada USANG.
+- Sorotan DONE baru: viewer dokumen `documents/[docId]`, BIM viewer, prefill WO/inspeksi via `?asset=`, GeoJSON export + "geometries unseeded" jujur, dialog Add Sub-Location/Reassign/Log Defect/Polygon, Receive Stock tervalidasi, SKU detail, tab 3-Way Match, kunci dispatch MSA-expired.
+- Sorotan PROMOTE terbesar: Asset Detail (10: sub-tab iot/pm/docs, dossier PDF, ledger 421, guardrail deficit, modal-modalan BOM/PR/PO), Facilities (kontrak JSON ganti HTMX, persist polygon, unifikasi hitungan), Inventory (POST idempoten + PIN nyata — keamanan), Purchasing (POST nyata + guard server-side), Vendors (onboard/amendment flows).
+- (U) = 11 item kedalaman belum terverifikasi — verifikasi saat implementasi backlog.
