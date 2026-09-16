@@ -18,6 +18,8 @@ export interface AuditRow {
   before: unknown;
   after: unknown;
   requestId: string | null;
+  /** Hash-chain entry yang tercatat server-side (SHA-256 hex) — null bila baris legacy pra-chain. */
+  entryHash: string | null;
 }
 
 export interface AuditPage {
@@ -94,6 +96,7 @@ export async function listAuditEvents(
       before: r.before,
       after: r.after,
       requestId: r.requestId,
+      entryHash: r.entryHash,
     })),
     counts: grouped.map((g) => ({ entityType: g.entityType, total: g.total })),
     total: countRes[0]?.total ?? 0,
@@ -126,6 +129,7 @@ export async function getAuditEvent(
     before: r.before,
     after: r.after,
     requestId: r.requestId,
+    entryHash: r.entryHash,
   };
 }
 

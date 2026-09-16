@@ -25,7 +25,14 @@ import { cn } from '@/lib/utils';
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { enqueueOutbox } from '@/lib/offline/outbox';
 import { formatCoords, getCurrentCoords, type DeviceCoords } from '@/lib/platform/geolocation';
+import { haptic } from '@/lib/platform/haptics';
 import { prepareEvidence } from '@/lib/media/evidence';
+import {
+  hasBarcodeDetector,
+  normalizeScannedAssetCode,
+  scanFromVideo,
+  supportedFormats,
+} from '@/lib/media/barcode';
 import { FieldToasts, useFieldToasts } from './toasts';
 
 type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -54,18 +61,95 @@ export function FindingCapture() {
     return () => { live = false; };
   }, []);
 
+  // Cleanup kamera QR saat unmount.
+  useEffect(() => () => stopScan(), []);
+
   // Bebaskan object URL saat komponen unmount / foto diganti.
   useEffect(() => () => photoInfo?.release(), [photoInfo]);
 
-  const simulateScan = () => {
-    setScanning(true);
-    setTimeout(() => {
-      setScanning(false);
-      setAsset('AST-HVAC-004');
-      setZone('Basement Mech Room B-204 · Trane CVHE Chiller #04');
-      push(true, 'Asset Selected', 'AST-HVAC-004 filled in (demo entry — camera barcode scan ships with the BarcodeDetector wave).');
-    }, 800);
+  // TASK-19 — BarcodeDetector NYATA (feature-detected). Bila API kamera/
+  // detektor tidak tersedia atau izin ditolak → tombol memberi tahu jujur.
+  const [scanError, setScanError] = useState<string | null>(null);
+  const videoWrapRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanAbortRef = useRef<AbortController | null>(null);
+
+  const stopScan = () => {
+    scanAbortRef.current?.abort();
+    scanAbortRef.current = null;
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (videoWrapRef.current) videoWrapRef.current.innerHTML = '';
+    setScanning(false);
   };
+
+  const startScan = async () => {
+    setScanError(null);
+    if (!hasBarcodeDetector()) {
+      push(false, 'Scanner unavailable', 'BarcodeDetector not supported in this browser — enter the asset tag manually.');
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      push(false, 'Camera unavailable', 'This device exposes no camera stream — enter the asset tag manually.');
+      return;
+    }
+
+    setScanning(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      streamRef.current = stream;
+
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.className = 'w-full rounded border-2 border-slate900 aspect-[4/3] object-cover bg-black';
+      if (videoWrapRef.current) {
+        videoWrapRef.current.innerHTML = '';
+        videoWrapRef.current.appendChild(video);
+      } else {
+        stopScan();
+        return;
+      }
+      video.srcObject = stream;
+      await video.play().catch(() => undefined);
+
+      const formats = await supportedFormats();
+      scanAbortRef.current = new AbortController();
+      const timeout = setTimeout(() => scanAbortRef.current?.abort(), 45_000);
+
+      const hit = await scanFromVideo(video, scanAbortRef.current.signal, { formats });
+      clearTimeout(timeout);
+      stopScan();
+
+      if (hit) {
+        const code = normalizeScannedAssetCode(hit.rawValue);
+        setAsset(code);
+        haptic.pass();
+        push(true, 'Barcode decoded', `Format ${hit.format} · ${code} — verify against the physical tag before submitting.`);
+      } else {
+        push(false, 'Scan ended', 'No confirmed code (timeout/cancelled) — aim at the tag again or type it manually.');
+      }
+    } catch (err) {
+      stopScan();
+      const name = err instanceof DOMException ? err.name : '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        setScanError('Camera permission denied — enter the asset tag manually.');
+        push(false, 'Camera denied', 'Grant camera permission to scan, or type the asset tag manually.');
+      } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+        setScanError('No usable camera found — enter the asset tag manually.');
+        push(false, 'No camera', 'No usable camera on this device — type the asset tag manually.');
+      } else {
+        setScanError('Camera failed to start — enter the asset tag manually.');
+        push(false, 'Camera failed', err instanceof Error ? err.message : 'Unknown camera error.');
+      }
+    }
+  };
+
+  // Cleanup kamera saat komponen unmount.
 
   const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -167,12 +251,23 @@ export function FindingCapture() {
               <span className="text-xs font-bold uppercase tracking-wider text-muted">Target Asset</span>
               <button
                 type="button"
-                onClick={simulateScan}
-                className="text-xs font-bold text-cobalt flex items-center gap-1 active:scale-95"
+                onClick={scanning ? stopScan : startScan}
+                disabled={!hasBarcodeDetector() && !scanning}
+                className="text-xs font-bold text-cobalt flex items-center gap-1 active:scale-95 disabled:text-muted"
+                title={!hasBarcodeDetector() ? 'BarcodeDetector not supported — type the tag manually' : undefined}
               >
-                <ScanLine size={14} /> {scanning ? 'Scanning…' : 'Scan Barcode / QR'}
+                <ScanLine size={14} /> {scanning ? 'Stop Scan' : 'Scan Barcode / QR'}
               </button>
             </div>
+            {(scanning || scanError) && (
+              <>
+                <div ref={videoWrapRef} aria-live="polite" />
+                {scanError && <p className="text-xs font-semibold text-fail" role="alert">{scanError}</p>}
+                {scanning && (
+                  <p className="text-xs text-muted">Aim at the asset tag — Code-128/QR/Data Matrix. Auto-stops after 45s.</p>
+                )}
+              </>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-[11px] font-semibold text-muted block mb-1">Asset Tag</label>

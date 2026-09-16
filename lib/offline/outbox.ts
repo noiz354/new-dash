@@ -166,7 +166,28 @@ export async function enqueueOutbox(
   };
   items.push(record);
   await save(items);
+  // FP-17/TASK-25: jadwalkan background flush (no-op di browser tanpa SyncManager)
+  // + perlihatkan badge pending. Best-effort — flush fallback tetap 'online' event.
+  void syncHelpers()
+    .then((h) => {
+      h.register();
+      h.badge(items.filter((i) => i.status === 'QUEUED' || i.status === 'FAILED').length);
+    })
+    .catch(() => undefined);
   return record;
+}
+
+/** Lazy-import bg-sync agar module ini tetap ringan/non-SW buat unit test. */
+async function syncHelpers() {
+  const { registerOutboxSync, updateOutboxBadge } = await import('./bg-sync');
+  return {
+    register: () => {
+      void registerOutboxSync();
+    },
+    badge: (n: number) => {
+      void updateOutboxBadge(n);
+    },
+  };
 }
 
 export interface FlushOptions {
@@ -236,10 +257,19 @@ export async function flushOutbox(opts: FlushOptions = {}): Promise<{ synced: nu
     await save(items);
   }
 
+  // Badge mengikuti sisa pending nyata (FP-17b).
+  void syncHelpers()
+    .then((h) => h.badge(pending))
+    .catch(() => undefined);
+
   return { synced, failed, pending };
 }
 
 export async function clearSyncedOutbox(): Promise<void> {
   const items = await load();
-  await save(items.filter((i) => i.status !== 'SYNCED'));
+  const rest = items.filter((i) => i.status !== 'SYNCED');
+  await save(rest);
+  void syncHelpers()
+    .then((h) => h.badge(rest.filter((i) => i.status === 'QUEUED' || i.status === 'FAILED').length))
+    .catch(() => undefined);
 }

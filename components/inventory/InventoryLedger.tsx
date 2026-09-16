@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
 import { downloadText } from '@/lib/download';
+import { useWindow } from '@/lib/ui/useWindow';
 
 interface Sku {
   id: string; cat: string; name: string; spec: string; bin: string; hub: string;
@@ -124,6 +125,10 @@ export function InventoryLedger() {
     mtab === 'All' || (mtab === 'Receipts' && m.kind === 'IN') || (mtab === 'WO Out' && m.kind === 'OUT') ||
     (mtab === 'Adjust' && m.kind === 'ADJ') || (mtab === 'Transfers' && m.kind === 'TRF')
   );
+
+  // TASK-21/FP-21: windowing movement ledger — aktif hanya saat >60 item
+  // (log production bisa ratusan entry per hari); fallback render penuh di bawah.
+  const movWin = useWindow(movFiltered, { rowHeight: 76, threshold: 60, initialHeight: 480 });
 
   const exportCsv = () => {
     const head = 'sku,category,name,bin,hub,on_hand,reserved,available,min_rop,status';
@@ -348,8 +353,13 @@ export function InventoryLedger() {
                 </button>
               ))}
             </div>
-            <ol className="flex flex-col gap-2">
-              {movFiltered.map((m, i) => (
+            <ol
+              ref={movWin.containerRef as React.RefObject<HTMLOListElement>}
+              onScroll={movWin.onScroll}
+              className="flex flex-col gap-2 overflow-y-auto max-h-[560px]"
+            >
+              {movWin.topPad > 0 && <li style={{ height: movWin.topPad }} aria-hidden="true" />}
+              {movWin.items.map((m, i) => (
                 <li key={`${m.doc}-${i}`} className="rounded-lg border border-border-subtle bg-card p-3 flex flex-col gap-1 text-[13px]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={cn('apex-id font-bold', m.kind === 'IN' || m.kind === 'TRF' ? 'text-pass' : m.kind === 'ADJ' ? 'text-warn' : 'text-fail')}>{m.delta}</span>
@@ -368,6 +378,7 @@ export function InventoryLedger() {
                   <p className="text-muted text-xs">{m.detail}</p>
                 </li>
               ))}
+              {movWin.bottomPad > 0 && <li style={{ height: movWin.bottomPad }} aria-hidden="true" />}
               {movFiltered.length === 0 && <li className="text-sm text-muted p-2">No movements in this bucket yet.</li>}
             </ol>
           </div>

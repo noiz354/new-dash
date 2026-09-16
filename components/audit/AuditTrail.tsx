@@ -44,7 +44,9 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { downloadText } from '@/lib/download';
-import type { AuditRow } from '@/lib/services/audit-service';
+import { ApiError, apiFetch } from '@/lib/api/client';
+import { useWindow } from '@/lib/ui/useWindow';
+import type { AuditRow, HashChainVerificationResult } from '@/lib/services/audit-service';
 
 /**
  * System Audit Trail & Immutable Event Ledger
@@ -54,10 +56,10 @@ import type { AuditRow } from '@/lib/services/audit-service';
  * - Advanced Filter Toolbar (Search with ⌘/, Date Picker, Entity, Action, Principal, Severity, Quick Scopes)
  * - Tri-Pane Split Layout (7/12 Master Activity Feed, 5/12 State Transition & Diff Inspector)
  * - Formatted Diff (Field-by-Field old vs new) vs Raw JSON toggle
- * - Authentication & Session Envelope (RFID, IP VPN, User Agent, MFA FIDO2)
- * - Cryptographic Proof Bar (SHA-256 Copy Full Hash, Merkle Root Confirmation)
+ * - Authentication & Session Envelope (RFID, IP VPN, User Agent, MFA FIDO2 — demo metadata)
+ * - Cryptographic Proof Bar — server entry hash (SHA-256) bila tercatat; tidak ada hash klien palsu
  * - Forensic Actions: Download Signed Proof, Rollback Simulation (dry-run), Flag Review
- * - Merkle Forest Root Status Widget (Sync node, consensus time, visual segments)
+ * - Ledger Integrity Widget — state hanya dari POST /api/audit-trail/verify-chain (on demand)
  * - Compliance PDF Report generation & CSV/JSON export
  */
 
@@ -129,27 +131,11 @@ function fmtTs(iso: string): string {
   }
 }
 
-/** Generates deterministic SHA-256 style hash for forensic representation */
-function getPseudoHash(seed: string | number): string {
-  const str = String(seed);
-  let h1 = 0xdeadbeef;
-  let h2 = 0x41c64e6d;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  const part1 = (h1 >>> 0).toString(16).padStart(8, '0');
-  const part2 = (h2 >>> 0).toString(16).padStart(8, '0');
-  const part3 = ((h1 ^ 0xa5a5a5a5) >>> 0).toString(16).padStart(8, '0');
-  const part4 = ((h2 ^ 0x5a5a5a5a) >>> 0).toString(16).padStart(8, '0');
-  const part5 = ((h1 ^ h2) >>> 0).toString(16).padStart(8, '0');
-  const part6 = ((h1 + h2) >>> 0).toString(16).padStart(8, '0');
-  const part7 = ((h1 * 3) >>> 0).toString(16).padStart(8, '0');
-  return `sha256:${part1}${part2}${part3}${part4}${part5}${part6}${part7}`.slice(0, 71);
-}
+/**
+ * TASK-20: pseudo-hash klien DIHAPUS. Hash yang ditampilkan berasal dari server
+ * (`entryHash` per baris / `verify-chain` untuk root). Baris tanpa hash tersimpan
+ * (legacy pra-chain / mode hash-opsional) dirender jujur sebagai "—", bukan palsu.
+ */
 
 interface ProcessedEvent {
   id: number;
@@ -190,7 +176,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     description: 'Approved CapEx emergency procurement for Chiller mechanical shaft seal ($2,900.00)',
     ip: '10.14.8.42',
     terminal: 'HVC-ENG-02',
-    hash: 'sha256:7f4c9a8820d88b42e47c1a93b4ff0291cc8823b199042b91024cd',
+    hash: '', // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
     before: {
       approval_stage: 'PENDING_DEPT_MGR',
       authorized_by: null,
@@ -230,7 +216,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     description: 'Work order status shifted from CREATED to DISPATCHED; technician assigned',
     ip: '10.14.12.88',
     terminal: 'HVC-TAB-04 (Mobile)',
-    hash: 'sha256:3a1b8e49c0172bfda829c3f1947264a9381e9f182c401928bc172d',
+    hash: '', // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
     before: { status: 'CREATED', assignee: null },
     after: { status: 'DISPATCHED', assignee: 'Marcus Kowalski' },
     requestId: 'req_wo_dispatch_0894_94811',
@@ -258,7 +244,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     description: 'Chiller #4 ultrasonic probe triggered critical defect flag (refrigerant leak 18.4 ppm threshold breach)',
     ip: '10.14.0.8',
     terminal: 'Broker: SCADA-BROKER-01',
-    hash: 'sha256:e92d41ab0248c891349f9021948572183cfa01824728d192849102',
+    hash: '', // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
     before: { condition: 'NOMINAL', ppm: 4.2 },
     after: { condition: 'CRITICAL_DEFECT', ppm: 18.4, auto_flag: true },
     requestId: 'req_telemetry_threshold_ast004',
@@ -286,7 +272,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     description: 'GRN received: +100 pcs added to CRIB-B / Bay 01 via PO-2026-0298 dock barcode scan',
     ip: '10.14.22.15',
     terminal: 'DCK-SCN-02',
-    hash: 'sha256:88a10cbfa019283746192847192837461928374619284719283746',
+    hash: '', // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
     before: { on_hand_qty: 45 },
     after: { on_hand_qty: 145, last_po: 'PO-2026-0298' },
     requestId: 'req_grn_dock_scan_0298',
@@ -314,7 +300,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     description: 'Updated spend limit policy: elevated parts procurement cap from $250.00 to $500.00',
     ip: '10.14.1.2',
     terminal: 'ADM-NUSA-01',
-    hash: 'sha256:bb401f827361928374619284719283746192847192837461928374',
+    hash: '', // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
     before: { max_parts_cap: 250.0 },
     after: { max_parts_cap: 500.0 },
     requestId: 'req_rbac_policy_cap_update',
@@ -341,7 +327,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     description: 'Substation thermal bus-bar meter zero-point calibrated (Tolerance 0.05°C Verified)',
     ip: '10.14.18.55',
     terminal: 'SUB-STN-01',
-    hash: 'sha256:44dc9283746192847192837461928471928374619283746192847',
+    hash: '', // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
     before: { status: 'DUE_CALIBRATION', drift: 0.18 },
     after: { status: 'CALIBRATED_NOMINAL', drift: 0.02 },
     requestId: 'req_calib_sub_elec012',
@@ -360,7 +346,8 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
 ];
 
 function processDbRow(r: AuditRow): ProcessedEvent {
-  const hash = getPseudoHash(`${r.id}-${r.action}-${r.entityId}`);
+  // Hash nyata dari server (SHA-256 chain entry). '' bila belum tercatat.
+  const hash = r.entryHash ?? '';
   const initials = r.actorName
     ? r.actorName
         .split(' ')
@@ -468,6 +455,26 @@ export function AuditTrail({
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [verifyRootOpen, setVerifyRootOpen] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<HashChainVerificationResult | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  // TASK-20: verifikasi chain NYATA via server — tidak ada lagi angka fabrikasi.
+  const runVerifyChain = async (open: boolean) => {
+    setVerifyRootOpen(open);
+    if (!open) return;
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const res = await apiFetch<HashChainVerificationResult>('/api/audit-trail/verify-chain', { method: 'POST' });
+      setVerifyResult(res);
+    } catch (err) {
+      setVerifyResult(null);
+      setVerifyError(err instanceof ApiError ? `${err.message} (${err.code})` : 'Verification request failed.');
+    } finally {
+      setVerifying(false);
+    }
+  };
   const [rollbackOpen, setRollbackOpen] = useState(false);
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagReason, setFlagReason] = useState('Suspicious Privilege Escalation');
@@ -546,6 +553,10 @@ export function AuditTrail({
   const shown = filtered.slice(page * pageSize, page * pageSize + pageSize);
   const sel = allEvents.find((r) => r.id === selId) ?? shown[0] ?? allEvents[0];
 
+  // TASK-21/FP-21: windowing feed — aktif hanya saat >60 card (pageSize 100 + dataset besar).
+  // Row card feed ber-tinggi seragam (~150px); fallback render penuh di bawah threshold.
+  const feedWin = useWindow(shown, { rowHeight: 150, threshold: 60, initialHeight: 620 });
+
   const reset = () => {
     setQ('');
     setEntity('All Entities');
@@ -597,9 +608,10 @@ export function AuditTrail({
   };
 
   const downloadSignedProof = (e: ProcessedEvent) => {
+    // TASK-20: hanya nilai nyata — tanpa block height / root digest fabrikasi.
     const proofDoc = {
-      manifest: 'APEX_OPS_CRYPTOGRAPHIC_PROOF_V4',
-      tenant_id: orgId || 'APX-NUSA-01',
+      manifest: 'APEX_OPS_EVENT_PROOF_V5',
+      tenant_id: orgId,
       event_id: e.id,
       timestamp_utc: fmtTs(e.ts),
       action: e.action,
@@ -607,16 +619,13 @@ export function AuditTrail({
         type: e.entityType,
         key: e.entityId,
       },
-      cryptographic_hash: e.hash,
-      merkle_proof: {
-        block_height: 892104,
-        proof_index: 48102,
-        leaf_valid: true,
-        root_digest: 'sha256:9a01f7bb84c1928374619284719283746192847192837461928374619284719',
-        consensus_node: 'NUSA-LEDGER-A',
-      },
+      server_entry_hash: e.hash || null,
+      chain_root_digest: verifyResult?.rootHash ?? null,
+      chain_verified_at: verifyResult?.verificationTimestamp ?? null,
+      chain_status: verifyResult ? (verifyResult.valid ? 'VALID' : `TAMPERED@event#${verifyResult.tamperedEventId}`) : 'NOT_VERIFIED_THIS_SESSION',
       actor_envelope: e.session,
-      verification_status: 'AUTHENTIC_VERIFIED',
+      verification_status: e.hash ? 'HASH_RECORDED' : 'NO_CHAIN_HASH (fallback/demo row)',
+      verification_note: 'Verify the full chain server-side via POST /api/audit-trail/verify-chain.',
     };
     downloadFile(
       `audit-proof-${e.entityId || e.id}.json`,
@@ -631,13 +640,16 @@ export function AuditTrail({
     push(false, 'Security Flag Recorded', `Event #${sel.id} (${sel.entityId}) flagged for [${flagReason}].`);
   };
 
+  // Counts dihitung dari event yang benar-benar termuat (server + fallback demo) — tanpa angka fabrikasi.
+  const scopeCount = (label: string) =>
+    label === 'All Logs' ? allEvents.length : allEvents.filter((e) => e.entityType === label).length;
   const scopes = [
-    { n: 'All Logs', c: Math.max(total, allEvents.length, 184920) },
-    { n: 'Work Orders', c: 42100 },
-    { n: 'Purchasing & POs', c: 18200 },
-    { n: 'Asset State', c: 12400 },
-    { n: 'Security & Auth', c: 4800 },
-    { n: 'Inventory', c: 3100 },
+    { n: 'All Logs', c: scopeCount('All Logs') },
+    { n: 'Work Orders', c: scopeCount('Work Orders') },
+    { n: 'Purchasing & POs', c: scopeCount('Purchasing & POs') },
+    { n: 'Asset State', c: scopeCount('Asset State') },
+    { n: 'Security & Auth', c: scopeCount('Security & Auth') },
+    { n: 'Inventory', c: scopeCount('Inventory') },
   ];
 
   return (
@@ -742,8 +754,8 @@ export function AuditTrail({
                     <span className="font-semibold">{dateFilter}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">Verified Leaf Nodes:</span>
-                    <span className="font-mono font-bold text-pass-ink">184,920 Blocks</span>
+                    <span className="text-muted">Server Rows Loaded:</span>
+                    <span className="font-mono font-bold text-pass-ink">{total.toLocaleString('en-US')} events</span>
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
@@ -768,7 +780,7 @@ export function AuditTrail({
             </Dialog>
 
             {/* Verify Cryptographic Root Dialog */}
-            <Dialog open={verifyRootOpen} onOpenChange={setVerifyRootOpen}>
+            <Dialog open={verifyRootOpen} onOpenChange={runVerifyChain}>
               <DialogTrigger asChild>
                 <Button className="h-9 gap-1.5 text-xs bg-cobalt-deep hover:bg-cobalt text-white">
                   <CheckCircle2 size={14} className="text-pass" /> Verify Cryptographic Root
@@ -776,38 +788,58 @@ export function AuditTrail({
               </DialogTrigger>
               <DialogContent className="max-w-lg">
                 <DialogTitle className="flex items-center gap-2">
-                  <ShieldCheck className="text-pass" size={20} /> Merkle Forest Consensus Verified
+                  {verifyResult?.valid ? (
+                    <ShieldCheck className="text-pass" size={20} />
+                  ) : (
+                    <ShieldAlert className={verifyResult && !verifyResult.valid ? 'text-fail' : 'text-warn'} size={20} />
+                  )}{' '}
+                  Hash-Chain Verification (server)
                 </DialogTitle>
                 <DialogDescription>
-                  Cryptographic validation confirms the append-only ledger has not been tampered with.
+                  Full SHA-256 chain recomputed over all {orgId}-scoped ledger events — on request, no client-side claims.
                 </DialogDescription>
-                <div className="space-y-2 text-xs font-mono my-2">
-                  <div className="p-2.5 rounded bg-surface border border-border-subtle flex flex-col gap-1">
-                    <span className="text-muted">Merkle Root Hash:</span>
-                    <span className="text-cobalt-deep font-bold break-all">
-                      9a01f7bb84c19283746192847192837461928471928374619284719283746192
-                    </span>
+                {verifying && (
+                  <p className="text-xs font-mono text-muted py-6 text-center" role="status">
+                    Recomputing chain server-side…
+                  </p>
+                )}
+                {verifyError && (
+                  <div className="p-2.5 rounded bg-fail-bg border border-fail text-xs font-mono text-fail-ink my-2" role="alert">
+                    {verifyError}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2.5 rounded bg-surface border border-border-subtle">
-                      <span className="text-muted block">Block Height:</span>
-                      <span className="font-bold text-body">#892,104</span>
+                )}
+                {!verifying && verifyResult && (
+                  <div className="space-y-2 text-xs font-mono my-2">
+                    <div className="p-2.5 rounded bg-surface border border-border-subtle flex flex-col gap-1">
+                      <span className="text-muted">Root Hash (SHA-256 chain tip):</span>
+                      <span className="text-cobalt-deep font-bold break-all">{verifyResult.rootHash}</span>
                     </div>
-                    <div className="p-2.5 rounded bg-surface border border-border-subtle">
-                      <span className="text-muted block">Hash Mismatches:</span>
-                      <span className="font-bold text-pass-ink">0 (Clean Chain)</span>
+                    <div className="p-2.5 rounded bg-surface border border-border-subtle flex flex-col gap-1">
+                      <span className="text-muted">Genesis Hash (org-scoped):</span>
+                      <span className="text-body break-all">{verifyResult.genesisHash}</span>
                     </div>
-                    <div className="p-2.5 rounded bg-surface border border-border-subtle">
-                      <span className="text-muted block">Consensus Node:</span>
-                      <span className="font-bold text-body">NUSA-LEDGER-A</span>
-                    </div>
-                    <div className="p-2.5 rounded bg-surface border border-border-subtle">
-                      <span className="text-muted block">Consensus Latency:</span>
-                      <span className="font-bold text-pass-ink">1.42s (100% Synced)</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2.5 rounded bg-surface border border-border-subtle">
+                        <span className="text-muted block">Events Verified:</span>
+                        <span className="font-bold text-body">{verifyResult.verifiedCount.toLocaleString('en-US')}</span>
+                      </div>
+                      <div className="p-2.5 rounded bg-surface border border-border-subtle">
+                        <span className="text-muted block">Chain Status:</span>
+                        <span className={cn('font-bold', verifyResult.valid ? 'text-pass-ink' : 'text-fail')}>
+                          {verifyResult.valid ? 'VALID — no mismatch' : `TAMPERED @ event #${verifyResult.tamperedEventId}`}
+                        </span>
+                      </div>
+                      <div className="p-2.5 rounded bg-surface border border-border-subtle col-span-2">
+                        <span className="text-muted block">Verified At (server clock):</span>
+                        <span className="font-bold text-body">{new Date(verifyResult.verificationTimestamp).toLocaleString('id-ID')}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex justify-end pt-2">
+                )}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="ghost" onClick={() => runVerifyChain(true)} disabled={verifying}>
+                    Re-run
+                  </Button>
                   <Button onClick={() => setVerifyRootOpen(false)}>Done</Button>
                 </div>
               </DialogContent>
@@ -827,7 +859,7 @@ export function AuditTrail({
               </span>
               <div className="flex items-baseline gap-1 mt-1">
                 <span className="text-2xl font-bold font-display text-ink tabular-nums">
-                  {Math.max(total, 184920).toLocaleString('en-US')}
+                  {total.toLocaleString('en-US')}
                 </span>
               </div>
             </div>
@@ -837,9 +869,9 @@ export function AuditTrail({
           </div>
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border-subtle text-[11px]">
             <span className="text-pass-ink font-semibold flex items-center gap-1">
-              <Activity size={12} /> +14.2% MoM
+              <Activity size={12} /> {truncated ? 'Window truncated — more on server' : `${allEvents.length} loaded in view`}
             </span>
-            <span className="text-muted">100% Ingestion Rate</span>
+            <span className="text-muted font-mono">{orgId}</span>
           </div>
         </div>
 
@@ -873,19 +905,21 @@ export function AuditTrail({
                 Tamper-Proof Integrity
               </span>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-2xl font-bold font-display text-pass-ink tabular-nums">100%</span>
-                <span className="text-xs font-medium text-muted">Verified</span>
+                <span className={cn('text-2xl font-bold font-display tabular-nums', verifyResult?.valid === false ? 'text-fail' : 'text-pass-ink')}>
+                  {verifyResult ? (verifyResult.valid ? '100%' : 'FAIL') : '—'}
+                </span>
+                <span className="text-xs font-medium text-muted">{verifyResult ? (verifyResult.valid ? 'Verified clean' : 'Mismatch found') : 'Not verified'}</span>
               </div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-pass-bg flex items-center justify-center text-pass">
+            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', verifyResult?.valid === false ? 'bg-fail-bg text-fail' : 'bg-pass-bg text-pass')}>
               <ShieldCheck size={18} />
             </div>
           </div>
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-border-subtle text-[11px]">
             <span className="text-pass-ink font-semibold font-mono flex items-center gap-1">
-              <Check size={12} /> Block #892,104
+              <Check size={12} /> {verifyResult ? `${verifyResult.verifiedCount.toLocaleString('en-US')} events checked` : 'Run Verify Cryptographic Root'}
             </span>
-            <span className="text-muted font-mono">0 Hash Mismatch</span>
+            <span className="text-muted font-mono">{verifyResult ? (verifyResult.valid ? '0 Hash Mismatch' : `tamper@#${verifyResult.tamperedEventId}`) : 'on demand'}</span>
           </div>
         </div>
 
@@ -1086,9 +1120,16 @@ export function AuditTrail({
               </div>
             </div>
 
-            {/* Event List */}
-            <div className="divide-y divide-border-subtle flex flex-col" role="feed" aria-label="Audit feed">
-              {shown.map((e) => {
+            {/* Event List — windowed saat besar (TASK-21) */}
+            <div
+              ref={feedWin.containerRef as React.RefObject<HTMLDivElement>}
+              onScroll={feedWin.onScroll}
+              className="divide-y divide-border-subtle flex flex-col overflow-y-auto max-h-[640px]"
+              role="feed"
+              aria-label="Audit feed"
+            >
+              {feedWin.topPad > 0 && <div style={{ height: feedWin.topPad }} aria-hidden="true" />}
+              {feedWin.items.map((e) => {
                 const isSel = sel.id === e.id;
                 const s = severityOf(e.action);
                 const href = entityHref(e.entityType, e.entityId);
@@ -1143,10 +1184,16 @@ export function AuditTrail({
                       </div>
 
                       <div className="flex items-center gap-1 font-mono text-[11px] text-muted">
-                        <ShieldCheck size={12} className="text-pass" />
-                        <span className="truncate max-w-[120px]" title={e.hash}>
-                          {e.hash.slice(0, 15)}…
-                        </span>
+                        {e.hash ? (
+                          <>
+                            <ShieldCheck size={12} className="text-pass" />
+                            <span className="truncate max-w-[120px]" title={e.hash}>
+                              {e.hash.slice(0, 15)}…
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted" title="Event ini tidak punya chain-hash tersimpan (data fallback/demo)">— no hash</span>
+                        )}
                       </div>
                     </div>
 
@@ -1176,6 +1223,7 @@ export function AuditTrail({
                   </div>
                 );
               })}
+              {feedWin.bottomPad > 0 && <div style={{ height: feedWin.bottomPad }} aria-hidden="true" />}
 
               {shown.length === 0 && (
                 <div className="p-8 text-center text-muted flex flex-col items-center gap-2">
@@ -1274,27 +1322,35 @@ export function AuditTrail({
               <div className="px-4 py-2.5 bg-cobalt-tint/40 border-b border-border-subtle flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-muted uppercase">
-                    Cryptographic Event Hash:
+                    Cryptographic Event Hash (server):
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => copyHash(sel.hash)}
-                    className="text-[11px] font-mono text-cobalt hover:underline flex items-center gap-1"
-                  >
-                    {copiedHash ? <Check size={12} className="text-pass" /> : <Copy size={12} />}
-                    {copiedHash ? 'Copied' : 'Copy Full Hash'}
-                  </button>
+                  {sel.hash ? (
+                    <button
+                      type="button"
+                      onClick={() => copyHash(sel.hash)}
+                      className="text-[11px] font-mono text-cobalt hover:underline flex items-center gap-1"
+                    >
+                      {copiedHash ? <Check size={12} className="text-pass" /> : <Copy size={12} />}
+                      {copiedHash ? 'Copied' : 'Copy Full Hash'}
+                    </button>
+                  ) : null}
                 </div>
-                <div className="font-mono text-[11px] text-body bg-card border border-border-subtle px-2 py-1 rounded truncate select-all">
-                  {sel.hash}
-                </div>
+                {sel.hash ? (
+                  <div className="font-mono text-[11px] text-body bg-card border border-border-subtle px-2 py-1 rounded truncate select-all">
+                    {sel.hash}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-muted bg-card border border-dashed border-border-subtle px-2 py-1 rounded">
+                    No chain-hash recorded for this event (fallback/demo entry). Open <strong>Verify Cryptographic Root</strong> to run the server-side chain check over all real ledger rows.
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-[10px] text-muted font-mono pt-0.5">
                   <span className="flex items-center gap-1">
                     <Terminal size={11} className="text-cobalt" />
-                    <span>POST /api/v1/audit/ledger/verify</span>
+                    <span>POST /api/audit-trail/verify-chain</span>
                   </span>
-                  <span className="text-pass-ink font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={11} /> Merkle Root Confirmed
+                  <span className="text-muted flex items-center gap-1">
+                    <ShieldCheck size={11} className="text-cobalt" /> Chain verified on request — not continuous
                   </span>
                 </div>
               </div>
@@ -1544,50 +1600,55 @@ export function AuditTrail({
             </div>
           )}
 
-          {/* Real-Time Cryptographic Ledger Health Widget */}
+          {/* Cryptographic Ledger Health Widget — honest: state hanya dari verify-chain nyata */}
           <div className="bg-card rounded-xl p-4 border border-border-subtle shadow-card flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <Network className="text-pass" size={16} />
                 <h4 className="text-xs font-bold text-ink uppercase tracking-wider">
-                  Merkle Forest Root Status
+                  Ledger Integrity
                 </h4>
               </div>
-              <span className="font-mono text-[10px] font-bold text-pass-ink bg-pass-bg border border-pass/30 px-2 py-0.5 rounded">
-                SYNCED 100%
+              <span className={cn(
+                'font-mono text-[10px] font-bold px-2 py-0.5 rounded border',
+                verifyResult
+                  ? verifyResult.valid
+                    ? 'text-pass-ink bg-pass-bg border-pass/30'
+                    : 'text-fail bg-fail-bg border-fail/30'
+                  : 'text-muted bg-surface border-border-subtle',
+              )}>
+                {verifyResult ? (verifyResult.valid ? 'VALID' : 'MISMATCH') : 'UNVERIFIED'}
               </span>
             </div>
 
-            {/* Visual Segments */}
-            <div className="flex items-center gap-1 py-1" aria-hidden="true">
-              <div className="flex-1 h-2 rounded bg-pass" />
-              <div className="flex-1 h-2 rounded bg-pass" />
-              <div className="flex-1 h-2 rounded bg-pass" />
-              <div className="flex-1 h-2 rounded bg-pass" />
-              <div className="flex-1 h-2 rounded bg-pass" />
-              <div className="flex-1 h-2 rounded bg-pass animate-pulse" />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-center pt-1 text-xs">
-              <div className="p-2 bg-surface rounded border border-border-subtle">
-                <span className="text-[10px] text-muted uppercase font-bold block">
-                  Proof Index
-                </span>
-                <span className="font-mono font-bold text-body">#48,102</span>
+            {verifyResult ? (
+              <div className="grid grid-cols-3 gap-2 text-center pt-1 text-xs">
+                <div className="p-2 bg-surface rounded border border-border-subtle">
+                  <span className="text-[10px] text-muted uppercase font-bold block">
+                    Events
+                  </span>
+                  <span className="font-mono font-bold text-body">{verifyResult.verifiedCount.toLocaleString('en-US')}</span>
+                </div>
+                <div className="p-2 bg-surface rounded border border-border-subtle">
+                  <span className="text-[10px] text-muted uppercase font-bold block">
+                    Root Hash
+                  </span>
+                  <span className="font-mono font-bold text-body" title={verifyResult.rootHash}>{verifyResult.rootHash.slice(0, 8)}…</span>
+                </div>
+                <div className="p-2 bg-surface rounded border border-border-subtle">
+                  <span className="text-[10px] text-muted uppercase font-bold block">
+                    Checked At
+                  </span>
+                  <span className="font-mono font-bold text-pass-ink">
+                    {new Date(verifyResult.verificationTimestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
-              <div className="p-2 bg-surface rounded border border-border-subtle">
-                <span className="text-[10px] text-muted uppercase font-bold block">
-                  Sync Node
-                </span>
-                <span className="font-mono font-bold text-body">NUSA-LEDGER-A</span>
-              </div>
-              <div className="p-2 bg-surface rounded border border-border-subtle">
-                <span className="text-[10px] text-muted uppercase font-bold block">
-                  Consensus Time
-                </span>
-                <span className="font-mono font-bold text-pass-ink">1.42s</span>
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-muted leading-snug">
+                Integrity is computed on demand by the server — this panel shows no claim until <strong>Verify Cryptographic Root</strong> is run.
+              </p>
+            )}
           </div>
         </div>
       </section>

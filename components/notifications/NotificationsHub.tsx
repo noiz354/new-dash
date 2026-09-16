@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON, canonPhone } from '@/lib/canon';
 import { cn } from '@/lib/utils';
 import { downloadText } from '@/lib/download';
+import { useSlaStream } from '@/lib/realtime/useSlaStream';
 
 type Cls = 'Critical' | 'Stock' | 'PO' | 'WO' | 'Security';
 type Sev = 'P1' | 'P2' | 'P3';
@@ -136,7 +137,28 @@ export function NotificationsHub() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 8000);
   };
 
-  const alerts = [...extra, ...SEED];
+  // FP-14/TASK-26: stream SLA nyata (SSE + fallback polling 30s) — sumber alert WO live.
+  const { snapshot, state: sseState, error: sseError } = useSlaStream(true);
+
+  // Snapshot server (truth) → bentuk AlertT. SEED yang meniru WO yang sama disembunyikan (anti-duplikat).
+  const liveAlerts: AlertT[] = snapshot
+    ? snapshot.notifications.map((n) => ({
+        id: n.id,
+        cls: 'WO' as Cls,
+        sev: n.sev,
+        kick: `LIVE SLA WATCH · ${n.sev} LIVE STREAM`,
+        time: new Date(n.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        title: n.title,
+        lines: [n.subtitle, `Snapshot: ${snapshot.snapshotAt.slice(11, 19)} WIB-lokal`],
+        body: `Computed server-side from sla_due_at for tenant scope. Stream refresh: automatic.`,
+      }))
+    : [];
+  const liveWoKeys = new Set(liveAlerts.map((a) => a.id.replace('NOTIF-', '')));
+  const seedNotSuperseded = SEED.filter((s) =>
+    ![...liveWoKeys].some((wo) => s.title.includes(wo) || s.body.includes(wo)),
+  );
+
+  const alerts = [...extra, ...liveAlerts, ...seedNotSuperseded];
   const marked = Object.keys(read).length;
   const unread = Math.max(0, 38 - marked);
   const filtered = alerts.filter((a) => {
@@ -172,7 +194,7 @@ export function NotificationsHub() {
     setExtra((e) => [{
       id: `TEST-P1-${n}`, cls: 'Critical', sev: 'P1', kick: 'SYNTHETIC TEST · Priority 1', time: 'just now',
       title: `Bus debugger probe #${n} — synthetic P1 telemetry alarm`,
-      lines: ['Channel: sha256-aes-gcm · WS-PUSH 12ms', 'No dispatch triggered — debugger only'],
+      lines: ['Channel: local synthetic (client-side only)', 'No dispatch triggered — debugger only'],
       body: 'Synthetic alarm injected via Active Bus Debugger to validate dispatch triggers end-to-end.',
     }, ...e]);
     push(true, 'Test P1 injected', `TEST-P1-${n} on live bus · triggers validated.`);
@@ -468,7 +490,18 @@ export function NotificationsHub() {
               </div>
               <p className="text-muted">Inject a real-time synthetic P1 telemetry alarm into the live message bus to test dispatch triggers.</p>
               <Button onClick={injectTest}><Zap size={15} /> Trigger Test P1 Alert (simulated)</Button>
-              <p className="text-xs text-muted">Transport: manual refresh — live SSE stream arrives with the realtime wave · {extra.length}/3 synthetic on bus</p>
+              <p className="text-xs text-muted">
+                Transport:{' '}
+                {sseState === 'live'
+                  ? `SSE live stream — ${snapshot?.totalAtRisk ?? 0} SLA at risk real server events · snapshot ${snapshot?.snapshotAt.slice(11, 19)}`
+                  : sseState === 'fallback-polling'
+                    ? 'Polling 30s (SSE unavailable) — honest fallback'
+                    : sseState === 'connecting'
+                      ? 'Connecting to SSE stream…'
+                      : 'Idle'}
+                {' · '}{extra.length}/3 synthetic on bus
+                {sseError ? ` · ${sseError}` : ''}
+              </p>
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2 text-[13px]">

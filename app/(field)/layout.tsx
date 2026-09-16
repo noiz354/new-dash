@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { FieldShell } from '@/components/field/FieldShell';
 import { RumInit } from '@/components/telemetry/RumInit';
+import { SwRegister } from '@/components/pwa/SwRegister';
 import { getSessionContext } from '@/lib/auth/context';
 
 /** Field shell guard — same server-side session enforcement as (ops). */
@@ -10,6 +11,7 @@ export default async function FieldLayout({ children }: { children: React.ReactN
   return (
     <FieldShell>
       <RumInit />
+      <SwRegister />
       {children}
     </FieldShell>
   );

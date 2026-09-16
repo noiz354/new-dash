@@ -5,7 +5,8 @@
  *   memakai 'unsafe-inline' sementara (Next inline bootstrap + inline event handler
  *   di print pages); tightening via nonce/hash = fase lanjut.
  * - Permissions-Policy default DITOLAK; geolocation=(self) dibuka untuk FP-10
- *   (stamp koordinat evidence). camera/microphone baru dibuka oleh PR fitur capture.
+ *   (stamp koordinat evidence); camera=(self) dibuka untuk FP-13 (barcode scan
+ *   aset via BarcodeDetector — feature-detected, fallback manual).
  */
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -30,7 +31,7 @@ const securityHeaders = [
   {
     key: 'Permissions-Policy',
     value: [
-      'camera=()',
+      'camera=(self)',
       'microphone=()',
       'geolocation=(self)',
       'payment=()',
