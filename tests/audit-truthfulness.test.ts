@@ -189,3 +189,33 @@ test('GAP-08 critical-action dialog fails closed without an audit ID', () => {
     'dialog must fail closed with an honest message when onExecute returns no auditId',
   );
 });
+
+// ---------------------------------------------------------------------------
+// GAP-15: honest export label (F11) + Phase-2 run affordance (F18).
+// ---------------------------------------------------------------------------
+test('GAP-15 ledger export claims CSV only, never XLS', () => {
+  const body = readFileSync(
+    new URL('../components/inventory/InventoryLedger.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!body.includes('CSV/XLS'), 'ledger export produces CSV only — the XLS claim must stay removed');
+  assert.ok(
+    body.includes('Export CSV (loaded rows)'),
+    'ledger export button must disclose it exports the loaded rows as CSV',
+  );
+});
+
+test('GAP-15 audit queue cards disclose the Phase-2 run gate', () => {
+  const body = readFileSync(
+    new URL('../components/field/AuditQueue.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(
+    body.includes('Phase 2') && body.includes('run checklist not available yet'),
+    'non-canonical audit cards must carry the Phase-2 badge (run route only serves CANON.inspection)',
+  );
+  assert.ok(
+    body.includes('a.id !== CANON.inspection'),
+    'Phase-2 badge must be gated on non-canonical ids, not shown on the runnable audit',
+  );
+});

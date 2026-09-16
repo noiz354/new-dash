@@ -372,7 +372,7 @@ export function InventoryLedger() {
             ) : (
               <Badge variant="fail">Demo offline — server unreachable</Badge>
             )}
-            <Button variant="secondary" onClick={exportCsv}><Download size={16} /> Export (CSV/XLS)</Button>
+            <Button variant="secondary" onClick={exportCsv}><Download size={16} /> Export CSV (loaded rows)</Button>
             <Button variant="secondary" onClick={() => window.print()}><Printer size={16} /> Print QR / Barcode</Button>
             <Dialog open={recvOpen} onOpenChange={setRecvOpen}>
               <DialogTrigger asChild>

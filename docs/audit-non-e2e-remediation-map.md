@@ -120,6 +120,11 @@ overclaim. Canon: loaded rows. Persist: file-download. Tests: NONE.
 **Decision: COMPLETE PARTIAL** (label→"CSV (loaded rows)" = QUICK CLOSE;
 server export DEFER). Target: PARTIAL-honest. Reason: scope penuh
 (full-catalog export) = M; label fix = S. P2/S/LOCAL.
+**[CLOSED GAP-15 2026-09-16]:** tombol ledger kini `Export CSV (loaded rows)`
+(1 baris); situs lain terverifikasi jujur dan tak diubah (PurchaseList sudah
+`Export (CSV)`, PurchaseDetail `Export lines` → Blob CSV nyata, AuditTrail
+`Export CSV / JSON Log` → kedua format benar dihasilkan). Guard-test:
+`CSV/XLS` absent + label presence. Runtime MCP: tombol tampil live.
 
 **F12 — Transfer/adjust refs.** Current: DEAD-END (rute TAK ADA; ledger kini
 render teks, bukan link). Gap: MISSING ROUTE + PRODUCT DECISION MISSING.
@@ -190,6 +195,12 @@ EmptyState, tanpa affordance di kartu). Gap: MISSING UI honesty. Break:
 `run/page.tsx:15` gate. Tests: NONE. **Decision: HONEST PLACEHOLDER**
 (`QUICK CLOSE`: badge "Fase 2" di kartu queue). Target: DEAD-END-honest.
 Reason: 1 baris; hentikan tap-kecewa. P3/S/LOCAL.
+**[CLOSED GAP-15 2026-09-16]:** kartu non-kanon (`a.id !== CANON.inspection`)
+kini memuat badge `Phase 2 · run checklist not available yet` (berlaku untuk
+baris demo maupun live; link dipertahankan menuju EmptyState jujur di route).
+Guard-test: presence `Phase 2` + gate `CANON.inspection`. Runtime MCP: badge
+tampil pada kartu LIVE non-kanon INS-2026-1093 (artefak GAP-11) — gate terbukti
+bekerja di data live, bukan hanya demo; console 0 error.
 
 **F19 — PM hub dispatch/batch.** Current: FRONTEND-ONLY + fake ("Batch
 dispatched · WOs created · leads paged", ID WO-0906+ fabrikasi) sementara

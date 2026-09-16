@@ -322,3 +322,11 @@ Spec: docs/remediation-gap-14-spec.md (ditulis dulu; tanpa migrasi baru di spec 
 - Observasi follow-up (bukan scope): nav badge "Work Orders 14" stale vs 9 rows nyata (SideNav badge count); vendor baru onTime 0 masuk mean 79.5% (keputusan desain, konsisten label).
 - Artefak dev scratch: vendor gap-14-probe-services + WO-2026-0911 + sensorReading TEMPERATURE 77.5 AST-HVAC-004 di .data/pg.
 NEXT GAP: #15 (F11 export-label + F18 runs-badge) sesuai order CLOSE ALL GAPS.
+
+## GAP CLOSED #15 — export-label + runs-badge (F11/F18 → honest) (2026-09-16)
+Spec: docs/remediation-gap-15-spec.md (quick-close, tanpa migrasi/route/API baru).
+- F11 PARTIAL→honest: tombol ledger `Export (CSV/XLS)` → `Export CSV (loaded rows)` (1 baris; toast provenance sudah jujur). Situs lain diaudit dan dinyatakan JUJUR, tak diubah: PurchaseList sudah `Export (CSV)` + toast CSV; PurchaseDetail `Export lines` → Blob text/csv nyata; AuditTrail `Export CSV / JSON Log` → kedua format benar dihasilkan (:629/:631).
+- F18 DEAD-END→honest: kartu non-kanon (`a.id !== CANON.inspection`) memuat badge `Phase 2 · run checklist not available yet` (demo + live; link dipertahankan ke EmptyState jujur).
+- Tests: 2 guard-test di audit-truthfulness.test.ts (CSV/XLS absent + label presence; Phase-2 presence + gate CANON.inspection); npm test 138/138; tsc exit 0.
+- Runtime proof (MCP browser dev :3145, m.vance): /inventory tombol berlabel baru tampil live; /field/audits badge tampil pada kartu LIVE non-kanon INS-2026-1093 (artefak GAP-11) — gate terbukti di data live; console 0 error.
+NEXT GAP: #16 NEED PRODUCT DECISION batch (F2/F12/F23/F25/F15/F26/F27) sesuai order CLOSE ALL GAPS.

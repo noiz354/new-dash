@@ -202,6 +202,14 @@ export function AuditQueue() {
                         <span className="apex-id font-bold bg-surface-subtle border-[1.5px] border-hold px-2 py-0.5 rounded">{a.id}</span>
                         <span className={cn('text-xs font-bold border px-2 py-0.5 rounded', pillTone[a.pillTone])}>{a.pill}</span>
                       </span>
+                      {/* GAP-15 (F18): run route only renders the checklist for the
+                          canonical inspection — other audits land on an honest
+                          "TODO Fase 2" EmptyState, so the card says so upfront. */}
+                      {a.id !== CANON.inspection && (
+                        <span className="text-xs font-bold text-warn border border-warn bg-warn-bg px-2 py-0.5 rounded self-start">
+                          Phase 2 · run checklist not available yet
+                        </span>
+                      )}
                       <span className="text-lg font-semibold font-display">{a.title}</span>
                       <span className="text-sm text-muted">{a.sub}</span>
                       {typeof a.progress === 'number' && (
