@@ -76,33 +76,38 @@ export async function createPmRule(
 ): Promise<PmRuleRow> {
   const now = new Date();
   const nextDue = new Date(now.getTime() + (input.nextDueDays ?? input.intervalDays) * 24 * 3600 * 1000);
-  const ruleId = input.id || `PM-${input.assetCode.split('-')[1] || 'GEN'}-${Math.floor(100 + Math.random() * 900)}`;
 
-  const [rule] = await db
-    .insert(pmRules)
-    .values({
+  // Canon numbering (GAP-10): PM-YYYY-NNNN from the sequences engine — no Math.random.
+  // Wrapped in a transaction so the sequence bump, rule insert, and audit stay atomic.
+  return db.transaction(async (tx) => {
+    const ruleId = input.id || await nextNumber(tx, ctx.orgId, 'PM', now.getFullYear());
+
+    const [rule] = await tx
+      .insert(pmRules)
+      .values({
+        organizationId: ctx.orgId,
+        id: ruleId,
+        title: input.title.slice(0, 200),
+        assetCode: input.assetCode,
+        intervalDays: input.intervalDays,
+        priority: input.priority ?? 'P2',
+        status: 'ACTIVE',
+        nextDueAt: nextDue,
+      })
+      .returning();
+
+    await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      id: ruleId,
-      title: input.title.slice(0, 200),
-      assetCode: input.assetCode,
-      intervalDays: input.intervalDays,
-      priority: input.priority ?? 'P2',
-      status: 'ACTIVE',
-      nextDueAt: nextDue,
-    })
-    .returning();
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: 'PM_RULE_CREATE',
+      entityType: 'pm_rule',
+      entityId: ruleId,
+      after: { title: rule.title, intervalDays: rule.intervalDays },
+    });
 
-  await db.insert(auditEvents).values({
-    organizationId: ctx.orgId,
-    actorUserId: ctx.userId,
-    actorName: ctx.name,
-    action: 'PM_RULE_CREATE',
-    entityType: 'pm_rule',
-    entityId: ruleId,
-    after: { title: rule.title, intervalDays: rule.intervalDays },
+    return toPmRuleDto(rule, now);
   });
-
-  return toPmRuleDto(rule, now);
 }
 
 export async function togglePmRule(

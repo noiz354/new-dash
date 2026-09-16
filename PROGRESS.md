@@ -279,3 +279,10 @@ Runtime proof (MCP browser dev :3145, m.vance): /purchasing live 7 records → N
 Insiden infra: .data/pg dev wedge (PGlite WASM abort; worker prod :3155 PID 15029 lolos kill pegang lock) → mv .data/pg-wedged-20260916 + fresh db:setup exit 0; dev :3145 UP 200.
 Temuan follow-up: /inventory/[sku] detail masih statis (3 hardcoded movements, on-hand 1) — bukan scope GAP-09, gap tersendiri.
 NEXT GAP: #10 PM hub wire (F19).
+
+## GAP CLOSED #10 — PM hub (F19) FRONTEND-ONLY → END-TO-END (2026-09-16)
+Backend: 'PM' → SequenceEntity + seed (nextVal 1); createPmRule → nextNumber PM-YYYY-NNNN dalam transaksi (Math.random dihapus); route POST /api/preventive-maintenance/[id]/toggle baru (perm wo.create).
+Frontend: PmHub live (GET list + SEED fallback demo-badge + aksi disabled; POST create; queue dari rules overdue/due≤14d; generate per-rule + batch idempoten; toggle pause/resume; link WO; KPI dari server; copy telemetry/Modbus diluruskan: NOT CONNECTED / LOCAL DEMO / DESIGN REFERENCE).
+Tests: 2 service-level baru (create+canon+audit+tenant; generate+replay-idempoten+RULE_PAUSED+404+toggle+audit); npm test 126/126; tsc bersih.
+Runtime proof (MCP browser dev :3145, m.vance, fresh DB): /preventive-maintenance Live rules + 0 rules → New PM Plan via UI → PM-2026-0001 → Generate via UI → WO-2026-0910 + lastGenerated 16 Sept 2026 + Generated-this-session 1 → Pause → PAUSED → Resume → ACTIVE; console 0 error; screenshot /tmp/opencode/evidence/gap10/pm-live.png.
+NEXT GAP: #11 (F20 inspections route→service + F16 caller, atau sesuai order CLOSE ALL GAPS).

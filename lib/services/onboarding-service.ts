@@ -59,7 +59,7 @@ export async function provisionOrganization(
       .returning();
 
     // 2. Initialize Sequences
-    const entities = ['WO', 'SR', 'PO', 'PR', 'INS', 'FND', 'GRN'];
+    const entities = ['WO', 'SR', 'PO', 'PR', 'INS', 'FND', 'GRN', 'PM'];
     for (const entity of entities) {
       await tx.insert(sequences).values({
         organizationId: orgId,

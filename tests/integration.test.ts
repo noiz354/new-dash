@@ -28,6 +28,7 @@ import { convertFindingToWo, createFinding, dismissFinding, getFinding, listFind
 import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
+import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '../lib/services/pm-service';
 import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -1004,5 +1005,70 @@ test('purchasing (GAP-9): GRN posts with step-up, canon GRN number, stock loop c
   await expectDomainError(
     () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', grnNumber: grn.number, waybill: 'GAP9-WB-4', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
     409, 'DUPLICATE_RECEIPT',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// PM hub (GAP #10: SEED/QUEUE + fabricated WO numbers were local-only fiction;
+// rules/generate/toggle now hit pm-service + sequences + audit)
+// ---------------------------------------------------------------------------
+test('pm (GAP-10): create rule with canon PM number; list reflects it; tenant-scoped + audited', async () => {
+  const rule = await createPmRule(db, admin, {
+    title: 'GAP-10 chiller loop probe',
+    assetCode: CANON.assetSeal,
+    intervalDays: 90,
+    priority: 'P2',
+  });
+  assert.match(rule.id, /^PM-\d{4}-\d{4}$/, 'canon PM numbering (no Math.random)');
+  assert.equal(rule.status, 'ACTIVE');
+  assert.equal(rule.intervalDays, 90);
+
+  const list = await listPmRules(db, admin);
+  assert.ok(list.some((r) => r.id === rule.id), 'list contains the new rule');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'pm_rule' });
+  assert.ok(ledger.rows.some((e) => e.action === 'PM_RULE_CREATE' && e.entityId === rule.id), 'PM_RULE_CREATE audited');
+});
+
+test('pm (GAP-10): generate WO from rule; idempotent replay; nextDueAt advances; guards enforced', async () => {
+  const rule = await createPmRule(db, admin, {
+    title: 'GAP-10 generate probe',
+    assetCode: CANON.assetSeal,
+    intervalDays: 30,
+    priority: 'P3',
+  });
+
+  const key = `gap10-gen-${Date.now()}`;
+  const first = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: key });
+  assert.match(first.wo.number, /^WO-\d{4}-\d{4}$/, 'WO from the WO sequence (not fabricated)');
+  assert.equal(first.wo.status, 'SCHEDULED');
+  assert.ok(first.rule.lastGeneratedAt, 'rule stamps lastGeneratedAt');
+
+  const replay = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: key });
+  assert.equal(replay.wo.number, first.wo.number, 'same Idempotency-Key → same WO, no duplicate');
+
+  // Pause the rule → generation refused.
+  const paused = await togglePmRule(db, admin, rule.id, 'PAUSED');
+  assert.equal(paused.status, 'PAUSED');
+  await expectDomainError(
+    () => generatePmWorkOrder(db, admin, rule.id),
+    422, 'RULE_PAUSED',
+  );
+  const resumed = await togglePmRule(db, admin, rule.id, 'ACTIVE');
+  assert.equal(resumed.status, 'ACTIVE');
+
+  await expectDomainError(
+    () => generatePmWorkOrder(db, admin, 'PM-2099-9999'),
+    404, 'PM_RULE_NOT_FOUND',
+  );
+  await expectDomainError(
+    () => togglePmRule(db, admin, 'PM-2099-9999', 'PAUSED'),
+    404, 'PM_RULE_NOT_FOUND',
+  );
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'pm_rule' });
+  assert.ok(
+    ledger.rows.some((e) => e.action === 'PM_GENERATE_WO' && e.entityId === rule.id),
+    'PM_GENERATE_WO audited',
   );
 });

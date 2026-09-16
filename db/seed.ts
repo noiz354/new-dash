@@ -44,6 +44,7 @@ export async function seedAll(db: Db): Promise<void> {
     { organizationId: ORG, entity: 'INS', year, nextVal: 1093 },
     { organizationId: ORG, entity: 'FND', year, nextVal: 189 },
     { organizationId: ORG, entity: 'GRN', year, nextVal: 1 },
+    { organizationId: ORG, entity: 'PM', year, nextVal: 1 },
   ]).onConflictDoNothing();
 
   // -------------------------------------------------------------- users --

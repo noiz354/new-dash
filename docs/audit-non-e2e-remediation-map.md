@@ -164,6 +164,7 @@ component→API. Canon: SEED lokal. Persist: NOT PERSISTED (UI). Tests: NONE.
 **Decision: MUST INTEGRATE** (list+generate nyata; FindingDesk sudah
 buktikan POST create bisa). Target: END-TO-END. Reason: dispatch fiktif =
 fake mutation inti. P1/M/MODULE.
+**[CLOSED GAP-10 2026-09-16]:** END-TO-END — sequence PM via nextNumber, route toggle baru, PmHub live + demo fallback, 126/126 test, runtime MCP terverifikasi.
 
 **F20 — Inspections + force-dispatch.** Current: BACKEND-ONLY + route
 PARTIAL/BROKEN (force-dispatch inline update, tanpa zod/audit/idempotency,
