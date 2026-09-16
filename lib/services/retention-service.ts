@@ -7,6 +7,18 @@ import type { Db } from '../../db/client';
 import { pmRules, workOrders } from '../../db/schema';
 import { WO_TERMINAL } from '../../lib/domain/work-orders';
 
+/**
+ * GAP-19/F25 (decision 2026-09-16): GET /api/retention/digest is explicitly
+ * DEPRECATED — an orphaned read-only compute with no trigger, scheduler, cron,
+ * or notification consumer anywhere in the system. It will not be developed
+ * further and is slated for removal on the sunset date below (execution date
+ * 2026-09-16 + 90 days). Until then it keeps returning 200 with these flags
+ * attached so consumers scrape honest metadata instead of vanishing silently.
+ */
+export const RETENTION_DIGEST_SUNSET = '2026-12-15';
+export const RETENTION_DIGEST_NOTE =
+  'Deprecated: orphaned endpoint — no trigger, scheduler, cron, or consumer exists (nor is any planned); it will not be developed further and will be removed on the sunset date.';
+
 export interface RetentionDigest {
   organizationId: string;
   generatedAt: string;

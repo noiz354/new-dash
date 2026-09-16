@@ -38,6 +38,12 @@ import { provisionOrganization } from '../lib/services/onboarding-service';
 import { sequences } from '../db/schema';
 import { NextRequest } from 'next/server';
 import { POST as signupPost } from '../app/api/auth/signup/route';
+import { GET as retentionDigestGet } from '../app/api/retention/digest/route';
+import {
+  RETENTION_DIGEST_NOTE,
+  RETENTION_DIGEST_SUNSET,
+  generateRetentionDigest,
+} from '../lib/services/retention-service';
 import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -1401,4 +1407,37 @@ test('signup (GAP-16/F2): route POST with invalid bodies → 400 VALIDATION_ERRO
 
   const noOrg = await db.select().from(organizations).where(eq(organizations.name, 'Route Probe Co'));
   assert.equal(noOrg.length, 0, 'invalid payloads never reach provisioning');
+});
+
+// ---------------------------------------------------------------------------
+// GAP-19: retention digest deprecation (F25) — no HTTP login flow
+// ---------------------------------------------------------------------------
+test('retention (GAP-19/F25): digest compute unchanged — regression under the deprecation envelope', async () => {
+  const digest = await generateRetentionDigest(db, admin.orgId);
+  assert.equal(digest.organizationId, admin.orgId, 'digest is tenant-scoped');
+  assert.ok(Array.isArray(digest.urgentSlaThreats), 'SLA threats array present');
+  assert.ok(Array.isArray(digest.upcomingPreventiveMaintenances), 'upcoming PM array present');
+  assert.equal(typeof digest.healthScorePct, 'number', 'health score numeric');
+  assert.ok(digest.generatedAt && !Number.isNaN(Date.parse(digest.generatedAt)), 'generatedAt ISO');
+});
+
+test('retention (GAP-19/F25): deprecation metadata — sunset 90 days from 2026-09-16, honest note', () => {
+  assert.equal(RETENTION_DIGEST_SUNSET, '2026-12-15', 'sunset fixed at execution date +90d');
+  const deltaDays = Math.round(
+    (Date.parse(`${RETENTION_DIGEST_SUNSET}T00:00:00Z`) - Date.parse('2026-09-16T00:00:00Z')) / 86_400_000,
+  );
+  assert.equal(deltaDays, 90, 'sunset is exactly 90 days after the deprecation execution date');
+  assert.ok(
+    /no trigger/i.test(RETENTION_DIGEST_NOTE) &&
+      /scheduler/i.test(RETENTION_DIGEST_NOTE) &&
+      /consumer/i.test(RETENTION_DIGEST_NOTE),
+    'note states the orphan facts (no trigger/scheduler/consumer)',
+  );
+});
+
+test('retention (GAP-19/F25): wo.read permission stays enforced — unauth GET → 401', async () => {
+  const res = await retentionDigestGet(new NextRequest('http://probe.local/api/retention/digest', { method: 'GET' }));
+  assert.equal(res.status, 401, 'deprecated endpoint still requires a session');
+  const env = (await res.json()) as { error?: { code?: string } };
+  assert.equal(env.error?.code, 'UNAUTHENTICATED');
 });

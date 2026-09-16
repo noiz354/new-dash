@@ -357,3 +357,12 @@ Spec: docs/remediation-gap-18-spec.md (keputusan: jujurkan + wire; out-of-scope 
 - Tests: 4 unit (tests/unit.test.ts): empty-store tanpa preseed, enqueue tenant-scoped + filter topic/status/limit, run_cycle summary konsisten + COMPLETED attempts/timestamps, retry reset + unknown→null. 2 guard-test audit-truthfulness (absence SOC2/AUDIT READY/auditHash/JOB-2026-08/482/842.6/11 min/100% Success Rate/S3 Glacier/audit-trail?search=JOB; preseed gone). npm test 149/149; tsc --noEmit exit 0.
 - Runtime proof (curl dev :3157, sesi seed): GET jobs [] → enqueue 201 (job_… PENDING payload PM-RUNTIME-PROBE) → filter pm_generator 1 baris → filter webhook_fanout KOSONG (bukan preseed) → run_cycle {processed:1,completed:1,failed:0} → job COMPLETED attempts 1 → retry job_does_not_exist 404 JOB_NOT_FOUND → topic hacker_topic 400 VALIDATION_ERROR → unauth 401. HTML /settings/jobs 200: nol SOC2/DAEMON/482, marker Ephemeral/Background Job Queue/Run cycle live.
 NEXT GAP: #16 TASK 4/7 — F25 deprecate retention digest eksplisit.
+
+## GAP CLOSED #16 TASK 4/7 — retention digest deprecated eksplisit (F25) (2026-09-16)
+Spec: docs/remediation-gap-19-spec.md (keputusan: deprecate; endpoint TIDAK dihapus; tanpa cron/consumer).
+- `app/api/retention/digest/route.ts`: respons → `{ ...digest, deprecated: true, sunset: '2026-12-15', note: '…no trigger, scheduler, cron, or consumer…' }`; komentar `@deprecated` + docstring diperbarui. Status tetap 200 + izin `wo.read` tetap.
+- `lib/services/retention-service.ts`: konstanta tunggal `RETENTION_DIGEST_SUNSET`/`RETENTION_DIGEST_NOTE` (satu sumber, diuji tanpa HTTP); compute digest tak disentuh. Sunset = eksekusi 2026-09-16 + 90 hari = 2026-12-15 (dicatat di peta audit F25).
+- Tests: 3 baru di tests/integration.test.ts — regression compute (shape digest lama utuh, tenant-scoped), metadata (sunset tepat 90 hari + note menyebut no trigger/scheduler/consumer), GET handler tanpa sesi → 401 UNAUTHENTICATED (pola NextRequest langsung). npm test 152/152; tsc --noEmit exit 0.
+- Runtime proof (curl dev :3157): GET authed → 200 `deprecated:true, sunset:'2026-12-15', note…` + shape digest lama (urgentSlaThreats/healthScorePct) utuh; GET unauth → 401. Tanpa UI (endpoint backend-only) sesuai PROMPT.
+- Reminder follow-up: setelah 2026-12-15 endpoint boleh dihapus bila tetap tanpa konsumen.
+NEXT GAP: #16 TASK 5/7 — F15 facilities hub honest-first + backend facilities.

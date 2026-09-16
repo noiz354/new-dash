@@ -382,7 +382,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 22 | Telemetry | Ingest/metrics | BACKEND-ONLY | — (infra) | KEEP BY DESIGN | BE by design | P3 | S | LOCAL |
 | 23 | Jobs | Dua dunia | END-TO-END [CLOSED GAP-16-T3] | WIRED (was DUAL SOURCE) | NEED DECISION (decided: honest+wire) | E2E-ephemeral | P2 | M | MODULE |
 | 24 | Billing | HMAC/checkout | BACKEND-ONLY | AUTH BYPASS (catch) | MUST FIX | BE-hardened | P0 | M | MODULE |
-| 25 | Retention | Digest orphan | BACKEND-ONLY | NO TRIGGER | NEED DECISION | TBD | P3 | S | LOCAL |
+| 25 | Retention | Digest orphan | DEPRECATED [CLOSED GAP-16-T4] | FLAGGED (was NO TRIGGER) | NEED DECISION (decided: deprecate, sunset 2026-12-15) | deprecated-honest | P3 | S | LOCAL |
 | 26 | Settings | Keys/rotate/maint | FRONTEND-ONLY | BACKEND MISSING + fake | FIX copy + DECISION | FE-honest | P2 | S→L | MODULE |
 | 27 | Shifts | Accept/reject | FRONTEND-ONLY | BACKEND MISSING + fake badge | FIX badge + DECISION | TBD | P2 | S→M | MODULE |
 | 28 | Import | CSV import | NOT FOUND | — | DEFER | NONE | P3 | — | — |
