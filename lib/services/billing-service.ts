@@ -2,12 +2,13 @@
  * Billing, Subscription & Entitlements Service (Phase 3 C.4 - Critical Path #5).
  * Manages SaaS plans, Stripe integration, feature gates, and webhook idempotency.
  */
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
-import type { Db } from '../../db/client';
+import type { Db, Tx } from '../../db/client';
 import { assets, auditEvents, organizations, subscriptions, users } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
 import { DomainError } from '../domain/errors';
+import { requestHash, withIdempotency } from './idempotency';
 
 export type PlanType = 'COMMUNITY' | 'GROWTH' | 'ENTERPRISE';
 export type SubStatus = 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'CANCELED';
@@ -98,16 +99,65 @@ export async function getOrganizationSubscription(
   };
 }
 
+/**
+ * Create a REAL Stripe Checkout Session (no stub).
+ * Requires STRIPE_SECRET_KEY + per-plan price ID. Without them the call
+ * fails closed with 503 — no fabricated URL, no TRIALING upsert.
+ */
 export async function createCheckoutSession(
   db: Db,
   ctx: AuthContext,
   targetPlan: PlanType,
   successUrl: string,
 ): Promise<{ checkoutUrl: string; sessionId: string }> {
-  const sessionId = `cs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const checkoutUrl = `${successUrl}?session_id=${sessionId}&plan=${targetPlan}`;
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new DomainError(
+      503,
+      'BILLING_NOT_CONFIGURED',
+      'Subscription checkout is not configured (STRIPE_SECRET_KEY missing)',
+    );
+  }
+  if (targetPlan === 'COMMUNITY') {
+    throw new DomainError(400, 'BILLING_INVALID_PLAN', 'COMMUNITY is the default plan and needs no checkout');
+  }
+  const priceId =
+    targetPlan === 'GROWTH' ? process.env.STRIPE_PRICE_GROWTH : process.env.STRIPE_PRICE_ENTERPRISE;
+  if (!priceId) {
+    throw new DomainError(
+      503,
+      'BILLING_PRICE_UNCONFIGURED',
+      `No Stripe price configured for plan ${targetPlan}`,
+    );
+  }
 
-  // Upsert subscription draft
+  const params = new URLSearchParams({
+    mode: 'subscription',
+    'line_items[0][price]': priceId,
+    'line_items[0][quantity]': '1',
+    success_url: `${successUrl}${successUrl.includes('?') ? '&' : '?'}session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: successUrl,
+    client_reference_id: ctx.orgId,
+    'metadata[organizationId]': ctx.orgId,
+    'metadata[plan]': targetPlan,
+  });
+  const res = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+  if (!res.ok) {
+    throw new DomainError(502, 'BILLING_PROVIDER_ERROR', `Stripe checkout failed (HTTP ${res.status})`);
+  }
+  const session = (await res.json()) as { id?: string; url?: string };
+  if (!session.id || !session.url) {
+    throw new DomainError(502, 'BILLING_PROVIDER_ERROR', 'Stripe returned a malformed checkout session');
+  }
+
+  // Upsert subscription draft — only after a REAL session exists.
   await db
     .insert(subscriptions)
     .values({
@@ -133,10 +183,10 @@ export async function createCheckoutSession(
     action: 'BILLING_CHECKOUT_INITIATED',
     entityType: 'subscription',
     entityId: ctx.orgId,
-    after: { targetPlan, sessionId },
+    after: { targetPlan, sessionId: session.id },
   });
 
-  return { checkoutUrl, sessionId };
+  return { checkoutUrl: session.url, sessionId: session.id };
 }
 
 export interface WebhookEventPayload {
@@ -155,32 +205,57 @@ export interface WebhookEventPayload {
   };
 }
 
+/**
+ * Verify a Stripe webhook signature against the RAW request body.
+ * Fail-closed: missing secret → 503, missing header → 401,
+ * malformed/invalid signature → 400. Never swallowed.
+ */
+export function verifyWebhookSignature(rawBody: string, signatureHeader?: string | null): void {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    throw new DomainError(
+      503,
+      'BILLING_NOT_CONFIGURED',
+      'Stripe webhook is not configured (STRIPE_WEBHOOK_SECRET missing)',
+    );
+  }
+  if (!signatureHeader) {
+    throw new DomainError(401, 'BILLING_SIGNATURE_MISSING', 'Missing stripe-signature header');
+  }
+  const parts = signatureHeader.split(',').reduce((acc, curr) => {
+    const [k, v] = curr.split('=');
+    if (k && v) acc[k.trim()] = v.trim();
+    return acc;
+  }, {} as Record<string, string>);
+
+  if (!parts.t || !parts.v1) {
+    throw new DomainError(400, 'BILLING_BAD_SIGNATURE', 'Malformed stripe-signature header');
+  }
+  const hmac = createHmac('sha256', webhookSecret);
+  hmac.update(`${parts.t}.${rawBody}`);
+  const digest = hmac.digest('hex');
+  const a = Buffer.from(parts.v1, 'utf8');
+  const b = Buffer.from(digest, 'utf8');
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    throw new DomainError(400, 'BILLING_BAD_SIGNATURE', 'Invalid webhook signature');
+  }
+}
+
 export async function processStripeWebhook(
   db: Db,
-  event: WebhookEventPayload,
+  rawBody: string,
   signatureHeader?: string | null,
-): Promise<{ status: string; processed: boolean }> {
-  // Validate signature if webhook secret is configured
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (webhookSecret && signatureHeader) {
-    const parts = signatureHeader.split(',').reduce((acc, curr) => {
-      const [k, v] = curr.split('=');
-      if (k && v) acc[k.trim()] = v.trim();
-      return acc;
-    }, {} as Record<string, string>);
+): Promise<{ status: string; processed: boolean; replayed?: boolean }> {
+  verifyWebhookSignature(rawBody, signatureHeader);
 
-    if (parts.t && parts.v1) {
-      const hmac = createHmac('sha256', webhookSecret);
-      hmac.update(`${parts.t}.${JSON.stringify(event)}`);
-      const digest = hmac.digest('hex');
-      try {
-        if (!timingSafeEqual(Buffer.from(parts.v1, 'utf8'), Buffer.from(digest, 'utf8'))) {
-          throw new DomainError(400, 'BAD_SIGNATURE', 'Invalid webhook signature');
-        }
-      } catch {
-        // bad signature
-      }
-    }
+  let event: WebhookEventPayload;
+  try {
+    event = JSON.parse(rawBody) as WebhookEventPayload;
+  } catch {
+    throw new DomainError(400, 'BILLING_BAD_PAYLOAD', 'Webhook body is not valid JSON');
+  }
+  if (!event || typeof event.id !== 'string' || typeof event.type !== 'string' || !event.data?.object) {
+    throw new DomainError(400, 'BILLING_BAD_PAYLOAD', 'Webhook body is not a Stripe event');
   }
 
   const obj = event.data.object;
@@ -189,6 +264,22 @@ export async function processStripeWebhook(
     return { status: 'ignored_no_org', processed: false };
   }
 
+  const hash = requestHash(event);
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, orgId, event.id, 'stripe.webhook', hash, async () => {
+      const body = await execWebhookEvent(tx, event);
+      return { status: 200, body };
+    });
+    return { ...res.body, replayed: res.replayed };
+  });
+}
+
+async function execWebhookEvent(
+  tx: Tx,
+  event: WebhookEventPayload,
+): Promise<{ status: string; processed: boolean }> {
+  const obj = event.data.object;
+  const orgId = obj.metadata?.organizationId as string;
   const plan = (obj.metadata?.plan as PlanType) || 'ENTERPRISE';
 
   switch (event.type) {
@@ -199,7 +290,7 @@ export async function processStripeWebhook(
         ? new Date(obj.current_period_end * 1000)
         : new Date(Date.now() + 30 * 24 * 3600 * 1000);
 
-      await db
+      await tx
         .insert(subscriptions)
         .values({
           organizationId: orgId,
@@ -222,12 +313,12 @@ export async function processStripeWebhook(
           },
         });
 
-      await db
+      await tx
         .update(organizations)
         .set({ plan })
         .where(eq(organizations.id, orgId));
 
-      await db.insert(auditEvents).values({
+      await tx.insert(auditEvents).values({
         organizationId: orgId,
         actorName: 'stripe_webhook',
         action: 'SUBSCRIPTION_ACTIVATED',
@@ -241,12 +332,12 @@ export async function processStripeWebhook(
 
     case 'invoice.payment_failed': {
       // Dunning grace period: flag PAST_DUE
-      await db
+      await tx
         .update(subscriptions)
         .set({ status: 'PAST_DUE', updatedAt: new Date() })
         .where(eq(subscriptions.organizationId, orgId));
 
-      await db.insert(auditEvents).values({
+      await tx.insert(auditEvents).values({
         organizationId: orgId,
         actorName: 'stripe_webhook',
         action: 'SUBSCRIPTION_PAYMENT_FAILED',
@@ -260,17 +351,17 @@ export async function processStripeWebhook(
 
     case 'customer.subscription.deleted': {
       // Automatic downgrade to COMMUNITY
-      await db
+      await tx
         .update(subscriptions)
         .set({ plan: 'COMMUNITY', status: 'CANCELED', updatedAt: new Date() })
         .where(eq(subscriptions.organizationId, orgId));
 
-      await db
+      await tx
         .update(organizations)
         .set({ plan: 'COMMUNITY' })
         .where(eq(organizations.id, orgId));
 
-      await db.insert(auditEvents).values({
+      await tx.insert(auditEvents).values({
         organizationId: orgId,
         actorName: 'stripe_webhook',
         action: 'SUBSCRIPTION_CANCELED',

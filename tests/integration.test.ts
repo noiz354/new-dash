@@ -776,3 +776,117 @@ test('sessions (GAP-5): revoke-all kills everything incl. caller', async () => {
   admin = fresh.ctx;
   adminToken = fresh.token;
 });
+
+// ---------------------------------------------------------------------------
+// Billing webhook + checkout (GAP #6: BAD_SIGNATURE was swallowed by
+// catch{}, HMAC ran over a re-serialization, no dedup, checkout stub
+// cs_${Date.now()}. Now: raw-body HMAC fail-closed, event-id dedup via
+// withIdempotency, real Stripe Checkout or honest 503.)
+// ---------------------------------------------------------------------------
+import { createHmac } from 'node:crypto';
+import {
+  createCheckoutSession,
+  processStripeWebhook,
+} from '../lib/services/billing-service';
+import { organizations, subscriptions } from '../db/schema';
+
+const GAP6_SECRET = 'whsec_gap6_test_secret';
+
+function gap6Sign(rawBody: string, secret = GAP6_SECRET): string {
+  const t = String(Math.floor(Date.now() / 1000));
+  const v1 = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  return `t=${t},v1=${v1}`;
+}
+
+function gap6Event(id: string, type = 'customer.subscription.updated', plan = 'GROWTH') {
+  return JSON.stringify({
+    id,
+    type,
+    data: {
+      object: {
+        id: 'sub_gap6',
+        customer: 'cus_gap6',
+        subscription: 'sub_gap6',
+        metadata: { organizationId: admin.orgId, plan },
+        status: 'active',
+        cancel_at_period_end: false,
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400,
+      },
+    },
+  });
+}
+
+async function gap6AuditCount(eventId: string): Promise<number> {
+  const rows = await db.select().from(auditEvents)
+    .where(and(eq(auditEvents.organizationId, admin.orgId), eq(auditEvents.entityId, admin.orgId)));
+  return rows.filter((r) => (r.after as { eventId?: string })?.eventId === eventId).length;
+}
+
+test('billing (GAP-6): valid signature processes once; replay is deduped without duplicate audit', async () => {
+  process.env.STRIPE_WEBHOOK_SECRET = GAP6_SECRET;
+  try {
+    const raw = gap6Event('evt_gap6_once');
+    const sig = gap6Sign(raw);
+    const first = await processStripeWebhook(db, raw, sig);
+    assert.equal(first.status, 'subscription_updated');
+    assert.equal(first.processed, true);
+    assert.equal(first.replayed, false);
+    assert.equal(await gap6AuditCount('evt_gap6_once'), 1, 'exactly one audit row');
+
+    const replay = await processStripeWebhook(db, raw, sig);
+    assert.equal(replay.status, 'subscription_updated');
+    assert.equal(replay.replayed, true, 'replay flagged');
+    assert.equal(await gap6AuditCount('evt_gap6_once'), 1, 'replay must not duplicate audit');
+
+    const [sub] = await db.select().from(subscriptions)
+      .where(eq(subscriptions.organizationId, admin.orgId)).limit(1);
+    assert.equal(sub?.plan, 'GROWTH');
+    assert.equal(sub?.status, 'ACTIVE');
+  } finally {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    await db.update(subscriptions).set({ plan: 'ENTERPRISE', status: 'ACTIVE' })
+      .where(eq(subscriptions.organizationId, admin.orgId));
+    await db.update(organizations).set({ plan: 'ENTERPRISE' })
+      .where(eq(organizations.id, admin.orgId));
+  }
+});
+
+test('billing (GAP-6): bad/tampered signature and missing header fail closed with no mutation', async () => {
+  process.env.STRIPE_WEBHOOK_SECRET = GAP6_SECRET;
+  try {
+    const raw = gap6Event('evt_gap6_evil');
+    const before = await gap6AuditCount('evt_gap6_evil');
+
+    await expectDomainError(() => processStripeWebhook(db, raw, gap6Sign(raw, 'wrong-secret')), 400, 'BILLING_BAD_SIGNATURE');
+    await expectDomainError(() => processStripeWebhook(db, `${raw} `, gap6Sign(raw)), 400, 'BILLING_BAD_SIGNATURE');
+    await expectDomainError(() => processStripeWebhook(db, raw, null), 401, 'BILLING_SIGNATURE_MISSING');
+    await expectDomainError(() => processStripeWebhook(db, 'not-json', gap6Sign('not-json')), 400, 'BILLING_BAD_PAYLOAD');
+    assert.equal(await gap6AuditCount('evt_gap6_evil'), before, 'rejected webhooks mutate nothing');
+  } finally {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+  }
+});
+
+test('billing (GAP-6): missing webhook secret fails closed (503), never silently skips verify', async () => {
+  delete process.env.STRIPE_WEBHOOK_SECRET;
+  const raw = gap6Event('evt_gap6_nosecret');
+  await expectDomainError(() => processStripeWebhook(db, raw, gap6Sign(raw)), 503, 'BILLING_NOT_CONFIGURED');
+  assert.equal(await gap6AuditCount('evt_gap6_nosecret'), 0, 'unconfigured webhook persists nothing');
+});
+
+test('billing (GAP-6): checkout without STRIPE_SECRET_KEY is an honest 503 — no fake URL, no TRIALING upsert', async () => {
+  delete process.env.STRIPE_SECRET_KEY;
+  const before = await db.select().from(subscriptions)
+    .where(eq(subscriptions.organizationId, admin.orgId)).limit(1);
+  await expectDomainError(
+    () => createCheckoutSession(db, admin, 'GROWTH', 'https://x.test/success'),
+    503, 'BILLING_NOT_CONFIGURED',
+  );
+  const after = await db.select().from(subscriptions)
+    .where(eq(subscriptions.organizationId, admin.orgId)).limit(1);
+  assert.deepEqual(after, before, 'failed checkout must not touch the subscription row');
+  await expectDomainError(
+    () => createCheckoutSession(db, admin, 'COMMUNITY', 'https://x.test/success'),
+    503, 'BILLING_NOT_CONFIGURED',
+  );
+});

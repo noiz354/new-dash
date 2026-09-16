@@ -101,7 +101,7 @@
 
 > 2026-09-16, read-only, 32 fitur terverifikasi (bukan 37 — lihat §22). Eksekusi GAP-06→GAP-17 satu-per-satu, spec-driven, commit+push per gap.
 
-- [ ] GAP-06 P0: billing HMAC fail-closed + dedup + Stripe call/hapus stub (F24)
+- [x] GAP-06 P0: billing HMAC fail-closed + dedup + Stripe call/hapus stub (F24 CLOSED 2026-09-16: verifyWebhookSignature raw-body — secret hilang 503, header hilang 401, salah 400, tanpa swallow; dedup via withIdempotency scope stripe.webhook + tx; checkout Stripe Checkout API asli via fetch tanpa dep baru, tanpa key/price → 503 jujur tanpa URL palsu/tanpa TRIALING upsert; route webhook req.text(); 4 test baru; npm test 81/81; runtime curl dev: webhook→BILLING_NOT_CONFIGURED fail-closed, checkout unauth→401)
 - [ ] GAP-07 P0: impersonate — audit event nyata atau cabut klaim "audit-chained" (F29)
 - [ ] GAP-08 P1: copy cluster jujur + EVT-fallback wajib-auditId + perluas grep-test (F31/F32)
 - [ ] GAP-09 P1: purchasing wire list/detail/GRN → po-service (F13, big rock M/L)

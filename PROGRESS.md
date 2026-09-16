@@ -239,3 +239,13 @@ Verdict: bug/gap benar = 20 (8 must-fix + 8 must-integrate + 4 complete-partial)
 Temuan tajam: F24 billing `catch{}` telan BAD_SIGNATURE (P0 keamanan); F29 impersonate klaim "audit-chained" fiktif (P0-adjacent); F20 force-dispatch bypass service (tanpa zod/audit/idempotency); F23 jobs dua dunia + link auditHash fiktif; F8 BIM "live" padahal GET /api/telemetry/ingest nyata nganggur.
 Dokumen: `docs/audit-non-e2e-remediation-map.md` (§19 32 blok + §22 master table + §23–§30: by-decision, by-gap, order GAP-06→GAP-17, quick-close 9, big-rock 7, dependency map, counts).
 NEXT: eksekusi GAP-06 (billing HMAC) → GAP-17 satu-per-satu dalam build mode (butuh persetujuan user per pola CLOSE ALL GAPS).
+
+## GAP CLOSED #6 — Billing webhook + checkout fake → real (2026-09-16)
+
+Domain: Billing | Feature: webhook HMAC + dedup + checkout | Previous: BACKEND-ONLY (HMAC ditelan catch{}, HMAC atas re-serialisasi, tanpa-secret dilewati diam-diam, "duplicate guard" tanpa dedup, checkout stub cs_Date.now + URL fabrikasi) | New: BACKEND-ONLY hardened
+Root cause: fail-open verification + fake provider call.
+Spec: docs/remediation-gap-6-spec.md (ditulis dulu — spec-driven).
+Backend: `verifyWebhookSignature()` atas RAW body (skema t,v1 Stripe) — secret hilang→503 BILLING_NOT_CONFIGURED, header hilang→401, salah/malformed→400, tanpa swallow; `processStripeWebhook(db, rawBody, header)` parse-di-service + `db.transaction` + `withIdempotency(scope stripe.webhook, key event.id)` — replay tanpa re-eksekusi/audit ganda; `createCheckoutSession()` panggil Stripe Checkout Sessions API asli via fetch (tanpa dep baru; price per-plan dari env) — tanpa key/price→503 jujur, tanpa URL palsu, tanpa upsert TRIALING; COMMUNITY→400; route webhook pakai `req.text()`; env baru di .env.example (STRIPE_WEBHOOK_SECRET/SECRET_KEY/PRICE_GROWTH/PRICE_ENTERPRISE).
+Tests: 4 integrasi baru (valid→processed+1 audit; replay→replayed+audit tetap 1+plan ACTIVE; bad/tampered/missing/invalid-json→400/401 tanpa mutasi; missing secret→503; checkout tanpa key→503 tanpa ubah subscription row); npm test 81/81; tsc nol error baru.
+Runtime proof (curl dev :3145, tanpa secret): webhook→`BILLING_NOT_CONFIGURED` fail-closed (dulu: diproses diam-diam!); checkout unauth→401 (auth boundary utuh). Positive-path route-level TIDAK di-curl di dev DB agar tak mengotori data sharing (plan org) — positive path terbukti di integration test (PGlite riil + HMAC riil); plumbing route terbukti via path 503 (req.text→service→envelope).
+NEXT GAP: #7 impersonate.

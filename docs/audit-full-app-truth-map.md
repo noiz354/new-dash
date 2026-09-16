@@ -54,7 +54,7 @@
 | Telemetry | ingest + metrics | rum-store/http internal | ingest + metrics FOUND | FOUND | (U) | — (infra) | BACKEND-ONLY |
 | Security | CSP report pipeline | Header report-uri | csp-report FOUND | 204 FOUND | Log/pipeline | — (infra, proven T19) | END-TO-END |
 | Jobs | Queue monitor + dispatch | Jobs page SEED, nol fetch MOCKED | queue/jobs GET+POST ADA tak dipanggil | worker FOUND | Queue FOUND | Daftar statis | FRONTEND-ONLY |
-| Billing | Plans/invoice + webhook | NOT FOUND | billing + webhook FOUND | FOUND | Stripe external (U) | — | BACKEND-ONLY |
+| Billing | Plans/invoice + webhook | NOT FOUND | billing + webhook FOUND | FOUND | Stripe external (U) | — | BACKEND-ONLY hardened [CLOSED GAP-06 2026-09-16: HMAC raw-body fail-closed, event-id dedup, checkout Stripe asli/503] |
 | Retention | Digest | NOT FOUND | retention/digest FOUND | FOUND | (U) | — | BACKEND-ONLY |
 | Audit | Trail + verify-chain + widget | AuditTrail POST FOUND | audit-trail + verify-chain FOUND | recompute FOUND | DB audit_events FOUND | Ledger + badge | END-TO-END |
 | Settings | Keys/rotate/maint/webhook | Nol fetch, state lokal | (parsial: rotate key lokal) | NOT FOUND | — | Toast lokal | FRONTEND-ONLY |

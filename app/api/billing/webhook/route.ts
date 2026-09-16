@@ -5,11 +5,13 @@ import { processStripeWebhook } from '@/lib/services/billing-service';
 
 /**
  * POST /api/billing/webhook
- * Stripe webhook handler with signature verification, duplicate guard, and dunning / downgrade management.
+ * Stripe webhook handler: raw-body signature verification (fail-closed),
+ * event-id dedup guard, and dunning / downgrade management.
  */
 export async function POST(req: NextRequest) {
   return withRoute({ op: 'billing.webhook', method: 'POST', public: true }, req, async () => {
-    const rawBody = await req.json();
+    // Raw body: Stripe signs the exact bytes; never verify a re-serialization.
+    const rawBody = await req.text();
     const signature = req.headers.get('stripe-signature');
 
     const result = await processStripeWebhook(getDb(), rawBody, signature);
