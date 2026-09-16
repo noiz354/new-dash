@@ -34,6 +34,10 @@ import { addEvidence, listWoEvidence } from '../lib/services/task-service';
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
 import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
 import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
+import { provisionOrganization } from '../lib/services/onboarding-service';
+import { sequences } from '../db/schema';
+import { NextRequest } from 'next/server';
+import { POST as signupPost } from '../app/api/auth/signup/route';
 import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -1304,4 +1308,97 @@ test('telemetry (GAP-14/F8): ingest → listRecent by assetCode feeds BIM refres
 
   const { ctx: decoy } = await gap14Decoy();
   assert.equal((await listRecentSensorReadings(db, decoy, CANON.assetSeal, 20)).length, 0, 'decoy sees no readings');
+});
+
+// ---------------------------------------------------------------------------
+// GAP-16: tenant signup (F2) — service-level, no HTTP login flow
+// ---------------------------------------------------------------------------
+test('signup (GAP-16/F2): provision happy → 201 contract + session verifies + tenant isolated', async () => {
+  const res = await provisionOrganization(db, {
+    orgName: 'GAP16 Probe Facility Co',
+    adminEmail: '  GAP16-ADMIN@probe.example ', // service trims + lowercases
+    adminName: 'Probe Admin',
+    adminPassword: 'gap16-pass-1234',
+    adminTitle: 'Ops Lead',
+  }, 'gap16-test');
+
+  assert.match(res.organizationId, /^APX-/, 'org id stamped APX-*');
+  assert.equal(res.orgName, 'GAP16 Probe Facility Co');
+  assert.equal(res.adminEmail, 'gap16-admin@probe.example', 'email trimmed+lowercased');
+  assert.ok(res.adminUserId, '201 contract carries adminUserId');
+  assert.ok(res.sessionToken, '201 contract carries sessionToken (= cookie value set by route)');
+
+  // The session the route would set as the apex_session cookie verifies as the new tenant admin.
+  const ctx = await verifySession(db, res.sessionToken);
+  assert.ok(ctx, 'signup session verifies');
+  assert.equal(ctx!.orgId, res.organizationId);
+  assert.equal(ctx!.role, 'Enterprise Admin');
+
+  // Numbering sequences initialized (WO/SR/PO/PR/INS/FND/GRN/PM).
+  const seqRows = await db.select().from(sequences).where(eq(sequences.organizationId, res.organizationId));
+  assert.equal(seqRows.length, 8, 'sequences initialized');
+  assert.ok(seqRows.every((r) => r.nextVal === 1), 'all sequences start at 1');
+
+  // Tenant isolation: new tenant sees no canon WOs; canon + decoy see none of the new org's users.
+  assert.equal((await listWorkOrders(db, ctx!)).length, 0, 'new tenant isolated from canon data');
+  assert.ok(!(await listUsers(db, admin)).some((u) => u.email === res.adminEmail), 'canon tenant cannot see new admin');
+  const { ctx: decoy } = await gap14Decoy();
+  assert.ok(!(await listUsers(db, decoy)).some((u) => u.email === res.adminEmail), 'decoy tenant cannot see new admin');
+
+  // ORG_PROVISION written transactionally in the new tenant's own ledger.
+  const audits = await listAuditEvents(db, ctx!, { entityType: 'organization' });
+  assert.ok(
+    audits.rows.some((e) => e.action === 'ORG_PROVISION' && e.entityId === res.organizationId),
+    'ORG_PROVISION audited',
+  );
+});
+
+test('signup (GAP-16/F2): duplicate admin email → 409 EMAIL_EXISTS (global, incl. seed admin)', async () => {
+  await expectDomainError(() => provisionOrganization(db, {
+    orgName: 'Duplicate Probe Org',
+    adminEmail: 'gap16-admin@probe.example', // created by the happy-path test above
+    adminName: 'Second Admin',
+    adminPassword: 'gap16-pass-5678',
+  }), 409, 'EMAIL_EXISTS');
+
+  await expectDomainError(() => provisionOrganization(db, {
+    orgName: 'Squatter Org',
+    adminEmail: ' M.Vance@ApexOps.io ', // seed admin, mixed case + spaces
+    adminName: 'Squatter',
+    adminPassword: 'squat-pass-99',
+  }), 409, 'EMAIL_EXISTS');
+
+  // The 409s above left no half-provisioned orgs behind.
+  const half = await db.select().from(organizations).where(eq(organizations.name, 'Duplicate Probe Org'));
+  assert.equal(half.length, 0, 'rejected signup persists nothing');
+});
+
+test('signup (GAP-16/F2): route POST with invalid bodies → 400 VALIDATION_ERROR (zod fires before DB)', async () => {
+  const reqFor = (body: unknown) => new NextRequest('http://probe.local/api/auth/signup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const valid = {
+    orgName: 'Route Probe Co',
+    adminEmail: 'route-probe@probe.example',
+    adminName: 'Route Probe',
+    adminPassword: 'route-pass-123',
+  };
+
+  const shortPass = await signupPost(reqFor({ ...valid, adminPassword: 'short' }));
+  assert.equal(shortPass.status, 400, 'short password rejected');
+  const env1 = (await shortPass.json()) as { error?: { code?: string } };
+  assert.equal(env1.error?.code, 'VALIDATION_ERROR');
+
+  const badEmail = await signupPost(reqFor({ ...valid, adminEmail: 'not-an-email' }));
+  assert.equal(badEmail.status, 400, 'invalid email rejected');
+  const env2 = (await badEmail.json()) as { error?: { code?: string } };
+  assert.equal(env2.error?.code, 'VALIDATION_ERROR');
+
+  const shortOrg = await signupPost(reqFor({ ...valid, orgName: 'ab' }));
+  assert.equal(shortOrg.status, 400, 'org name <3 rejected');
+
+  const noOrg = await db.select().from(organizations).where(eq(organizations.name, 'Route Probe Co'));
+  assert.equal(noOrg.length, 0, 'invalid payloads never reach provisioning');
 });

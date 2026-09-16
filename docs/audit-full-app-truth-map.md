@@ -15,7 +15,7 @@
 | Auth | Passkey register/login/revoke | PasskeySettings + LoginForm FOUND | passkeys/register+login FOUND | webauthn FOUND | DB credentials FOUND | Settings + login btn | END-TO-END |
 | Auth | Logout + purge sesi/SW/cache | TopBar FOUND | POST logout FOUND | session revoke FOUND | DB + SW purge FOUND | Redirect /login | END-TO-END |
 | Auth | SSO | Tombol disabled jujur FOUND | NOT FOUND | NOT FOUND | — | "not configured (Phase 1b)" | FRONTEND-ONLY |
-| Auth | Signup / provisioning tenant | NOT FOUND | POST signup FOUND | org provision FOUND | DB organizations (U) | — | BACKEND-ONLY |
+| Auth | Signup / provisioning tenant | SignupForm + page `/signup` FOUND [GAP-16-T1] | POST signup FOUND | org provision FOUND | DB organizations (U) | Kartu tengah + redirect authed | END-TO-END |
 | Auth | Revoke semua sesi | ProfileSessions SEED MOCKED | GET+POST sessions FOUND | list+revoke FOUND | DB sessions FOUND | Daftar statis | BROKEN |
 | Org | Provision user | OrgHub POST FOUND | POST users FOUND | org.users.create FOUND | DB users (U) | Toast + row lokal | PARTIAL |
 | Org | Deactivate user | setActive → PATCH isActive (fix GAP-2) | PATCH users/[id] CALLED | updateUser + revoke sessions + audit FOUND | DB users FOUND | Toast + status valid | END-TO-END |

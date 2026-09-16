@@ -37,6 +37,18 @@ Canon: DB organizations. Persist: PERSISTED (atomic). Contract:
 `POST {…}→201+cookie` (MATCH, uncalled). Tests: NONE. **Decision: NEED
 PRODUCT DECISION** (admin-UI vs API-only vs hapus). Target: TBD. Reason:
 tenant-provisioning tanpa wajah = risiko orphan tenant. P3/M/MODULE.
+**[CLOSED GAP-16 TASK 1 2026-09-16]:** DECISION bangun-UI dieksekusi —
+`app/(auth)/signup/page.tsx` + `components/auth/SignupForm.tsx` baru (5 field,
+validasi klien mirror zod server, POST `/api/auth/signup` via apiFetch, error
+409/400 ditampilkan apa adanya); `proxy.ts` `PUBLIC_PREFIXES` +`/signup`
+(routing terbukti kurang: tanpa cookie, `/signup` 307→`/login` — tanpa fix
+ini halaman tak pernah terjangkau calon tenant). Backend route/service/DB
+TAK berubah. Spec: `docs/remediation-gap-16-spec.md`. 3 test (happy+session
+verify+isolasi tenant+sequences, 409 EMAIL_EXISTS global+tanpa-artefak, 400
+zod via POST handler pre-DB; npm test 141/141; tsc exit 0). Runtime curl dev
+:3157: GET /signup 200; happy 201+cookie→GET `/` 200 authed; org kedua 201 +
+roster terisolasi; 409/400×2/401 jujur; log server bersih (hanya structured
+request log). Target: END-TO-END tercapai.
 
 **F3 — Org provision refetch.** Current: PARTIAL. Yang nyata: roster live GET,
 POST provision persist + audit. Yang lokal: append tanpa revalidate (server
@@ -321,7 +333,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | # | Domain | Feature | Current | Root Cause | Decision | Target | Pri | Eff | Blast |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Auth | SSO | FRONTEND-ONLY | BACKEND MISSING | HONEST PLACEHOLDER | FE by design | P3 | S | LOCAL |
-| 2 | Auth | Signup tenant | BACKEND-ONLY | MISSING UI | NEED DECISION | TBD | P3 | M | MODULE |
+| 2 | Auth | Signup tenant | END-TO-END [CLOSED GAP-16-T1] | UI BUILT (was MISSING UI) | NEED DECISION (decided: build UI) | E2E | P3 | M | MODULE |
 | 3 | Org | Provision refetch | PARTIAL | MISSING REFRESH | COMPLETE PARTIAL ⭐ | E2E | P1 | S | LOCAL |
 | 4 | Org | Clone-policy/deploy | FRONTEND-ONLY | PRODUCT DECISION MISSING | PLACEHOLDER+DEFER | FE by design | P3 | S | LOCAL |
 | 5 | WO | Tasks checklist | BACKEND-ONLY | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P1 | S | MODULE |
