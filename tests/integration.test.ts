@@ -10,6 +10,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { createDb, type Db } from '../db/client';
+import { auditEvents } from '../db/schema';
 import { seedAll, SEED_PASSWORD, SEED_TOTP_SECRET } from '../db/seed';
 import { workOrderEvents } from '../db/schema';
 import { login, logout, verifyMfa } from '../lib/services/auth-service';
@@ -21,7 +22,7 @@ import {
   createServiceRequest, getServiceRequest, listServiceRequests,
   listSrHistory, transitionServiceRequest,
 } from '../lib/services/sr-service';
-import { listAuditEvents } from '../lib/services/audit-service';
+import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -410,6 +411,31 @@ test('audit: ledger holds real events from every flow, tenant-scoped', async () 
   const decoyPage = await listAuditEvents(db, decoy);
   assert.ok(decoyPage.total < page.total);
   assert.ok(decoyPage.rows.every((r) => r.entityId === null || !r.entityId.startsWith('WO-2026-08')));
+});
+
+// ---------------------------------------------------------------------------
+// TASK-20: hash-chain verification is a real server recomputation, and it
+// catches tampering (stored entryHash mismatch).
+// ---------------------------------------------------------------------------
+test('audit: verifyAuditHashChain recomputes the real chain and detects tampering', async () => {
+  const clean = await verifyAuditHashChain(db, admin);
+  assert.equal(clean.valid, true);
+  assert.ok(clean.verifiedCount >= 10, `expected populated ledger, got ${clean.verifiedCount}`);
+  assert.match(clean.rootHash, /^[0-9a-f]{64}$/);
+  assert.match(clean.genesisHash, /^[0-9a-f]{64}$/);
+  assert.equal(clean.tamperedEventId, null);
+
+  // Simulate a tampered row: plant a wrong stored hash, expect detection.
+  const victim = (await listAuditEvents(db, admin)).rows[0];
+  await db.update(auditEvents).set({ entryHash: '0'.repeat(64) }).where(eq(auditEvents.id, victim.id));
+  try {
+    const tampered = await verifyAuditHashChain(db, admin);
+    assert.equal(tampered.valid, false);
+    assert.equal(tampered.tamperedEventId, victim.id);
+  } finally {
+    await db.update(auditEvents).set({ entryHash: null }).where(eq(auditEvents.id, victim.id));
+  }
+  assert.equal((await verifyAuditHashChain(db, admin)).valid, true);
 });
 
 test('assets: registry with real workload counts; dossier relations; cross-tenant 404', async () => {

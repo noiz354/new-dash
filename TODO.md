@@ -337,7 +337,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Spec lengkap: `docs/runtime-verification-wave-3-4.md`. Satu task satu verdict (PASS/PARTIAL/FAIL/BLOCKED). Jangan mulai TASK-27+ sebelum selesai.
 
 - [x] TASK-19 Barcode → PARTIAL (laporan: `docs/runtime-verification-task19.md`; A+E PASS, B/C/D/F BLOCKED BY ENVIRONMENT — Win64 Chrome tak punya BarcodeDetector)
-- [ ] TASK-20 Audit truthfulness (no pseudo-crypto, hash dari server, verify-chain)
+- [x] TASK-20 Audit truthfulness → PASS (laporan: `docs/runtime-verification-task20.md`; verify-root fabrikasi dihapus, bug `asc` diperbaiki, copy/KPI/metadata jujur, test 61/61)
 - [ ] TASK-21 Windowing (DOM << dataset, scroll, filter)
 - [x] TASK-23 PWA Manifest → PASS (laporan: `docs/runtime-verification-task23.md`; link manifest + JSON valid + 4/4 ikon 200 + installabilityErrors [])
 - [ ] TASK-24 Service Worker (register/activate/control, cache strategy, offline /offline, logout purge)
