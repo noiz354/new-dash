@@ -340,10 +340,10 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [x] TASK-20 Audit truthfulness → PASS (laporan: `docs/runtime-verification-task20.md`; verify-root fabrikasi dihapus, bug `asc` diperbaiki, copy/KPI/metadata jujur, test 61/61)
 - [x] TASK-21 Windowing → PASS (laporan: `docs/runtime-verification-task21.md`; 65 data → 25 li via MCP, spacer math eksak, scroll keyboard End/Home disjoint, filter jujur, test 65/65)
 - [x] TASK-23 PWA Manifest → PASS (laporan: `docs/runtime-verification-task23.md`; link manifest + JSON valid + 4/4 ikon 200 + installabilityErrors [])
-- [ ] TASK-24 Service Worker (register/activate/control, cache strategy, offline /offline, logout purge)
-- [ ] TASK-25 Background Sync + Badging (outbox, badge, offline→online flush)
-- [ ] TASK-26 SSE Alerts (stream, heartbeat, reconnect/backoff, fallback polling)
-- [ ] Final matrix + bug list + final decision Wave 3–4
+- [x] TASK-24 Service Worker → PASS (laporan: `docs/runtime-verification-task24.md`; bug fallback SHELL-vs-PAGES di-fix + terverifikasi end-to-end, logout purge, nuansa: React #418 pre-existing backlog)
+- [x] TASK-25 Background Sync + Badging → FAIL (laporan: `docs/runtime-verification-task25.md`; outbox klien nyata, TAPI server fabrikasi: POST 201-tanpa-persist + GET hardcode; auto-flush unproven → backlog)
+- [x] TASK-26 SSE Alerts → PASS (laporan: `docs/runtime-verification-task26.md`; stream/snapshot/heartbeat/header + fallback jujur + recovery live→fallback→live)
+- [x] Final matrix + bug list + final decision Wave 3–4 → 19 PARTIAL, 20/21/23/24/26 PASS, 25 FAIL (lihat laporan per task + PROGRESS.md)
 
 ### Definition of Done per slice (WAJIB semua)
 

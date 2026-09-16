@@ -112,3 +112,23 @@
 | `settings_system_configuration` | ✅ Diaudit | `docs/ui-audit/settings.md` — temuan: API key terpapar plain, tenant ganda |
 | `ui_state_variants_patterns` | ✅ Diaudit | `docs/ui-audit/ui-state-patterns.md` — kontrak komponen reusable |
 | `apex_ops_logo` | ✅ Diaudit | `docs/ui-audit/logo.md` — usulan komponen `Logo` tunggal |
+
+## Wave 3–4 Runtime Verification — FINAL (2026-09-16, via MCP chrome-devtools + CDP :9227)
+
+| Task | Verdict | Laporan | Catatan |
+|---|---|---|---|
+| TASK-19 Barcode | PARTIAL | `docs/runtime-verification-task19.md` | A+E PASS; B/C/D/F BLOCKED (Win64 tanpa BarcodeDetector) |
+| TASK-20 Audit truthfulness | PASS | `docs/runtime-verification-task20.md` | verify-root fabrikasi dihapus; bug `asc` di-fix; copy jujur |
+| TASK-21 Windowing | PASS | `docs/runtime-verification-task21.md` | 65 data → 25 li, spacer eksak, scroll keyboard, test 65/65 |
+| TASK-23 PWA Manifest | PASS | `docs/runtime-verification-task23.md` | manifest + 4/4 ikon 200 + installabilityErrors [] |
+| TASK-24 Service Worker | PASS | `docs/runtime-verification-task24.md` | bug fallback SHELL-vs-PAGES di-fix + terverifikasi; nuansa React #418 (backlog F-418) |
+| TASK-25 Background Sync | FAIL | `docs/runtime-verification-task25.md` | outbox klien nyata; server fabrikasi (POST 201-tanpa-persist, GET hardcode); auto-flush unproven → backlog |
+| TASK-26 SSE Alerts | PASS | `docs/runtime-verification-task26.md` | full cycle live → fallback jujur → pulih live |
+
+### Temuan (backlog Step 2 / slice berikut)
+
+- F-418: React hydration error #418 di `/login` prod (pre-existing, reproduksi clean-load).
+- F-FINDINGS: `POST /api/findings` persist ke tabel `findings` (perbaiki permission `assets.read`); `GET` baca DB; selidiki pemicu auto-flush SyncStatus.
+- F-A11Y: form-field tanpa id/name ×2 (console issue, dari uji TASK-26).
+- F-COPY: label `WS-PUSH: 12ms` (NotificationsHub debugger), `Live Sync Active`, `Telemetry Bus` — kandidat triase Step 2.
+- OBS: entryHash audit selalu null (mode hash-opsional); backfill saat insert bila chain tegas diinginkan.

@@ -420,7 +420,7 @@ Source code menunjukkan intent. Browser runtime menunjukkan kenyataan.
 - [x] TASK-20 Audit truthfulness → verdict: PASS (`docs/runtime-verification-task20.md`)
 - [x] TASK-21 Windowing → verdict: PASS
 - [x] TASK-23 PWA Manifest → verdict: PASS (`docs/runtime-verification-task23.md`)
-- [ ] TASK-24 Service Worker → verdict: _
-- [ ] TASK-25 Background Sync + Badging → verdict: _
-- [ ] TASK-26 SSE Alerts → verdict: _
-- [ ] Final matrix + bug list + final decision
+- [x] TASK-24 Service Worker → verdict: PASS (`docs/runtime-verification-task24.md`; bug fallback SHELL-vs-PAGES di-fix + terverifikasi end-to-end; nuansa React #418 backlog)
+- [x] TASK-25 Background Sync + Badging → verdict: FAIL (`docs/runtime-verification-task25.md`; outbox klien nyata, server fabrikasi POST-201-tanpa-persist + GET-hardcode, auto-flush unproven)
+- [x] TASK-26 SSE Alerts → verdict: PASS (`docs/runtime-verification-task26.md`; full cycle live→fallback→live)
+- [x] Final matrix + bug list + final decision → 19 PARTIAL, 20/21/23/24/26 PASS, 25 FAIL (final, 2026-09-16)

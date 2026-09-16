@@ -155,7 +155,12 @@ async function networkFirstNavigation(request) {
   } catch (err) {
     const hit = await cache.match(request);
     if (hit) return hit;
-    const offline = await cache.match('/offline');
+    // /offline is precached into the SHELL cache (see install), not PAGES —
+    // check both so the designed offline page is served instead of 503 text.
+    let offline = await cache.match('/offline');
+    if (!offline) {
+      offline = await (await caches.open(CACHE_SHELL)).match('/offline');
+    }
     return offline || new Response('Offline', { status: 503, headers: { 'Content-Type': 'text/plain' } });
   }
 }
