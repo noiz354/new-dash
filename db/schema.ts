@@ -367,7 +367,7 @@ export const settingsKv = pgTable(
 // ------------------------------------------------------------ shift handovers (GAP-22/F27) --
 
 /** Shift handover records. Seed ships ZERO rows (the old UI hard-coded fake
- *  HND-2026-* history + an AUDIT COMPLIANT badge with no backend) — rows are
+ *  HND-2026-* history + a compliance badge with no ledger behind it) — rows are
  *  created by operators via POST /api/shifts/handovers and move through
  *  PENDING → ACCEPTED | REJECTED (terminal) via the decision endpoint only.
  *  Every transition writes a HANDOVER_* audit row in the same transaction. */

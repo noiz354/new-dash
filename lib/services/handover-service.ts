@@ -3,8 +3,8 @@
  * GET/POST /api/shifts/handovers and POST /api/shifts/handovers/[id]
  * (GAP-22/F27).
  *
- * The old UI hard-coded fake HND-2026-* history and an AUDIT COMPLIANT
- * badge with zero backend. Rows are now operator-created (seed ships none)
+ * The old UI hard-coded fake HND-2026-* history plus a compliance
+ * badge that had zero ledger/backend behind it. Rows are now operator-created (seed ships none)
  * and move PENDING → ACCEPTED | REJECTED via decideHandover only; every
  * create/decision writes a HANDOVER_* audit row in the same transaction,
  * which is what makes the page badge honest ("audit trail · server
