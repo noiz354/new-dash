@@ -3,7 +3,7 @@
  * table, tenant-scoped. No mutations here by design: the ledger is written
  * only inside service transactions (auth, WO, SR) and never updated.
  */
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
 import { auditEvents } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
