@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { DemoBanner } from '@/components/ops/DemoBanner';
 import './globals.css';
 
 // NOTE (Fase E): fonts resolve via system stacks until woff2 files are
@@ -7,14 +8,18 @@ import './globals.css';
 const fontVars = 'font-sans';
 
 export const metadata: Metadata = {
-  title: 'Apex Ops CMMS',
-  description: 'Facility maintenance / CMMS — production rebuild (tenant APX-NUSA-01).',
+  title: 'Apex Ops CMMS — Demo Prototype',
+  description:
+    'Facility maintenance / CMMS design prototype (tenant APX-NUSA-01). DEMO: simulated data, no backend/API/database/auth — nothing persists.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`bg-surface text-ink antialiased ${fontVars}`}>{children}</body>
+      <body className={`bg-surface text-ink antialiased ${fontVars}`}>
+        <DemoBanner />
+        {children}
+      </body>
     </html>
   );
 }

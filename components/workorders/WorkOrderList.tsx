@@ -1,129 +1,157 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, Download, Plus, UserPlus, X, XCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Download, LoaderCircle, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
-
-interface WO {
-  id: string; title: string; loc: string; pri: 'P1' | 'P2' | 'P3';
-  status: string; sla: string; tech: string; action?: string; seeded?: boolean;
-}
-
-const SEED: WO[] = [
-  { id: CANON.workOrderSeal, title: 'Primary Shaft Mechanical Seal Replacement', loc: 'Chiller #04 · CUP Basement L2', pri: 'P1', status: 'IN PROGRESS', sla: '42m left', tech: 'M. Kowalski', seeded: true },
-  { id: 'WO-2024-0892', title: 'Compressor bearing vibration anomaly above 7.8mm/s safety trip', loc: 'Chiller Unit #03 · Basement Energy Hub', pri: 'P1', status: 'ESCALATED', sla: '−01:42:15 BREACH', tech: '—', action: 'Quick Action' },
-  { id: 'WO-2024-0888', title: 'Common-rail fuel pump pressure loss during automated test fire', loc: 'Generator 2B · Outdoor Power Vault', pri: 'P1', status: 'ON HOLD (PARTS)', sla: '−00:24:10 BREACH', tech: '—', action: 'Dispatch Specialist' },
-  { id: 'WO-2024-0901', title: 'Secondary optical barcode scanner misalignment and belt drift', loc: 'Conveyor Sorter #4 · Logistics Bay 12', pri: 'P2', status: 'IN PROGRESS', sla: '01:14:30 LEFT', tech: '—', action: 'Expedite SKU' },
-  { id: 'WO-2024-0904', title: 'Static air pressure differential dropped below 25 Pa certification threshold', loc: 'Level 3 Pharma Lab · Tower A', pri: 'P2', status: 'OPEN', sla: '02:40:00 LEFT', tech: '—', action: 'Reassign' },
-  { id: 'WO-2026-0898', title: 'AHU-02 VAV Box Damper Actuator Calibration', loc: 'Substation East Wing (Roof Level)', pri: 'P2', status: 'DISPATCHED', sla: 'Window Today 15:30 WIB', tech: 'Elena Voronova' },
-  { id: 'WO-2026-0881', title: 'Semi-Annual Calibration of Pressure Relief Valve', loc: 'AST-VALV-042 · Room #B-204', pri: 'P3', status: 'SCHEDULED', sla: 'Due Tomorrow 18:00 WIB', tech: 'Shift Delta Team' },
-];
-
-const TECHS = ['Marcus Kowalski (HVAC Lead)', 'Elena Voronova (SCADA)', 'Sarah Al-Mansoor (Life Safety)', 'D. Osei (Shift B relief)'];
-
-interface Toast { id: number; ok: boolean; title: string; msg: string }
-let toastSeq = 1600;
-
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+import { CANON } from '@/lib/canon';
+import type { WoRow } from '@/lib/services/wo-service';
 
 /**
- * Work Orders pipeline — mined from dashboard dispatch (2024 vintage rows),
- * H1 seal record, facilities P3 + notifications P2. 2024 IDs are
- * archive-faithful (dashboard owner) and coexist with the 2026 seal chain.
- * Numbering: WO-2026-0904 reserved (C10 glycol demo), 0905 reserved
- * (vendor draft) — PM auto-batch takes 0906–0909, manual opens at 0910.
+ * Work Orders pipeline — rows come from Postgres (server component fetches,
+ * tenant-scoped); create/reassign POST the real API with Idempotency-Key and
+ * trigger router.refresh() so the table re-reads persisted state (audit PASS
+ * definition). Numbering is assigned by the server sequence, not the client.
  */
-export function WorkOrderList() {
-  const [rows, setRows] = useState<WO[]>(SEED);
+interface Tech { name: string; email: string; role: string }
+
+interface Toast { ok: boolean; title: string; detail: string }
+
+function statusTone(r: WoRow): 'pass' | 'warn' | 'fail' | 'info' | 'hold' {
+  if (r.slaLabel.includes('BREACH')) return 'fail';
+  switch (r.status) {
+    case 'ESCALATED': return 'fail';
+    case 'ON_HOLD': return 'warn';
+    case 'DISPATCHED': return 'hold';
+    case 'OPEN': case 'SCHEDULED': case 'CANCELLED': return 'info';
+    default: return 'pass';
+  }
+}
+
+export function WorkOrderList({
+  rows,
+  techs,
+  can,
+  orgId,
+}: {
+  rows: WoRow[];
+  techs: Tech[];
+  can: { create: boolean; transition: boolean };
+  orgId: string;
+}) {
+  const router = useRouter();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('All Statuses');
   const [pri, setPri] = useState('All Priorities');
   const [vintage, setVintage] = useState('All Years');
   const [toasts, setToasts] = useState<Toast[]>([]);
+
   const [newOpen, setNewOpen] = useState(false);
   const [nwTitle, setNwTitle] = useState('');
-  const [nwAsset, setNwAsset] = useState<string>(CANON.assetSeal);
+  const [nwAsset, setNwAsset] = useState('');
   const [nwPri, setNwPri] = useState<'P1' | 'P2' | 'P3'>('P2');
   const [nwTouched, setNwTouched] = useState(false);
-  const [seq, setSeq] = useState(910);
-  const [reWO, setReWO] = useState<WO | null>(null);
-  const [reTech, setReTech] = useState(TECHS[0]);
+  const [busy, setBusy] = useState(false);
 
-  const push = (ok: boolean, title: string, msg: string) => {
-    const id = toastSeq++;
-    setToasts((t) => [...t, { id, ok, title, msg }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 8000);
+  const [reWO, setReWO] = useState<WoRow | null>(null);
+  const [reEmail, setReEmail] = useState(techs[0]?.email ?? '');
+
+  const push = (ok: boolean, title: string, detail: string) => {
+    setToasts((t) => [...t, { ok, title, detail }]);
+    setTimeout(() => setToasts((t) => t.slice(1)), 6000);
   };
 
-  const filtered = rows.filter((r) => {
-    if (status !== 'All Statuses' && r.status !== status) return false;
-    if (pri !== 'All Priorities' && r.pri !== pri) return false;
-    if (vintage !== 'All Years' && !r.id.startsWith(vintage)) return false;
+  const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return !needle || `${r.id} ${r.title} ${r.loc} ${r.tech}`.toLowerCase().includes(needle);
-  });
+    return rows.filter((r) => {
+      if (status !== 'All Statuses' && r.statusLabel !== status) return false;
+      if (pri !== 'All Priorities' && r.priority !== pri) return false;
+      if (vintage !== 'All Years' && !r.number.startsWith(vintage)) return false;
+      if (!needle) return true;
+      return [r.number, r.title, r.location, r.tech ?? ''].join(' ').toLowerCase().includes(needle);
+    });
+  }, [rows, q, status, pri, vintage]);
 
-  const statuses = ['All Statuses', ...Array.from(new Set(rows.map((r) => r.status)))];
-  const breached = rows.filter((r) => r.sla.includes('BREACH')).length;
-  const p1 = rows.filter((r) => r.pri === 'P1').length;
-  const hold = rows.filter((r) => r.status.startsWith('ON HOLD')).length;
+  const statuses = ['All Statuses', ...Array.from(new Set(rows.map((r) => r.statusLabel)))];
+  const breached = rows.filter((r) => r.slaLabel.includes('BREACH')).length;
+  const p1 = rows.filter((r) => r.priority === 'P1').length;
+  const hold = rows.filter((r) => r.status === 'ON_HOLD').length;
 
   const exportCsv = () => {
-    const head = 'id,title,location,priority,status,sla,assignee';
-    const body = filtered.map((r) => [`"${r.id}"`, `"${r.title}"`, `"${r.loc}"`, r.pri, `"${r.status}"`, `"${r.sla}"`, `"${r.tech}"`].join(','));
-    download('work-orders-pipeline.csv', [head, ...body].join('\n'));
-    push(true, 'Pipeline exported', `${filtered.length} work orders → work-orders-pipeline.csv.`);
+    const head = 'number,title,location,priority,status,sla,assignee';
+    const body = filtered.map((r) => [`"${r.number}"`, `"${r.title}"`, `"${r.location}"`, r.priority, `"${r.statusLabel}"`, `"${r.slaLabel}"`, `"${r.tech ?? ''}"`].join(','));
+    const blob = new Blob([[head, ...body].join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'work-orders-pipeline.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    push(true, 'Pipeline exported', `${filtered.length} work orders → work-orders-pipeline.csv (client-side CSV of persisted rows).`);
   };
 
-  const create = () => {
+  const create = async () => {
     setNwTouched(true);
-    if (!nwTitle.trim() || !/^AST-[A-Z]+-\d{3}$/.test(nwAsset.trim())) return;
-    const id = `WO-2026-0${seq}`;
-    setRows((r) => [{ id, title: nwTitle.trim(), loc: `${nwAsset.trim()} · zone TBD`, pri: nwPri, status: 'OPEN', sla: 'TBD — triage on create', tech: 'Unassigned' }, ...r]);
-    setSeq((s) => s + 1);
-    setNewOpen(false);
-    setNwTitle('');
-    setNwTouched(false);
-    push(true, 'Work order created', `${id} · OPEN · queued to dispatch.`);
-  };
-
-  const quick = (r: WO) => {
-    if (r.action === 'Reassign') {
-      setReWO(r);
-      return;
+    if (busy) return;
+    const titleOk = nwTitle.trim().length >= 4;
+    const assetOk = !nwAsset.trim() || /^AST-[A-Z0-9-]{3,}$/.test(nwAsset.trim());
+    if (!titleOk || !assetOk) return;
+    setBusy(true);
+    try {
+      const res = await fetch('/api/work-orders', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
+        body: JSON.stringify({ title: nwTitle.trim(), priority: nwPri, assetCode: nwAsset.trim() || null }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.ok) {
+        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Create failed' };
+        push(false, 'Create rejected', `${err.message} (${err.code})`);
+        return;
+      }
+      const wo: WoRow = body.data.workOrder ?? body.data;
+      push(true, 'Work order created — persisted', `${wo.number} · OPEN · SLA ${wo.slaLabel} · numbered by server sequence.`);
+      setNewOpen(false);
+      setNwTitle('');
+      setNwAsset('');
+      setNwTouched(false);
+      router.refresh();
+    } catch {
+      push(false, 'Network error', 'Nothing was created. Check the server and retry.');
+    } finally {
+      setBusy(false);
     }
-    const msg: Record<string, string> = {
-      'Quick Action': 'Rapid-response pinged · vibration crew ETA 20 min · escalation held.',
-      'Dispatch Specialist': 'Fuel-systems specialist dispatched · parts hold stays until pump kit arrives.',
-      'Expedite SKU': 'Scanner SKU expedite requested · crib checking stock · sorter kept running.',
-    };
-    push(true, r.action ?? 'Queued', `${r.id} · ${msg[r.action ?? ''] ?? 'dispatcher notified.'}`);
   };
 
-  const reassign = () => {
-    if (!reWO) return;
-    setRows((rs) => rs.map((r) => (r.id === reWO.id ? { ...r, tech: reTech } : r)));
-    push(true, 'Tech reassigned', `${reWO.id} → ${reTech} · briefing pack sent.`);
-    setReWO(null);
+  const reassign = async () => {
+    if (!reWO || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/work-orders/${reWO.number}/transitions`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
+        body: JSON.stringify({ action: 'assign', assigneeEmail: reEmail }),
+      });
+      const body = await res.json();
+      if (!res.ok || !body.ok) {
+        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Reassign failed' };
+        push(false, 'Reassign rejected', `${err.message} (${err.code})`);
+        return;
+      }
+      const tech = techs.find((t) => t.email === reEmail);
+      push(true, 'Tech assigned — persisted', `${reWO.number} → ${tech?.name ?? reEmail} · status unchanged (${body.data.statusLabel}).`);
+      setReWO(null);
+      router.refresh();
+    } catch {
+      push(false, 'Network error', 'Nothing was changed. Retry.');
+    } finally {
+      setBusy(false);
+    }
   };
-
-  const statusTone = (s: string) => (s.includes('BREACH') || s === 'ESCALATED' ? 'fail' : s.startsWith('ON HOLD') ? 'warn' : s === 'OPEN' || s === 'SCHEDULED' ? 'info' : s === 'DISPATCHED' ? 'hold' : 'pass');
 
   return (
     <>
@@ -136,7 +164,7 @@ export function WorkOrderList() {
       <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-labelledby="wo-h">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="apex-id text-muted">Dispatch Pipeline · {rows.length} seeded work orders (2024 carryover + 2026 live)</p>
+            <p className="apex-id text-muted">Dispatch Pipeline · {rows.length} work orders live from Postgres · tenant {orgId}</p>
             <h1 id="wo-h" className="text-2xl font-semibold tracking-tight">Work Orders</h1>
             <p className="text-[13px] text-muted">Execution pipeline from dispatch to close — priorities, SLA exposure, and crew assignment.</p>
           </div>
@@ -144,31 +172,33 @@ export function WorkOrderList() {
             <Button variant="secondary" onClick={exportCsv}><Download size={16} /> Export (CSV)</Button>
             <Dialog open={newOpen} onOpenChange={setNewOpen}>
               <DialogTrigger asChild>
-                <Button><Plus size={16} /> New Work Order</Button>
+                <Button disabled={!can.create} title={can.create ? undefined : 'Your role lacks wo.create'}><Plus size={16} /> New Work Order</Button>
               </DialogTrigger>
               <DialogContent aria-labelledby="nw-h">
                 <DialogTitle id="nw-h">New Work Order</DialogTitle>
-                <DialogDescription>Manual sequence opens at WO-2026-0910 (past PM auto-batch 0906–0909).</DialogDescription>
+                <DialogDescription>Number is assigned by the server sequence (canon engine) — not the browser.</DialogDescription>
                 <label className="text-xs font-semibold" htmlFor="nw-t">Title (required)</label>
-                <Input id="nw-t" value={nwTitle} onChange={(e) => setNwTitle(e.target.value)} invalid={nwTouched && !nwTitle.trim()} placeholder="e.g. Cooling tower fan belt replacement" />
+                <Input id="nw-t" value={nwTitle} onChange={(e) => setNwTitle(e.target.value)} invalid={nwTouched && nwTitle.trim().length < 4} placeholder="e.g. Cooling tower fan belt replacement" />
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col gap-0.5">
-                    <label className="text-xs font-semibold" htmlFor="nw-a">Target asset</label>
-                    <Input id="nw-a" value={nwAsset} onChange={(e) => setNwAsset(e.target.value.toUpperCase())} invalid={nwTouched && !/^AST-[A-Z]+-\d{3}$/.test(nwAsset.trim())} className="apex-id" />
+                    <label className="text-xs font-semibold" htmlFor="nw-a">Target asset (optional)</label>
+                    <Input id="nw-a" value={nwAsset} onChange={(e) => setNwAsset(e.target.value.toUpperCase())} invalid={nwTouched && !!nwAsset.trim() && !/^AST-[A-Z0-9-]{3,}$/.test(nwAsset.trim())} className="apex-id" placeholder="AST-HVAC-004" />
                   </div>
                   <div className="flex flex-col gap-0.5">
-                    <label className="text-xs font-semibold" htmlFor="nw-p">Priority</label>
+                    <label className="text-xs font-semibold" htmlFor="nw-p">Priority (sets SLA window)</label>
                     <select id="nw-p" value={nwPri} onChange={(e) => setNwPri(e.target.value as 'P1' | 'P2' | 'P3')} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
                       {['P1', 'P2', 'P3'].map((p) => <option key={p}>{p}</option>)}
                     </select>
                   </div>
                 </div>
-                {nwTouched && (!nwTitle.trim() || !/^AST-[A-Z]+-\d{3}$/.test(nwAsset.trim())) && (
-                  <p className="text-[11px] font-semibold text-fail">Title + AST-XXX-000 asset are required.</p>
+                {nwTouched && (nwTitle.trim().length < 4 || (nwAsset.trim() && !/^AST-[A-Z0-9-]{3,}$/.test(nwAsset.trim()))) && (
+                  <p className="text-[11px] font-semibold text-fail">Title (≥4 chars) required; asset must match AST-XXX pattern.</p>
                 )}
                 <div className="flex justify-end gap-2">
                   <Button variant="secondary" onClick={() => setNewOpen(false)}>Cancel</Button>
-                  <Button onClick={create}>Create WO-2026-0{seq}</Button>
+                  <Button onClick={create} disabled={busy}>
+                    {busy && <LoaderCircle size={16} className="animate-spin" />} Create Work Order
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -177,10 +207,10 @@ export function WorkOrderList() {
 
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           {[
-            { l: 'Open Pipeline', v: String(rows.length), s: 'Seeded records · full ledger in Reports' },
-            { l: 'P1 Critical', v: String(p1), s: 'Seal + vibration + fuel-pump rows' },
-            { l: 'SLA Breached', v: String(breached), s: 'ESCALATED + parts-hold rows' },
-            { l: 'Parts Hold', v: String(hold), s: 'Generator fuel-pump kit awaited' },
+            { l: 'Open Pipeline', v: String(rows.length), s: `all WOs for tenant ${orgId}` },
+            { l: 'P1 Critical', v: String(p1), s: '4h SLA window' },
+            { l: 'SLA Breached', v: String(breached), s: 'past real due time' },
+            { l: 'On Hold', v: String(hold), s: 'hold reasons persisted' },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-border-subtle bg-surface p-3 flex flex-col gap-0.5">
               <span className="apex-label-caps text-muted">{k.l}</span>
@@ -215,64 +245,68 @@ export function WorkOrderList() {
                 <th className="font-semibold">Status</th>
                 <th className="font-semibold">SLA</th>
                 <th className="font-semibold">Assignee</th>
-                <th className="font-semibold">Quick Action</th>
+                <th className="font-semibold">Action</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-surface-subtle hover:bg-surface">
+                <tr key={r.number} className="border-b border-surface-subtle hover:bg-surface">
                   <td className="p-2">
-                    <Link className="apex-id font-bold text-cobalt hover:underline" href={`/work-orders/${r.id}`}>{r.id}</Link>
-                    {r.seeded && <p className="text-[10px] font-bold text-pass">SEEDED HUB</p>}
+                    <Link className="apex-id font-bold text-cobalt hover:underline" href={`/work-orders/${r.number}`}>{r.number}</Link>
+                    {r.number === CANON.workOrderSeal && <p className="text-[10px] font-bold text-pass">CANON HUB</p>}
                   </td>
-                  <td><p className="font-medium">{r.title}</p><p className="text-xs text-muted">{r.loc}</p></td>
-                  <td><Badge variant={r.pri === 'P1' ? 'fail' : r.pri === 'P2' ? 'warn' : 'info'}>{r.pri}</Badge></td>
-                  <td><Badge variant={statusTone(r.status)}>{r.status}</Badge></td>
-                  <td className={cn('apex-id text-xs', r.sla.includes('BREACH') ? 'font-bold text-fail' : 'text-muted')}>{r.sla}</td>
-                  <td className="text-xs">{r.tech}</td>
                   <td>
-                    {r.seeded ? (
-                      <Link className="text-cobalt font-semibold hover:underline text-xs" href={`/work-orders/${r.id}`}>Open Hub →</Link>
-                    ) : r.action ? (
-                      <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => quick(r)}>{r.action}</button>
-                    ) : (
-                      <Link className="text-cobalt font-semibold hover:underline text-xs" href={`/work-orders/${r.id}`}>Open →</Link>
-                    )}
+                    <p className="font-medium">{r.title}</p>
+                    <p className="text-xs text-muted">{r.location || '—'}</p>
+                    {r.holdReason && <p className="text-[11px] font-semibold text-warn-ink">HOLD: {r.holdReason}</p>}
+                  </td>
+                  <td><Badge variant={r.priority === 'P1' ? 'fail' : r.priority === 'P2' ? 'warn' : 'info'}>{r.priority}</Badge></td>
+                  <td><Badge variant={statusTone(r)}>{r.statusLabel}</Badge></td>
+                  <td className={cn('apex-id text-xs', r.slaLabel.includes('BREACH') ? 'font-bold text-fail' : 'text-muted')}>{r.slaLabel}</td>
+                  <td className="text-xs">{r.tech ?? 'Unassigned'}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      {can.transition && !r.isTerminal && (
+                        <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => { setReWO(r); setReEmail(techs[0]?.email ?? ''); }}>Reassign</button>
+                      )}
+                      <Link className="text-cobalt font-semibold hover:underline text-xs" href={`/work-orders/${r.number}`}>{r.number === CANON.workOrderSeal ? 'Open Hub →' : 'Open →'}</Link>
+                    </div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={7} className="p-6 text-center text-muted">No work orders match — clear filters.</td></tr>
+                <tr><td colSpan={7} className="p-6 text-center text-muted">No work orders match — clear filters or create one.</td></tr>
               )}
             </tbody>
           </table>
         </div>
         <p className="text-xs text-muted" role="status">
-          Showing {filtered.length} of {rows.length} seeded work orders · WO-2026-0904 reserved (C10 demo row) · WO-2026-0905 reserved (vendor draft) · manual sequence opens at 0910.
+          Showing {filtered.length} of {rows.length} work orders · live from Postgres · tenant {orgId} · numbering by server sequence.
         </p>
       </section>
 
       <Dialog open={reWO !== null} onOpenChange={(v) => { if (!v) setReWO(null); }}>
         <DialogContent aria-labelledby="re-h">
-          <DialogTitle id="re-h">Reassign {reWO?.id}</DialogTitle>
-          <DialogDescription>Hands the pharma pressure-differential ticket to another tech.</DialogDescription>
-          <label className="text-xs font-semibold" htmlFor="re-tech">Assignee</label>
-          <select id="re-tech" value={reTech} onChange={(e) => setReTech(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
-            {TECHS.map((t) => <option key={t}>{t}</option>)}
+          <DialogTitle id="re-h">Reassign {reWO?.number}</DialogTitle>
+          <DialogDescription>Persists via the state-machine API — status stays {reWO?.statusLabel}, an event row is written.</DialogDescription>
+          <label className="text-xs font-semibold" htmlFor="re-tech">Assignee (active users of your tenant)</label>
+          <select id="re-tech" value={reEmail} onChange={(e) => setReEmail(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
+            {techs.map((t) => <option key={t.email} value={t.email}>{t.name} · {t.role}</option>)}
           </select>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setReWO(null)}>Cancel</Button>
-            <Button onClick={reassign}><UserPlus size={15} /> Confirm Reassign</Button>
+            <Button onClick={reassign} disabled={busy || !reEmail}>
+              {busy && <LoaderCircle size={16} className="animate-spin" />} Assign
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="fixed bottom-4 right-4 z-[90] flex flex-col gap-2 w-full max-w-sm" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} role={t.ok ? 'status' : 'alert'} className={cn('rounded-lg shadow-modal p-4 flex gap-3 items-start', t.ok ? 'bg-pass-bg border border-pass text-pass-ink' : 'bg-fail-bg border border-fail text-fail-ink')}>
-            {t.ok ? <CheckCircle2 size={20} className="shrink-0" /> : <XCircle size={20} className="shrink-0" />}
-            <div className="flex-1"><p className="text-sm font-bold">{t.title}</p><p className="text-xs">{t.msg}</p></div>
-            <button type="button" aria-label="Dismiss" onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}><X size={16} /></button>
+      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm" aria-live="polite">
+        {toasts.map((t, i) => (
+          <div key={i} className={cn('rounded-lg border p-3 shadow-card text-[13px]', t.ok ? 'bg-pass-bg border-pass' : 'bg-fail-bg border-fail')}>
+            <p className="font-semibold">{t.ok ? '✓' : '✕'} {t.title}</p>
+            <p className="text-muted">{t.detail}</p>
           </div>
         ))}
       </div>

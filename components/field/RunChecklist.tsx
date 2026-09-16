@@ -109,7 +109,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
 
   return (
     <>
-      <header className="no-print fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl border-b-2 border-slate900">
+      <header className="no-print fixed top-7 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl border-b-2 border-slate900">
         <div className="px-4 py-2 flex flex-col gap-1 max-w-3xl mx-auto w-full">
           <div className="flex items-center justify-between gap-2">
             <Link href="/field/audits" className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded border-2 border-slate900 bg-white" aria-label="Back to audits">
@@ -133,7 +133,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
         </div>
       </header>
 
-      <main className="w-full max-w-3xl mx-auto px-4 pt-36 flex flex-col gap-4">
+      <main className="w-full max-w-3xl mx-auto px-4 pt-[172px] flex flex-col gap-4">
         <FieldOffline />
 
         {/* STEP 01 LOTO */}

@@ -1,17 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Bell, Building2, ChevronDown, Plus, Search } from 'lucide-react';
+import { Bell, Building2, ChevronDown, LoaderCircle, LogOut, Plus, Search } from 'lucide-react';
+import type { SessionUserView } from './OpsShell';
 
-export function TopBar({ onPalette }: { onPalette: () => void }) {
+/** Top bar — shows the REAL session user (from the DB-backed layout) + logout. */
+export function TopBar({ onPalette, user }: { onPalette: () => void; user: SessionUserView }) {
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const logout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.assign('/login');
+    }
+  };
+
   return (
-    <header className="fixed top-0 left-0 desktop:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-card z-40 px-4 flex items-center justify-between gap-4">
+    <header className="fixed top-7 left-0 desktop:left-72 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-card z-40 px-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 flex-1 max-w-2xl min-w-0">
         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#EFF4FF]">
           <Building2 size={16} className="text-cobalt-deep" />
           <div className="flex flex-col text-left">
-            <span className="apex-label-caps text-muted">Facility Scope</span>
-            <span className="text-[13px] font-semibold truncate max-w-xs">HQ Campus - East Wing (Nusantara Tower)</span>
+            <span className="apex-label-caps text-muted">Tenant</span>
+            <span className="text-[13px] font-semibold truncate max-w-xs">{user.orgName} · {user.orgId}</span>
           </div>
           <ChevronDown size={16} className="text-muted" />
         </div>
@@ -28,10 +43,10 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
         </button>
       </div>
       <div className="flex items-center gap-3">
-        <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded bg-[#EFF4FF]">
+        <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded bg-pass-bg" role="status">
           <span className="w-2 h-2 rounded-full bg-pass" />
-          <span className="apex-id text-muted">
-            HTMX Server: <span className="text-pass font-semibold">Connected</span>
+          <span className="apex-id text-pass">
+            LIVE BACKEND · <span className="font-semibold">Postgres (PGlite)</span>
           </span>
         </div>
         <button
@@ -50,15 +65,27 @@ export function TopBar({ onPalette }: { onPalette: () => void }) {
           <Bell size={20} />
           <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-fail ring-2 ring-surface" />
         </Link>
-        <Link href="/profile" className="flex items-center gap-2" aria-label="User profile">
-          <span className="w-8 h-8 rounded-full bg-cobalt-deep text-white text-[13px] font-bold flex items-center justify-center">
-            SK
-          </span>
-          <span className="hidden md:flex flex-col text-left">
-            <span className="text-[13px] font-semibold leading-tight">Marcus Vance</span>
-            <span className="apex-label-caps text-muted leading-tight">VP Operations &amp; Facilities</span>
-          </span>
-        </Link>
+        <span className="flex items-center gap-2">
+          <Link href="/profile" className="flex items-center gap-2" aria-label="User profile">
+            <span className="w-8 h-8 rounded-full bg-cobalt-deep text-white text-[13px] font-bold flex items-center justify-center">
+              {user.initials}
+            </span>
+            <span className="hidden md:flex flex-col text-left">
+              <span className="text-[13px] font-semibold leading-tight">{user.name}</span>
+              <span className="apex-label-caps text-muted leading-tight">{user.role}</span>
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={logout}
+            disabled={loggingOut}
+            aria-label="Sign out"
+            title="Sign out (revokes the DB session)"
+            className="w-9 h-9 flex items-center justify-center rounded-lg bg-surface-subtle text-muted hover:text-fail hover:bg-fail-bg"
+          >
+            {loggingOut ? <LoaderCircle size={18} className="animate-spin" /> : <LogOut size={18} />}
+          </button>
+        </span>
       </div>
     </header>
   );

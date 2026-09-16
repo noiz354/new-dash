@@ -227,7 +227,7 @@ export function OrgHub() {
 
   const deploy = () => {
     setDeployed((d) => ({ ...d, [role]: '14 Sep 2026 14:05 WIB' }));
-    push(true, 'Rules deployed', `${role}: ${counts.granted} grants live · HTMX push · snapshot stamped.`);
+    push(true, 'Rules deployed', `${role}: ${counts.granted} grants live · simulated push · snapshot stamped.`);
   };
 
   const cloneRole = () => {
@@ -464,7 +464,7 @@ export function OrgHub() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button onClick={deploy}>Deploy Rules (HTMX Live)</Button>
+                <Button onClick={deploy}>Deploy Rules (simulated)</Button>
               </div>
             </div>
             <p className="text-xs text-muted -mt-2">Select an active role template to review or modify capability policies across facility sub-modules.</p>

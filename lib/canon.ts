@@ -36,6 +36,13 @@ export const CANON = {
   template: 'TMPL-HVAC-CHL-02',
   engineer: 'Elena Voronova',
   requestor: 'Elena Moreno', // C14: separate persona [ASUMSI-OTOMATIS]
+  // Session persona (Phase 0, audit fix #13): ONE identity across shell chrome —
+  // login, TopBar, and profile must all show this user. Field screens keep
+  // CANON.engineer as the *record's* assigned technician (data, not session).
+  sessionUser: 'Marcus Vance',
+  sessionRole: 'VP Operations & Facilities',
+  sessionEmail: 'm.vance@apexops.io',
+  sessionInitials: 'MV',
   roles: 6,
   shiftA: '07:00–15:30 WIB',
   apiVersion: 'v1',

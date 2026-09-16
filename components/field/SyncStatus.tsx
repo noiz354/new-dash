@@ -50,7 +50,7 @@ export function SyncStatus() {
 
   return (
     <>
-      <header className="no-print fixed top-0 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl border-b-2 border-slate900">
+      <header className="no-print fixed top-7 w-full z-50 pt-safe bg-surface/90 backdrop-blur-xl border-b-2 border-slate900">
         <div className="min-h-16 px-4 flex items-center justify-between gap-2 max-w-3xl mx-auto w-full py-2">
           <Link href="/field/audits" className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded border-2 border-slate900 bg-white" aria-label="Back to audits">
             <ArrowLeft size={24} />
@@ -65,7 +65,7 @@ export function SyncStatus() {
         </div>
       </header>
 
-      <main className="w-full max-w-3xl mx-auto px-4 pt-24 flex flex-col gap-4">
+      <main className="w-full max-w-3xl mx-auto px-4 pt-[124px] flex flex-col gap-4">
         {pending > 0 && (
           <div className="flex items-center gap-2 px-3 py-3 rounded border-2 border-warn bg-warn-bg text-warn-ink" role="alert">
             <WifiOff size={22} />

@@ -9,8 +9,8 @@ export function generateStaticParams() {
   return [{ id: CANON.vendorSlug }, { id: 'abb-grid-power-automation' }, { id: 'siemens-building-technologies' }, { id: 'johnson-controls-tyco-fire' }, { id: 'grainger-industrial-supply' }];
 }
 
-export default function VendorPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function VendorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   if (!/^[a-z0-9-]{3,40}$/.test(id)) notFound();
   if (id !== CANON.vendorSlug) {
     return (

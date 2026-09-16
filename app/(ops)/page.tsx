@@ -1,33 +1,60 @@
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { getSessionContext } from '@/lib/auth/context';
+import { getDb } from '@/db/client';
+import { getDashboard, type WoRow } from '@/lib/services/wo-service';
 import { CANON } from '@/lib/canon';
+import { redirect } from 'next/navigation';
 
-const KPIS = [
-  { label: 'Open Work Orders', value: '14', delta: '+3 vs last shift', tone: 'info' as const },
-  { label: 'P1 Critical', value: '3', delta: 'WO-2026-0894 · SLA 42m', tone: 'fail' as const },
-  { label: 'SLA Compliance', value: '98.1%', delta: '+0.4pt · 7d', tone: 'pass' as const },
-  { label: 'Techs On Shift', value: '9', delta: 'Shift A · 07:00–15:30', tone: 'info' as const },
-];
+function statusTone(row: WoRow): 'pass' | 'warn' | 'fail' | 'info' {
+  if (row.slaLabel.includes('BREACH')) return 'fail';
+  switch (row.status) {
+    case 'ESCALATED':
+    case 'ON_HOLD':
+      return 'fail';
+    case 'IN_PROGRESS':
+    case 'DISPATCHED':
+      return 'warn';
+    case 'COMPLETED':
+      return 'pass';
+    default:
+      return 'info';
+  }
+}
 
-/** Dispatch rows verified against operations_dashboard/code.html (rows 1–4). */
-const DISPATCH = [
-  { id: CANON.workOrderSeal, title: 'Primary Shaft Mechanical Seal Replacement', loc: 'Chiller #04 · CUP Basement L2', pri: 'P1-CRITICAL', status: 'IN PROGRESS', sla: '42m left', tone: 'warn' as const },
-  { id: 'WO-2024-0892', title: 'Compressor bearing vibration anomaly above 7.8mm/s safety trip', loc: 'Chiller Unit #03 · Basement Energy Hub', pri: 'P1-CRITICAL', status: 'ESCALATED', sla: '-01:42:15 BREACH', tone: 'fail' as const },
-  { id: 'WO-2024-0888', title: 'Common-rail fuel pump pressure loss during automated test fire', loc: 'Generator 2B · Outdoor Power Vault', pri: 'P1-CRITICAL', status: 'ON HOLD (PARTS)', sla: '-00:24:10 BREACH', tone: 'fail' as const },
-  { id: 'WO-2024-0901', title: 'Secondary optical barcode scanner misalignment and belt drift', loc: 'Conveyor Sorter #4 · Logistics Bay 12', pri: 'P2-HIGH', status: 'IN PROGRESS', sla: '01:14:30 LEFT', tone: 'warn' as const },
-  { id: 'WO-2024-0904', title: 'Static air pressure differential dropped below 25 Pa certification threshold', loc: 'Level 3 Pharma Lab · Tower A', pri: 'P2-HIGH', status: 'OPEN', sla: '02:40:00 LEFT', tone: 'info' as const },
-];
+const EVENT_DOT: Record<string, string> = {
+  CREATE: 'bg-cobalt', START: 'bg-pass', HOLD: 'bg-warn-dot', ESCALATE: 'bg-fail',
+  COMPLETE: 'bg-pass', CANCEL: 'bg-muted', ASSIGN: 'bg-cobalt', RESUME: 'bg-pass',
+};
 
-/** Operations Dashboard — Fase F rebuild (reference: web/ + stitch archive). */
-export default function DashboardPage() {
+/** Operations Dashboard — LIVE from the database (Phase 1, slice #1). */
+export default async function DashboardPage() {
+  const ctx = await getSessionContext();
+  if (!ctx) redirect('/login');
+  const data = await getDashboard(getDb(), ctx);
+  const { kpis, rows, events } = data;
+  const topP1 = rows.find((r) => r.priority === 'P1');
+
+  const cards = [
+    { label: 'Open Work Orders', value: String(kpis.open), delta: `tenant ${ctx.orgId}`, tone: 'info' as const },
+    { label: 'P1 Critical', value: String(kpis.p1), delta: topP1 ? `${topP1.number} · ${topP1.slaLabel}` : 'no open P1', tone: kpis.p1 > 0 ? ('fail' as const) : ('pass' as const) },
+    { label: 'Assigned Techs', value: String(kpis.techs), delta: 'distinct assignees on open WOs', tone: 'info' as const },
+    {
+      label: 'SLA Compliance',
+      value: kpis.slaCompliance === null ? '—' : `${kpis.slaCompliance}%`,
+      delta: kpis.slaCompliance === null ? 'no completions yet' : 'completed within SLA',
+      tone: kpis.slaCompliance !== null && kpis.slaCompliance < 95 ? ('warn' as const) : ('pass' as const),
+    },
+  ];
+
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Operations Dashboard</h1>
           <p className="text-[13px] text-muted">
-            Active mission-critical dispatch line · Real-time field telemetry &amp; technician execution feed
+            Active dispatch line · real data from PostgreSQL · tenant {ctx.orgId}
           </p>
         </div>
         <Link href={`/work-orders/${CANON.workOrderSeal}`}>
@@ -36,19 +63,19 @@ export default function DashboardPage() {
       </div>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="KPIs">
-        {KPIS.map((k) => (
+        {cards.map((k) => (
           <div key={k.label} className="bg-card border border-border-subtle rounded-lg p-4 flex flex-col gap-1 shadow-card">
             <span className="apex-label-caps text-muted">{k.label}</span>
-            <span className="text-4xl font-bold tracking-tight tabular-nums">{k.value}</span>
-            <span className="text-[11px] text-muted">{k.delta}</span>
+            <span className={`text-4xl font-bold tracking-tight tabular-nums ${k.tone === 'fail' ? 'text-fail' : k.tone === 'warn' ? 'text-warn-ink' : ''}`}>{k.value}</span>
+            <span className="text-[11px] text-muted apex-id">{k.delta}</span>
           </div>
         ))}
       </section>
 
       <section className="bg-card border border-border-subtle rounded-lg shadow-card overflow-hidden" aria-label="Dispatch queue">
         <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
-          <h2 className="text-base font-semibold">Live Dispatch Queue</h2>
-          <span className="apex-id text-muted">Modbus 192.168.4.112:502 · synced</span>
+          <h2 className="text-base font-semibold">Dispatch Queue</h2>
+          <span className="apex-id text-muted">Postgres · tenant {ctx.orgId} · {rows.length} open</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
@@ -56,29 +83,36 @@ export default function DashboardPage() {
               <tr className="h-9 bg-surface border-b border-border-subtle text-left">
                 <th className="apex-label-caps text-muted px-4">Work Order</th>
                 <th className="apex-label-caps text-muted px-4">Title</th>
-                <th className="apex-label-caps text-muted px-4">Asset</th>
+                <th className="apex-label-caps text-muted px-4">Location</th>
                 <th className="apex-label-caps text-muted px-4">Pri</th>
                 <th className="apex-label-caps text-muted px-4">Status</th>
                 <th className="apex-label-caps text-muted px-4">SLA</th>
               </tr>
             </thead>
             <tbody>
-              {DISPATCH.map((r, i) => (
-                <tr key={r.id} className={i % 2 ? 'bg-[#FBFCFD] border-b border-surface-subtle' : 'border-b border-surface-subtle hover:bg-surface-subtle'}>
+              {rows.map((r, i) => (
+                <tr key={r.number} className={i % 2 ? 'bg-[#FBFCFD] border-b border-surface-subtle' : 'border-b border-surface-subtle hover:bg-surface-subtle'}>
                   <td className="px-4 py-2.5">
-                    <Link href={`/work-orders/${r.id}`} className="apex-id font-bold text-cobalt hover:underline">
-                      {r.id}
+                    <Link href={`/work-orders/${r.number}`} className="apex-id font-bold text-cobalt hover:underline">
+                      {r.number}
                     </Link>
                   </td>
                   <td className="px-4 py-2.5 max-w-xs">{r.title}</td>
-                  <td className="px-4 py-2.5">{r.loc}</td>
-                  <td className="px-4 py-2.5 apex-id font-bold whitespace-nowrap">{r.pri}</td>
+                  <td className="px-4 py-2.5">{r.location}</td>
+                  <td className="px-4 py-2.5 apex-id font-bold whitespace-nowrap">{r.priority}-CRITICAL</td>
                   <td className="px-4 py-2.5">
-                    <Badge variant={r.tone}>{r.status}</Badge>
+                    <Badge variant={statusTone(r)}>{r.statusLabel}</Badge>
                   </td>
-                  <td className="px-4 py-2.5 tabular-nums">{r.sla}</td>
+                  <td className="px-4 py-2.5 tabular-nums apex-id">{r.slaLabel}</td>
                 </tr>
               ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                    No open work orders — create one from <Link className="text-cobalt font-semibold hover:underline" href="/work-orders">Work Orders</Link>.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -86,7 +120,7 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-card border border-border-subtle rounded-lg p-4 shadow-card">
-          <h2 className="text-base font-semibold mb-2">Chiller #04 — Live Telemetry</h2>
+          <h2 className="text-base font-semibold mb-2">Chiller #04 — Telemetry (simulated)</h2>
           <ul className="text-[13px] flex flex-col gap-2">
             <li className="flex justify-between"><span className="text-muted">Seal cavity temp</span><strong className="tabular-nums text-fail">84.1°C ▲</strong></li>
             <li className="flex justify-between"><span className="text-muted">Bearing vibration</span><strong className="tabular-nums text-fail">7.8 mm/s ▲</strong></li>
@@ -95,11 +129,17 @@ export default function DashboardPage() {
           </ul>
         </div>
         <div className="bg-card border border-border-subtle rounded-lg p-4 shadow-card">
-          <h2 className="text-base font-semibold mb-2">Execution Feed</h2>
+          <h2 className="text-base font-semibold mb-2">Execution Feed <span className="text-xs font-normal text-muted">(real work-order events)</span></h2>
           <ol className="text-[13px] flex flex-col gap-2 border-l-2 border-border-subtle ml-1">
-            <li className="pl-4 relative"><span className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-cobalt" />Logged parts consumption on <span className="apex-id font-bold">[WO-2024-0889]</span>: 2x Precision Bearings 6204RS.</li>
-            <li className="pl-4 relative"><span className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-warn-dot" />Compressor bearing vibration anomaly above 7.8mm/s safety trip — dispatch in transit.</li>
-            <li className="pl-4 relative"><span className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-pass" />Sensor alert on <span className="apex-id font-bold">[AST-CHILLER-03]</span>: exceeded 84°C — auto-ticketed.</li>
+            {events.map((e, i) => (
+              <li key={`${e.ts}-${i}`} className="pl-4 relative">
+                <span className={`absolute -left-[7px] top-1 w-3 h-3 rounded-full ${EVENT_DOT[e.action] ?? 'bg-cobalt'}`} />
+                <Link href={`/work-orders/${e.workOrderNumber}`} className="apex-id font-bold text-cobalt hover:underline">{e.workOrderNumber}</Link>{' '}
+                {e.action.toLowerCase().replace('_', ' ')} by {e.actorName}
+                {e.reason && <span className="text-muted"> — {e.reason}</span>}
+              </li>
+            ))}
+            {events.length === 0 && <li className="pl-4 text-muted">No work-order events yet.</li>}
           </ol>
         </div>
       </section>

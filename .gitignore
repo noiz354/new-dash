@@ -53,3 +53,12 @@ coverage/
 *.heapsnapshot
 trace.json
 trace.json.gz
+
+# Arena/tooling artifacts (Phase 0: untracked 1.4MB sqlite, unknown provenance)
+.headroom/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Phase 1: PGlite database files (local dev data — never commit)
+.data/

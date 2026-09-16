@@ -1,0 +1,333 @@
+/**
+ * Apex Ops — database schema (Phase 1, slice #1).
+ *
+ * Design rules (from docs/AUDIT_SAAS_E2E.md §K Phase 1):
+ *  - EVERY business table carries `organization_id` (multi-tenant from day 1)
+ *    and is keyed/indexed by it. Repositories/services MUST scope by org —
+ *    never look up by entity id alone (audit §5: IDOR prevention).
+ *  - Money is integer cents (bigint) — no float amounts (audit §8).
+ *  - Idempotency keys are unique per organization (audit §9).
+ *  - audit_events is append-only history; work_order_events is the WO-domain
+ *    transition log (state machine evidence, audit §4).
+ *  - IDs follow canon formats (lib/canon.ts ID_FORMATS): WO-YYYY-NNNN etc.
+ *
+ * Driver: PGlite (real Postgres in WASM) for dev/CI; swap to node-pg via
+ * DATABASE_URL for production — schema is pg-core, unchanged. [ASUMSI-OTOMATIS]
+ */
+import { sql } from 'drizzle-orm';
+import {
+  pgTable, text, timestamp, integer, bigint, boolean, uuid, jsonb, date,
+  uniqueIndex, index, check, primaryKey,
+} from 'drizzle-orm/pg-core';
+
+// ---------------------------------------------------------------- tenants --
+
+export const organizations = pgTable('organizations', {
+  id: text('id').primaryKey(), // canon tenant id, e.g. APX-NUSA-01
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Per-org canonical numbering sequences (SettingsHub "numbering engine"). */
+export const sequences = pgTable(
+  'sequences',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    entity: text('entity').notNull(), // 'WO' | 'SR' | 'PO' | 'INS' | 'FND' | ...
+    year: integer('year').notNull(),
+    nextVal: integer('next_val').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.entity, t.year] })],
+);
+
+// ------------------------------------------------------------------ users --
+
+export const ROLES = [
+  'Enterprise Admin',
+  'Facility Director',
+  'Engineering Lead',
+  'Senior Field Tech',
+  'Vendor Partner Tech',
+  'Read-Only Auditor',
+] as const;
+
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(), // globally unique: login is email-first [ASUMSI-OTOMATIS]
+    name: text('name').notNull(),
+    initials: text('initials').notNull(),
+    title: text('title').notNull().default(''),
+    role: text('role').notNull(),
+    passwordHash: text('password_hash').notNull(), // scrypt$N$r$p$salt$hash
+    totpSecret: text('totp_secret'), // null = MFA not enrolled
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('users_email_uq').on(t.email),
+    index('users_org_idx').on(t.organizationId),
+    check('users_role_ck', sql`${t.role} IN ('Enterprise Admin','Facility Director','Engineering Lead','Senior Field Tech','Vendor Partner Tech','Read-Only Auditor')`),
+  ],
+);
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    idHash: text('id_hash').primaryKey(), // sha256(opaque token) — DB leak ≠ session theft
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    userAgent: text('user_agent'),
+  },
+  (t) => [index('sessions_user_idx').on(t.userId), index('sessions_exp_idx').on(t.expiresAt)],
+);
+
+export const mfaChallenges = pgTable(
+  'mfa_challenges',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    organizationId: text('organization_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+  },
+  (t) => [index('mfa_user_idx').on(t.userId)],
+);
+
+// --------------------------------------------------- platform primitives --
+
+/** Idempotency store: (org, key) unique; replays return the stored response. */
+export const idempotencyKeys = pgTable(
+  'idempotency_keys',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    scope: text('scope').notNull(), // e.g. 'POST /api/work-orders'
+    requestHash: text('request_hash').notNull(), // sha256 of canonical request body
+    responseStatus: integer('response_status').notNull(),
+    responseBody: jsonb('response_body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.key] })],
+);
+
+/** Append-only audit trail (the real one — replaces the hardcoded UI fiction). */
+export const auditEvents = pgTable(
+  'audit_events',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    ts: timestamp('ts', { withTimezone: true }).notNull().defaultNow(),
+    actorUserId: uuid('actor_user_id'),
+    actorName: text('actor_name').notNull().default('system'),
+    action: text('action').notNull(), // AUTH_LOGIN, WO_HOLD, WO_CREATE, ...
+    entityType: text('entity_type'),
+    entityId: text('entity_id'),
+    before: jsonb('before'),
+    after: jsonb('after'),
+    requestId: text('request_id'),
+  },
+  (t) => [index('audit_org_ts_idx').on(t.organizationId, t.ts), index('audit_entity_idx').on(t.organizationId, t.entityType, t.entityId)],
+);
+
+// ------------------------------------------------------------- operations --
+
+export const WO_STATUSES = [
+  'OPEN', 'SCHEDULED', 'DISPATCHED', 'IN_PROGRESS', 'ON_HOLD', 'ESCALATED', 'COMPLETED', 'CANCELLED',
+] as const;
+export const WO_PRIORITIES = ['P1', 'P2', 'P3'] as const;
+
+export const assets = pgTable(
+  'assets',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(), // AST-HVAC-004
+    name: text('name').notNull(),
+    klass: text('klass').notNull(), // HVAC | ELEC | FIRE | ...
+    location: text('location').notNull().default(''),
+    oem: text('oem').notNull().default(''),
+    serial: text('serial').notNull().default(''),
+    health: integer('health').notNull().default(100),
+    status: text('status').notNull().default('OPERATIONAL'),
+    commissionedOn: date('commissioned_on'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.code] }),
+    check('assets_health_ck', sql`${t.health} >= 0 AND ${t.health} <= 100`),
+    check('assets_status_ck', sql`${t.status} IN ('OPERATIONAL','DEGRADED','DOWN','RETIRED')`),
+  ],
+);
+
+export const parts = pgTable(
+  'parts',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    sku: text('sku').notNull(), // PART-SEAL-8821
+    name: text('name').notNull(),
+    unitPriceCents: bigint('unit_price_cents', { mode: 'number' }).notNull(),
+    bin: text('bin').notNull().default(''),
+    onHand: integer('on_hand').notNull().default(0),
+    reserved: integer('reserved').notNull().default(0),
+    minStock: integer('min_stock').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.sku] }),
+    check('parts_qty_ck', sql`${t.onHand} >= 0 AND ${t.reserved} >= 0 AND ${t.minStock} >= 0`),
+  ],
+);
+
+export const workOrders = pgTable(
+  'work_orders',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // WO-2026-0894
+    title: text('title').notNull(),
+    assetCode: text('asset_code'), // soft ref to assets.code (same org)
+    location: text('location').notNull().default(''),
+    priority: text('priority').notNull(),
+    status: text('status').notNull().default('OPEN'),
+    holdReason: text('hold_reason'),
+    slaDueAt: timestamp('sla_due_at', { withTimezone: true }),
+    assignedTo: uuid('assigned_to').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    index('wo_org_status_idx').on(t.organizationId, t.status),
+    index('wo_org_pri_due_idx').on(t.organizationId, t.priority, t.slaDueAt),
+    check('wo_priority_ck', sql`${t.priority} IN ('P1','P2','P3')`),
+    check('wo_status_ck', sql`${t.status} IN ('OPEN','SCHEDULED','DISPATCHED','IN_PROGRESS','ON_HOLD','ESCALATED','COMPLETED','CANCELLED')`),
+    check('wo_number_ck', sql`${t.number} ~ '^WO-[0-9]{4}-[0-9]{4}$'`),
+  ],
+);
+
+export const workOrderEvents = pgTable(
+  'work_order_events',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    workOrderNumber: text('work_order_number').notNull(),
+    ts: timestamp('ts', { withTimezone: true }).notNull().defaultNow(),
+    actorUserId: uuid('actor_user_id'),
+    actorName: text('actor_name').notNull().default('system'),
+    action: text('action').notNull(), // CREATE | HOLD | ESCALATE | RESUME | START | COMPLETE | CANCEL | ASSIGN
+    fromStatus: text('from_status'),
+    toStatus: text('to_status'),
+    reason: text('reason'),
+    requestId: text('request_id'),
+  },
+  (t) => [index('wo_events_org_wo_idx').on(t.organizationId, t.workOrderNumber)],
+);
+
+export const SR_STATUSES = ['OPEN', 'TRIAGED', 'CONVERTED', 'CLOSED', 'BREACHED'] as const;
+
+export const serviceRequests = pgTable(
+  'service_requests',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // SR-2026-0894
+    title: text('title').notNull(),
+    requesterName: text('requester_name').notNull().default(''),
+    priority: text('priority').notNull().default('P3'),
+    status: text('status').notNull().default('OPEN'),
+    assetCode: text('asset_code'),
+    slaDueAt: timestamp('sla_due_at', { withTimezone: true }),
+    convertedWoNumber: text('converted_wo_number'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    check('sr_status_ck', sql`${t.status} IN ('OPEN','TRIAGED','CONVERTED','CLOSED','BREACHED')`),
+    check('sr_number_ck', sql`${t.number} ~ '^SR-[0-9]{4}-[0-9]{4}$'`),
+  ],
+);
+
+export const inspections = pgTable(
+  'inspections',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // INS-2026-0412
+    title: text('title').notNull(),
+    auditorName: text('auditor_name').notNull().default(''),
+    progressPct: integer('progress_pct').notNull().default(0),
+    status: text('status').notNull().default('IN_PROGRESS'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    check('ins_progress_ck', sql`${t.progressPct} >= 0 AND ${t.progressPct} <= 100`),
+    check('ins_number_ck', sql`${t.number} ~ '^INS-[0-9]{4}-[0-9]{4}$'`),
+  ],
+);
+
+export const findings = pgTable(
+  'findings',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // FND-2026-0188
+    title: text('title').notNull(),
+    severity: text('severity').notNull().default('MAJOR'),
+    status: text('status').notNull().default('OPEN'),
+    inspectionNumber: text('inspection_number'),
+    assetCode: text('asset_code'),
+    convertedWoNumber: text('converted_wo_number'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    check('fnd_status_ck', sql`${t.status} IN ('OPEN','CONVERTED','DISMISSED')`),
+    check('fnd_number_ck', sql`${t.number} ~ '^FND-[0-9]{4}-[0-9]{4}$'`),
+  ],
+);
+
+// ------------------------------------------------------------ procurement --
+
+export const vendors = pgTable(
+  'vendors',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    slug: text('slug').notNull(), // trane-technologies
+    name: text('name').notNull(),
+    tier: text('tier').notNull().default('TIER-2'),
+    msaNumber: text('msa_number'),
+    msaExpiresOn: date('msa_expires_on'),
+    onTimePct: integer('on_time_pct'), // basis: 0..100 integer percent
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.slug] })],
+);
+
+export const PO_STATUSES = [
+  'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DISPATCHED', 'PARTIAL', 'RECEIVED', 'REJECTED', 'CLOSED',
+] as const;
+
+export const purchaseOrders = pgTable(
+  'purchase_orders',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // PO-2026-0298 | PR-2026-0314
+    kind: text('kind').notNull().default('PO'), // PO | PR
+    title: text('title').notNull(),
+    vendorSlug: text('vendor_slug'),
+    totalCents: bigint('total_cents', { mode: 'number' }).notNull().default(0),
+    status: text('status').notNull().default('DRAFT'),
+    slaDueAt: timestamp('sla_due_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    check('po_kind_ck', sql`${t.kind} IN ('PO','PR')`),
+    check('po_status_ck', sql`${t.status} IN ('DRAFT','PENDING_APPROVAL','APPROVED','DISPATCHED','PARTIAL','RECEIVED','REJECTED','CLOSED')`),
+    check('po_number_ck', sql`${t.number} ~ '^(PO|PR)-[0-9]{4}-[0-9]{4}$'`),
+  ],
+);

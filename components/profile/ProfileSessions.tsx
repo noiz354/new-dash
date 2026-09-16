@@ -43,7 +43,7 @@ export function ProfileSessions() {
   return (
     <>
       {impersonating && (
-        <div className="no-print fixed top-0 left-0 right-0 z-[95] bg-warn-ink text-white text-sm font-semibold text-center py-2">
+        <div className="no-print fixed top-7 left-0 right-0 z-[95] bg-warn-ink text-white text-sm font-semibold text-center py-2">
           IMPERSONATING Field Tech — actions are audit-chained ·{' '}
           <button type="button" className="underline font-bold" onClick={() => setImpersonating(false)}>Exit</button>
         </div>
@@ -57,10 +57,10 @@ export function ProfileSessions() {
         </nav>
 
         <section className="bg-card border border-border-subtle rounded-lg p-5 flex flex-wrap items-center gap-4" aria-label="Identity">
-          <span className="w-16 h-16 rounded-full bg-cobalt-deep text-white text-xl font-bold flex items-center justify-center">SK</span>
+          <span className="w-16 h-16 rounded-full bg-cobalt-deep text-white text-xl font-bold flex items-center justify-center">{CANON.sessionInitials}</span>
           <div className="flex-1 min-w-[200px]">
-            <h2 className="text-lg font-semibold">Marcus Vance</h2>
-            <p className="text-sm text-muted">VP Operations &amp; Facilities · <span className="apex-id">e.voronova@apexops.io</span> · RFID-7714</p>
+            <h2 className="text-lg font-semibold">{CANON.sessionUser}</h2>
+            <p className="text-sm text-muted">{CANON.sessionRole} · <span className="apex-id">{CANON.sessionEmail}</span> · RFID-7714</p>
             <p className="text-sm text-muted">Role: <strong className="text-ink">Ops Admin</strong> (1 of {CANON.roles} Roles) · Shift A · Tenant {CANON.tenant}</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -76,7 +76,7 @@ export function ProfileSessions() {
         <section className="bg-card border border-border-subtle rounded-lg p-5 flex flex-col gap-3" aria-labelledby="sess-h">
           <div className="flex items-center justify-between">
             <h2 id="sess-h" className="font-semibold">Active Sessions</h2>
-            <span className="text-xs text-muted">MFA Enforced · SCIM v2.4</span>
+            <span className="text-xs text-muted">Demo identity · simulated MFA · SCIM v2.4 (mock)</span>
           </div>
           <ul className="flex flex-col divide-y divide-surface-subtle text-sm">
             {sessions.map((s) => (
@@ -147,8 +147,8 @@ export function ProfileSessions() {
           <path d="M12 28H24" stroke="#93C5FD" strokeWidth="2" strokeLinecap="round" />
           <text x="44" y="23" fontFamily="system-ui" fontWeight="700" fontSize="15" fill="#0F172A">APEXOPS</text>
         </svg>
-        <h2 className="text-xl font-bold">Marcus Vance</h2>
-        <p className="text-sm">VP Operations &amp; Facilities · RFID-7714 · {CANON.tenant}</p>
+        <h2 className="text-xl font-bold">{CANON.sessionUser}</h2>
+        <p className="text-sm">{CANON.sessionRole} · RFID-7714 · {CANON.tenant}</p>
         <svg width="120" height="120" viewBox="0 0 25 25" role="img" aria-label="Badge QR code">
           <rect width="25" height="25" fill="#fff" />
           <g fill="#000">
