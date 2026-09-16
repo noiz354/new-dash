@@ -216,3 +216,69 @@ test('rbac: sr.transition for leads/admin, not for field techs', () => {
   assert.ok(!can('Senior Field Tech', 'sr.transition'));
   assert.ok(!can('Read-Only Auditor', 'sr.transition'));
 });
+
+// ---------------------------------------------------------------------------
+// GAP-18 (GAP-16 TASK 3 / F23): queue worker — in-memory store, no preseed
+// ---------------------------------------------------------------------------
+import { enqueueJob, executeQueueCycle, listJobs, retryJob } from '../lib/queue/worker';
+
+test('queue (GAP-18/F23): empty store lists EMPTY — cold 3-job preseed removed', () => {
+  assert.equal(listJobs({ orgId: 'gap18-empty-org' }).length, 0, 'unfiltered empty list');
+  assert.equal(listJobs({ orgId: 'gap18-empty-org', topic: 'pm_generator' }).length, 0, 'topic filter on empty store stays empty');
+  assert.equal(listJobs({ orgId: 'gap18-empty-org', status: 'COMPLETED' }).length, 0, 'status filter on empty store stays empty');
+});
+
+test('queue (GAP-18/F23): enqueue is tenant-scoped; topic/status/limit filters honest', () => {
+  const a = enqueueJob('pm_generator', 'gap18-org-a', { ruleId: 'PM-X1' });
+  const b = enqueueJob('vendor_notification', 'gap18-org-a', { vendor: 'v' }, 5);
+  assert.equal(a.status, 'PENDING');
+  assert.equal(a.attempts, 0);
+  assert.equal(b.maxAttempts, 5);
+
+  const mine = listJobs({ orgId: 'gap18-org-a' });
+  assert.ok(mine.some((r) => r.id === a.id) && mine.some((r) => r.id === b.id), 'own jobs listed');
+
+  // Tenant isolation: another org never sees org-a jobs (old preseed leaked APX-NUSA-01 everywhere).
+  assert.ok(!listJobs({ orgId: 'gap18-org-b' }).some((r) => r.id === a.id || r.id === b.id), 'decoy org sees nothing');
+
+  const pms = listJobs({ orgId: 'gap18-org-a', topic: 'pm_generator' });
+  assert.ok(pms.length >= 1 && pms.every((r) => r.topic === 'pm_generator'), 'topic filter');
+  assert.ok(listJobs({ orgId: 'gap18-org-a', status: 'COMPLETED' }).every((r) => r.status === 'COMPLETED'), 'status filter');
+  assert.ok(listJobs({ orgId: 'gap18-org-a', limit: 1 }).length <= 1, 'limit honored');
+});
+
+test('queue (GAP-18/F23): run_cycle completes PENDING with honest summary counts', async () => {
+  enqueueJob('webhook_fanout', 'gap18-cycle-org', { n: 1 });
+  enqueueJob('audit_merkle_batch', 'gap18-cycle-org', { n: 2 });
+
+  const summary = await executeQueueCycle();
+  const mine = listJobs({ orgId: 'gap18-cycle-org' });
+  assert.equal(mine.length, 2);
+  assert.ok(
+    mine.every((r) => r.status === 'COMPLETED' && r.attempts === 1 && r.startedAt !== null && r.completedAt !== null),
+    'both cycle jobs COMPLETED with attempts/timestamps',
+  );
+  assert.ok(summary.processed >= 2, 'summary processed covers at least the two enqueued');
+  assert.equal(summary.failed, 0, 'no failures expected');
+  assert.equal(summary.processed, summary.completed + summary.failed, 'counts consistent');
+
+  const second = await executeQueueCycle();
+  assert.equal(second.processed, 0, 'idle cycle processes nothing');
+});
+
+test('queue (GAP-18/F23): retry resets a DLQ job; unknown jobId → null (route maps 404)', () => {
+  const job = enqueueJob('vendor_notification', 'gap18-retry-org', { v: 1 });
+  job.status = 'FAILED_DLQ';
+  job.error = 'synthetic failure';
+  job.attempts = 3;
+
+  const retried = retryJob(job.id);
+  assert.ok(retried, 'known job retried');
+  assert.equal(retried!.status, 'PENDING');
+  assert.equal(retried!.attempts, 0);
+  assert.equal(retried!.error, null);
+  assert.equal(retried!.startedAt, null);
+  assert.equal(retried!.completedAt, null);
+
+  assert.equal(retryJob('job_does_not_exist'), null, 'unknown id → null (route converts to 404 JOB_NOT_FOUND)');
+});

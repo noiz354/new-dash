@@ -15,7 +15,7 @@
 | Auth | Passkey register/login/revoke | PasskeySettings + LoginForm FOUND | passkeys/register+login FOUND | webauthn FOUND | DB credentials FOUND | Settings + login btn | END-TO-END |
 | Auth | Logout + purge sesi/SW/cache | TopBar FOUND | POST logout FOUND | session revoke FOUND | DB + SW purge FOUND | Redirect /login | END-TO-END |
 | Auth | SSO | Tombol disabled jujur FOUND | NOT FOUND | NOT FOUND | — | "not configured (Phase 1b)" | FRONTEND-ONLY |
-| Auth | Signup / provisioning tenant | NOT FOUND | POST signup FOUND | org provision FOUND | DB organizations (U) | — | BACKEND-ONLY |
+| Auth | Signup / provisioning tenant | SignupForm + page `/signup` FOUND [GAP-16-T1] | POST signup FOUND | org provision FOUND | DB organizations (U) | Kartu tengah + redirect authed | END-TO-END |
 | Auth | Revoke semua sesi | ProfileSessions SEED MOCKED | GET+POST sessions FOUND | list+revoke FOUND | DB sessions FOUND | Daftar statis | BROKEN |
 | Org | Provision user | OrgHub POST FOUND | POST users FOUND | org.users.create FOUND | DB users (U) | Toast + row lokal | PARTIAL |
 | Org | Deactivate user | setActive → PATCH isActive (fix GAP-2) | PATCH users/[id] CALLED | updateUser + revoke sessions + audit FOUND | DB users FOUND | Toast + status valid | END-TO-END |
@@ -37,7 +37,7 @@
 | Purchasing | PO list/detail/authorize/GRN | Dialog simulasi, nol fetch BYPASSED | po.list/create/receive ADA tak dipanggil | po-service + queue FOUND | DB (tak tersentuh) | Toast EDI sukses | BROKEN |
 | Purchasing | Print PO | Template statis | NOT FOUND | NOT FOUND | — | Halaman print | FRONTEND-ONLY |
 | Vendors | Onboard/amend/MSA/dispatch | Dialog lokal BYPASSED | Rute TAK ADA | NOT FOUND | — | Toast/sukses lokal | DEAD-END |
-| Facilities | Hub actions (reassign/defect/SLA) | Nol fetch, state lokal | Rute TAK ADA | NOT FOUND | — | UI interaktif lokal | FRONTEND-ONLY |
+| Facilities | Directory + hub actions (add/reassign/defect/export) | apiFetch → GET/POST /api/facilities, PATCH …/[code] [GAP-16-T5] | Routes FOUND + facilities-service FOUND | `facilities` table FOUND (migrasi 0005) | — | Wire + fallback offline ber-label | END-TO-END wired |
 | Field | Audit queue + run checklist | State lokal + INITIAL_* | NOT FOUND | NOT FOUND | — | Checklist lokal | FRONTEND-ONLY |
 | Field | Finding create (online/offline) | FindingCapture POST FOUND | POST /api/findings PERSISTED (fix GAP-1) | createFinding + canon FND seq + audit FOUND | DB findings FOUND | Toast + SYNCED valid | END-TO-END |
 | Field | Finding convert → WO | [CLOSED GAP-4] POST convert + Idempotency-Key, badge WO server | finding.convert DIPANGGIL | convert FOUND | WO + FINDING_CONVERT_WO | toast WO server | END-TO-END |
@@ -55,11 +55,11 @@
 | Security | CSP report pipeline | Header report-uri | csp-report FOUND | 204 FOUND | Log/pipeline | — (infra, proven T19) | END-TO-END |
 | Jobs | Queue monitor + dispatch | Jobs page SEED, nol fetch MOCKED | queue/jobs GET+POST ADA tak dipanggil | worker FOUND | Queue FOUND | Daftar statis | FRONTEND-ONLY |
 | Billing | Plans/invoice + webhook | NOT FOUND | billing + webhook FOUND | FOUND | Stripe external (U) | — | BACKEND-ONLY hardened [CLOSED GAP-06 2026-09-16: HMAC raw-body fail-closed, event-id dedup, checkout Stripe asli/503] |
-| Retention | Digest | NOT FOUND | retention/digest FOUND | FOUND | (U) | — | BACKEND-ONLY |
+| Retention | Digest | NOT FOUND (by design) | retention/digest FOUND — DEPRECATED [GAP-16-T4, sunset 2026-12-15] | FOUND | (U) | deprecated+note di respons | BACKEND-ONLY deprecated |
 | Audit | Trail + verify-chain + widget | AuditTrail POST FOUND | audit-trail + verify-chain FOUND | recompute FOUND | DB audit_events FOUND | Ledger + badge | END-TO-END |
-| Settings | Keys/rotate/maint/webhook | Nol fetch, state lokal | (parsial: rotate key lokal) | NOT FOUND | — | Toast lokal | FRONTEND-ONLY |
+| Settings | Keys/rotate/maint/webhook/KV reads | apiFetch /api/settings(+[key,+…/rotate) FOUND [GAP-16-T6] | settings-service hash-only/PUT/rotate FOUND | settings_kv table FOUND (0006) | — | wire semua handler + fallback berlabel | END-TO-END [GAP-16-T6 CLOSED 2026-09-16] |
 | Dashboard | Ops dashboard | Server comp FOUND | — (server comp) | getDashboard FOUND | DB FOUND | Kartu + antrean live | END-TO-END |
-| Shifts | Shift plan accept/reject | State lokal, nol fetch | NOT FOUND | NOT FOUND | — | Toast lokal | FRONTEND-ONLY |
+| Shifts | Shift plan accept/reject | Server rows + decide endpoint | `/api/shifts/handovers` (+/[id]) | `handovers` + audit HANDOVER_* | checked — decoy 404/list-blind | Toast server id + audit | END-TO-END [GAP-16-T7 CLOSED] |
 | Profile | Sessions list | SEED statis MOCKED | sessions ADA tak dipanggil | FOUND | DB (tak tersentuh) | Daftar statis | FRONTEND-ONLY |
 | Print | Badge/permit print | Template CANON statis | NOT FOUND | NOT FOUND | — | Halaman print | FRONTEND-ONLY |
 | PWA | Manifest + SW + offline /offline | SwRegister + shell FOUND | — (statis + SW) | SW strategi FOUND | Cache API FOUND | Install + /offline | END-TO-END |
@@ -102,7 +102,7 @@
 
 ## 3. SEMUA FRONTEND TANPA BACKEND INTEGRATION
 
-SSO · jobs page · reports hub · PM hub · shifts plan · profile sessions [CLOSED GAP-5 — END-TO-END] · facilities hub · vendors flows · PO dialogs · print pages (WO/PO/badge/permit) · field audit queue/run (kecuali evidence upload) · settings hub · inventory ledger UI · dashboard? TIDAK (dashboard server-fed, END-TO-END).
+SSO · jobs page · reports hub · PM hub · shifts plan · profile sessions [CLOSED GAP-5 — END-TO-END] · facilities hub [CLOSED GAP-16-T5 — END-TO-END] · vendors flows · PO dialogs · print pages (WO/PO/badge/permit) · field audit queue/run (kecuali evidence upload) · settings hub · inventory ledger UI · dashboard? TIDAK (dashboard server-fed, END-TO-END).
 
 ## 4. SEMUA BACKEND TANPA FRONTEND CONSUMER
 

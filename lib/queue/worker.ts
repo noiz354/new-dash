@@ -78,51 +78,10 @@ export function listJobs(filter?: {
     list = list.filter((j) => j.status === filter.status);
   }
 
-  // Pre-seed default background executions if cold
-  if (list.length === 0) {
-    return [
-      {
-        id: 'job_batch_0894_pm',
-        topic: 'pm_generator',
-        organizationId: 'APX-NUSA-01',
-        payload: { ruleId: 'PM-CHL-001', assetCode: 'AST-HVAC-004' },
-        status: 'COMPLETED',
-        attempts: 1,
-        maxAttempts: 3,
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-        startedAt: new Date(Date.now() - 3598000).toISOString(),
-        completedAt: new Date(Date.now() - 3595000).toISOString(),
-        error: null,
-      },
-      {
-        id: 'job_esc_0314_vnd',
-        topic: 'vendor_notification',
-        organizationId: 'APX-NUSA-01',
-        payload: { vendorSlug: 'trane-technologies', woNumber: 'WO-2026-0894' },
-        status: 'COMPLETED',
-        attempts: 1,
-        maxAttempts: 3,
-        createdAt: new Date(Date.now() - 7200000).toISOString(),
-        startedAt: new Date(Date.now() - 7198000).toISOString(),
-        completedAt: new Date(Date.now() - 7196000).toISOString(),
-        error: null,
-      },
-      {
-        id: 'job_merkle_tree_root',
-        topic: 'audit_merkle_batch',
-        organizationId: 'APX-NUSA-01',
-        payload: { batchSize: 500, rootBlock: 892104 },
-        status: 'COMPLETED',
-        attempts: 1,
-        maxAttempts: 3,
-        createdAt: new Date(Date.now() - 14400000).toISOString(),
-        startedAt: new Date(Date.now() - 14398000).toISOString(),
-        completedAt: new Date(Date.now() - 14390000).toISOString(),
-        error: null,
-      },
-    ];
-  }
-
+  // GAP-18/F23 choice: the 3-job cold preseed was REMOVED (not labeled).
+  // It fabricated COMPLETED rows for an empty/filtered-out queue and leaked
+  // the seed org's jobs to every other tenant. An empty store now lists as
+  // empty — the UI banner discloses the store is ephemeral anyway.
   return list.slice(0, filter?.limit ?? 50);
 }
 

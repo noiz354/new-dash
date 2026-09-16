@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { withRoute } from '@/lib/api/http';
+import { DomainError, withRoute } from '@/lib/api/http';
 import {
   enqueueJob,
   executeQueueCycle,
@@ -41,6 +41,10 @@ export async function POST(req: NextRequest) {
 
     if (body.action === 'retry' && body.jobId) {
       const retried = retryJob(body.jobId);
+      // GAP-18: unknown job must fail honestly — never a silent 200/null.
+      if (!retried) {
+        throw new DomainError(404, 'JOB_NOT_FOUND', `queue job '${String(body.jobId)}' not found`);
+      }
       return { data: retried };
     }
 

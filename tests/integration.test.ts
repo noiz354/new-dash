@@ -33,7 +33,21 @@ import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '..
 import { addEvidence, listWoEvidence } from '../lib/services/task-service';
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
 import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
+import { createFacility, getFacility, listFacilities, updateFacility } from '../lib/services/facility-service';
+import { listSettings, putSetting, rotateSecret } from '../lib/services/settings-service';
+import { createHandover, decideHandover, listHandovers } from '../lib/services/handover-service';
+import { can } from '../lib/auth/rbac';
 import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
+import { provisionOrganization } from '../lib/services/onboarding-service';
+import { sequences } from '../db/schema';
+import { NextRequest } from 'next/server';
+import { POST as signupPost } from '../app/api/auth/signup/route';
+import { GET as retentionDigestGet } from '../app/api/retention/digest/route';
+import {
+  RETENTION_DIGEST_NOTE,
+  RETENTION_DIGEST_SUNSET,
+  generateRetentionDigest,
+} from '../lib/services/retention-service';
 import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -1304,4 +1318,461 @@ test('telemetry (GAP-14/F8): ingest → listRecent by assetCode feeds BIM refres
 
   const { ctx: decoy } = await gap14Decoy();
   assert.equal((await listRecentSensorReadings(db, decoy, CANON.assetSeal, 20)).length, 0, 'decoy sees no readings');
+});
+
+// ---------------------------------------------------------------------------
+// GAP-16: tenant signup (F2) — service-level, no HTTP login flow
+// ---------------------------------------------------------------------------
+test('signup (GAP-16/F2): provision happy → 201 contract + session verifies + tenant isolated', async () => {
+  const res = await provisionOrganization(db, {
+    orgName: 'GAP16 Probe Facility Co',
+    adminEmail: '  GAP16-ADMIN@probe.example ', // service trims + lowercases
+    adminName: 'Probe Admin',
+    adminPassword: 'gap16-pass-1234',
+    adminTitle: 'Ops Lead',
+  }, 'gap16-test');
+
+  assert.match(res.organizationId, /^APX-/, 'org id stamped APX-*');
+  assert.equal(res.orgName, 'GAP16 Probe Facility Co');
+  assert.equal(res.adminEmail, 'gap16-admin@probe.example', 'email trimmed+lowercased');
+  assert.ok(res.adminUserId, '201 contract carries adminUserId');
+  assert.ok(res.sessionToken, '201 contract carries sessionToken (= cookie value set by route)');
+
+  // The session the route would set as the apex_session cookie verifies as the new tenant admin.
+  const ctx = await verifySession(db, res.sessionToken);
+  assert.ok(ctx, 'signup session verifies');
+  assert.equal(ctx!.orgId, res.organizationId);
+  assert.equal(ctx!.role, 'Enterprise Admin');
+
+  // Numbering sequences initialized (WO/SR/PO/PR/INS/FND/GRN/PM).
+  const seqRows = await db.select().from(sequences).where(eq(sequences.organizationId, res.organizationId));
+  assert.equal(seqRows.length, 8, 'sequences initialized');
+  assert.ok(seqRows.every((r) => r.nextVal === 1), 'all sequences start at 1');
+
+  // Tenant isolation: new tenant sees no canon WOs; canon + decoy see none of the new org's users.
+  assert.equal((await listWorkOrders(db, ctx!)).length, 0, 'new tenant isolated from canon data');
+  assert.ok(!(await listUsers(db, admin)).some((u) => u.email === res.adminEmail), 'canon tenant cannot see new admin');
+  const { ctx: decoy } = await gap14Decoy();
+  assert.ok(!(await listUsers(db, decoy)).some((u) => u.email === res.adminEmail), 'decoy tenant cannot see new admin');
+
+  // ORG_PROVISION written transactionally in the new tenant's own ledger.
+  const audits = await listAuditEvents(db, ctx!, { entityType: 'organization' });
+  assert.ok(
+    audits.rows.some((e) => e.action === 'ORG_PROVISION' && e.entityId === res.organizationId),
+    'ORG_PROVISION audited',
+  );
+});
+
+test('signup (GAP-16/F2): duplicate admin email → 409 EMAIL_EXISTS (global, incl. seed admin)', async () => {
+  await expectDomainError(() => provisionOrganization(db, {
+    orgName: 'Duplicate Probe Org',
+    adminEmail: 'gap16-admin@probe.example', // created by the happy-path test above
+    adminName: 'Second Admin',
+    adminPassword: 'gap16-pass-5678',
+  }), 409, 'EMAIL_EXISTS');
+
+  await expectDomainError(() => provisionOrganization(db, {
+    orgName: 'Squatter Org',
+    adminEmail: ' M.Vance@ApexOps.io ', // seed admin, mixed case + spaces
+    adminName: 'Squatter',
+    adminPassword: 'squat-pass-99',
+  }), 409, 'EMAIL_EXISTS');
+
+  // The 409s above left no half-provisioned orgs behind.
+  const half = await db.select().from(organizations).where(eq(organizations.name, 'Duplicate Probe Org'));
+  assert.equal(half.length, 0, 'rejected signup persists nothing');
+});
+
+test('signup (GAP-16/F2): route POST with invalid bodies → 400 VALIDATION_ERROR (zod fires before DB)', async () => {
+  const reqFor = (body: unknown) => new NextRequest('http://probe.local/api/auth/signup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const valid = {
+    orgName: 'Route Probe Co',
+    adminEmail: 'route-probe@probe.example',
+    adminName: 'Route Probe',
+    adminPassword: 'route-pass-123',
+  };
+
+  const shortPass = await signupPost(reqFor({ ...valid, adminPassword: 'short' }));
+  assert.equal(shortPass.status, 400, 'short password rejected');
+  const env1 = (await shortPass.json()) as { error?: { code?: string } };
+  assert.equal(env1.error?.code, 'VALIDATION_ERROR');
+
+  const badEmail = await signupPost(reqFor({ ...valid, adminEmail: 'not-an-email' }));
+  assert.equal(badEmail.status, 400, 'invalid email rejected');
+  const env2 = (await badEmail.json()) as { error?: { code?: string } };
+  assert.equal(env2.error?.code, 'VALIDATION_ERROR');
+
+  const shortOrg = await signupPost(reqFor({ ...valid, orgName: 'ab' }));
+  assert.equal(shortOrg.status, 400, 'org name <3 rejected');
+
+  const noOrg = await db.select().from(organizations).where(eq(organizations.name, 'Route Probe Co'));
+  assert.equal(noOrg.length, 0, 'invalid payloads never reach provisioning');
+});
+
+// ---------------------------------------------------------------------------
+// GAP-19: retention digest deprecation (F25) — no HTTP login flow
+// ---------------------------------------------------------------------------
+test('retention (GAP-19/F25): digest compute unchanged — regression under the deprecation envelope', async () => {
+  const digest = await generateRetentionDigest(db, admin.orgId);
+  assert.equal(digest.organizationId, admin.orgId, 'digest is tenant-scoped');
+  assert.ok(Array.isArray(digest.urgentSlaThreats), 'SLA threats array present');
+  assert.ok(Array.isArray(digest.upcomingPreventiveMaintenances), 'upcoming PM array present');
+  assert.equal(typeof digest.healthScorePct, 'number', 'health score numeric');
+  assert.ok(digest.generatedAt && !Number.isNaN(Date.parse(digest.generatedAt)), 'generatedAt ISO');
+});
+
+test('retention (GAP-19/F25): deprecation metadata — sunset 90 days from 2026-09-16, honest note', () => {
+  assert.equal(RETENTION_DIGEST_SUNSET, '2026-12-15', 'sunset fixed at execution date +90d');
+  const deltaDays = Math.round(
+    (Date.parse(`${RETENTION_DIGEST_SUNSET}T00:00:00Z`) - Date.parse('2026-09-16T00:00:00Z')) / 86_400_000,
+  );
+  assert.equal(deltaDays, 90, 'sunset is exactly 90 days after the deprecation execution date');
+  assert.ok(
+    /no trigger/i.test(RETENTION_DIGEST_NOTE) &&
+      /scheduler/i.test(RETENTION_DIGEST_NOTE) &&
+      /consumer/i.test(RETENTION_DIGEST_NOTE),
+    'note states the orphan facts (no trigger/scheduler/consumer)',
+  );
+});
+
+test('retention (GAP-19/F25): wo.read permission stays enforced — unauth GET → 401', async () => {
+  const res = await retentionDigestGet(new NextRequest('http://probe.local/api/retention/digest', { method: 'GET' }));
+  assert.equal(res.status, 401, 'deprecated endpoint still requires a session');
+  const env = (await res.json()) as { error?: { code?: string } };
+  assert.equal(env.error?.code, 'UNAUTHENTICATED');
+});
+
+// ---------------------------------------------------------------------------
+// Facilities (GAP-20/F15 live backend)
+// ---------------------------------------------------------------------------
+test('facilities (GAP-20/F15): create persists code-recallably; idempotent replay; 409 dup; tenant guard; FACILITY_CREATE audit', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  // seed: canon row exists, unmapped
+  const before = await listFacilities(db, admin);
+  assert.ok(before.some((f) => f.code === 'B2-MECH-204'), 'seed canon facility present');
+  assert.equal(before.find((f) => f.code === 'B2-MECH-204')?.mapped, false, 'seed facility honestly unmapped');
+
+  const createsBefore = await countAudit('FACILITY_CREATE');
+  const f1 = await createFacility(db, admin, { name: '#B-216 RO Water Plant' }, { idempotencyKey: 'fac-create-it-01' });
+  assert.equal(f1.code, 'B-216-RO-WATER-PLANT', 'code derived server-side from the name');
+  assert.ok(f1.id.length > 8, 'opaque server id returned');
+  assert.equal(f1.mapped, false, 'no geojson → unmapped');
+  assert.equal(f1.defects.length, 0);
+  assert.equal(f1.transfers.length, 0);
+  const afterCreate = await countAudit('FACILITY_CREATE');
+  assert.equal(afterCreate - createsBefore, 1, 'exactly one FACILITY_CREATE audit row');
+
+  // replay with the same key + payload → same row, no second insert, no second audit
+  const replay = await createFacility(db, admin, { name: '#B-216 RO Water Plant' }, { idempotencyKey: 'fac-create-it-01' });
+  assert.equal(replay.code, f1.code);
+  assert.equal(replay.id, f1.id, 'replay returns the originally persisted row');
+  assert.equal(await countAudit('FACILITY_CREATE'), afterCreate, 'replay audited nothing new');
+  const mid = await listFacilities(db, admin);
+  assert.equal(mid.filter((f) => f.code === f1.code).length, 1, 'single row after replay');
+
+  // replay-scoped create of same name without the key → 409 conflict
+  await expectDomainError(
+    () => createFacility(db, admin, { name: 'B-216 RO Water Plant # ' }, { idempotencyKey: null }),
+    409, 'FACILITY_CODE_EXISTS',
+  );
+
+  // tenant guard: decoy sees only its own seeded DOCK-QA-01
+  const { ctx: decoy } = await gap14Decoy();
+  const decoyList = await listFacilities(db, decoy);
+  assert.ok(decoyList.some((f) => f.code === 'DOCK-QA-01'), 'decoy sees its seeded row');
+  assert.ok(!decoyList.some((f) => f.code.startsWith('B2-') || f.code.startsWith('B-216')), 'decoy cannot see canon facilities');
+  await expectDomainError(() => getFacility(db, decoy, f1.code), 404, 'FACILITY_NOT_FOUND');
+  await expectDomainError(() => getFacility(db, admin, 'B-999'), 404, 'FACILITY_NOT_FOUND');
+});
+
+test('facilities (GAP-20/F15): update stages defect + transfer in meta (idempotent); name patch; empty patch 400; FACILITY_UPDATE audit', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  // transfer append — idempotent: replay with same key must NOT double-append
+  const t1 = await updateFacility(db, admin, 'B2-MECH-204', {
+    transfer: { assetCode: 'AST-HVAC-004', toCode: 'B-208-PRIMARY-PUMP-BAY' },
+  }, { idempotencyKey: 'fac-transfer-it-01' });
+  assert.equal(t1.transfers.length, 1, 'transfer request staged in meta');
+  assert.equal(t1.transfers[0]?.assetCode, 'AST-HVAC-004');
+  const tReplay = await updateFacility(db, admin, 'B2-MECH-204', {
+    transfer: { assetCode: 'AST-HVAC-004', toCode: 'B-208-PRIMARY-PUMP-BAY' },
+  }, { idempotencyKey: 'fac-transfer-it-01' });
+  assert.equal(tReplay.transfers.length, 1, 'replay did not double-append');
+
+  // defect append (no key)
+  const d1 = await updateFacility(db, admin, 'B2-MECH-204', {
+    defect: 'Condenser tube bundle fouling observed on boroscope inspection',
+  });
+  assert.equal(d1.defects.length, 1, 'defect staged in meta');
+  assert.equal(d1.defects[0]?.by, admin.name);
+  assert.match(d1.defects[0]?.text ?? '', /fouling/);
+
+  // persisted across a fresh read
+  const reread = await getFacility(db, admin, 'B2-MECH-204');
+  assert.equal(reread.defects.length, 1);
+  assert.equal(reread.transfers.length, 1);
+  assert.ok(reread.updatedAt >= reread.createdAt, 'updatedAt advanced');
+
+  // rename (code stays put), geojson patch flips mapped
+  const renamed = await updateFacility(db, admin, 'B2-MECH-204', { name: 'Centrifugal Chiller Plant Room #B-204 (CUP)' });
+  assert.equal(renamed.code, 'B2-MECH-204', 'code immutable on rename');
+  assert.match(renamed.name, /\(CUP\)$/);
+  const mapped = await updateFacility(db, admin, 'B2-MECH-204', { geojson: '{"type":"Polygon","coordinates":[[[101.73,2.51],[101.736,2.51],[101.736,2.518],[101.73,2.518],[101.73,2.51]]]}' });
+  assert.equal(mapped.mapped, true, 'geojson persisted → mapped');
+  const unmapped = await updateFacility(db, admin, 'B2-MECH-204', { geojson: null });
+  assert.equal(unmapped.mapped, false, 'geojson explicitly cleared');
+
+  // no-op → 400
+  await expectDomainError(() => updateFacility(db, admin, 'B2-MECH-204', {}), 400, 'VALIDATION_ERROR');
+
+  // unknown code → 404; decoy cannot touch canon rows
+  await expectDomainError(() => updateFacility(db, admin, 'B-999', { defect: 'irrelevant long enough note' }), 404, 'FACILITY_NOT_FOUND');
+  const { ctx: decoy } = await gap14Decoy();
+  await expectDomainError(
+    () => updateFacility(db, decoy, 'B2-MECH-204', { defect: 'cross-tenant tamper attempt should fail' }),
+    404, 'FACILITY_NOT_FOUND',
+  );
+
+  // audit: exactly 1 transfer-update + 1 defect-update + rename + map + unmap = ≥ 5 FACILITY_UPDATE rows
+  const updates = await countAudit('FACILITY_UPDATE');
+  assert.ok(updates >= 5, `expected ≥5 FACILITY_UPDATE audit rows, got ${updates}`);
+});
+
+test('facilities (GAP-20/F15): RBAC grants facilities.read to all roles and facilities.manage to vendor-managing roles', () => {
+  assert.ok(can('Read-Only Auditor', 'facilities.read'), 'read for every role');
+  assert.ok(can('Facility Director', 'facilities.manage'), 'Facility Director manages facilities');
+  assert.ok(can('Engineering Lead', 'facilities.manage'), 'Engineering Lead manages facilities');
+  assert.ok(can('Enterprise Admin', 'facilities.manage'), 'Enterprise Admin wildcard');
+  assert.equal(can('Senior Field Tech', 'facilities.manage'), false, 'Senior Field Tech read-only');
+});
+
+// ---------------------------------------------------------------------------
+// Settings KV (GAP-21/F26)
+// ---------------------------------------------------------------------------
+test('settings KV (GAP-21/F26): PUT/GET round-trip, replay idempotent, kind=secret blocked on PUT, tenant guard, audit written', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  // seeded key present
+  const init = await listSettings(db, admin);
+  assert.ok(init.some((s) => s.key === 'ops.maint_mode' && s.value === false), 'seeded ops.maint_mode=false present');
+  assert.ok(!init.some((s) => s.kind === 'secret'), 'no secrets seeded');
+
+  // JSON-rich round trip
+  const before = await countAudit('SETTINGS_UPDATE');
+  const written = await putSetting(db, admin, 'general.profile', {
+    value: { company: 'Apex Nusantara', brand: 'Apex Ops East', ccy: 'IDR', tz: 'UTC+07:00', fiscal: 'Jan-Dec', week: 'Mon-Sat' },
+  }, { idempotencyKey: 'set-put-it-01' });
+  assert.equal(written.key, 'general.profile');
+  assert.deepEqual((written.value as Record<string, unknown>).ccy, 'IDR');
+  assert.equal(await countAudit('SETTINGS_UPDATE') - before, 1, 'exactly one SETTINGS_UPDATE audit row');
+
+  // replay returns stored row, no duplicate audit even though content is "same-looking"
+  const replay = await putSetting(db, admin, 'general.profile', {
+    value: { company: 'Apex Nusantara', brand: 'Apex Ops East', ccy: 'IDR', tz: 'UTC+07:00', fiscal: 'Jan-Dec', week: 'Mon-Sat' },
+  }, { idempotencyKey: 'set-put-it-01' });
+  assert.equal(replay.updatedAt, written.updatedAt, 'replay returns the original write (unchanged timestamp)');
+  assert.equal(await countAudit('SETTINGS_UPDATE') - before, 1, 'replay audited nothing new');
+
+  // PUT with different body but same key overwrites, latest update wins
+  const rePut = await putSetting(db, admin, 'general.profile', { value: { ccy: 'USD' } });
+  assert.equal((rePut.value as Record<string, unknown>).ccy, 'USD');
+
+  const listAgain = await listSettings(db, admin);
+  const profile = listAgain.find((s) => s.key === 'general.profile');
+  assert.ok(profile && (profile.value as Record<string, unknown>).ccy === 'USD', 'list reflects latest write');
+
+  // secrets must not be PUT-able
+  await expectDomainError(
+    () => putSetting(db, admin, 'security.core_api_secret', { value: 'apx_live_sec_plaintext_no', kind: 'secret' }),
+    400, 'SECRET_VIA_ROTATE',
+  );
+  assert.ok(
+    !(await listSettings(db, admin)).some((s) => s.key === 'security.core_api_secret'),
+    'blocked secret PUT left no secret row',
+  );
+
+  // validation
+  await expectDomainError(() => putSetting(db, admin, 'bad key with spaces', { value: 1 }), 400, 'VALIDATION_ERROR');
+  await expectDomainError(
+    () => putSetting(db, admin, 'toobig', { value: 'x'.repeat(20_000) }),
+    400, 'VALIDATION_ERROR',
+  );
+
+  // tenant guard: decoy tenant sees nothing of canon's rows, and its own isolated store
+  const { ctx: decoy } = await gap14Decoy();
+  const decoyList = await listSettings(db, decoy);
+  assert.ok(!decoyList.some((s) => s.key === 'general.profile' || s.key === 'ops.maint_mode'), 'decoy cannot see canon settings');
+  const decoyPut = await putSetting(db, decoy, 'general.profile', { value: { ccy: 'MYR' } });
+  assert.equal((decoyPut.value as Record<string, unknown>).ccy, 'MYR', 'decoy writes its own profile');
+  const canonAfter = (await listSettings(db, admin)).find((s) => s.key === 'general.profile');
+  assert.equal((canonAfter!.value as Record<string, unknown>).ccy, 'USD', 'canon row untouched by decoy write');
+});
+
+test('settings KV (GAP-21/F26): rotate hash-only — plaintext returned once, never listed, replaystable, audit written', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  const before = await countAudit('SETTINGS_SECRET_ROTATE');
+  const r1 = await rotateSecret(db, admin, 'security.core_api_secret', { idempotencyKey: 'set-rot-it-01' });
+  assert.match(r1.secret, /^apx_live_sec_[a-f0-9]{32}$/, 'server-side crypto secret pattern');
+  assert.equal(r1.secret.slice(-4), r1.last4);
+  assert.equal(await countAudit('SETTINGS_SECRET_ROTATE') - before, 1);
+
+  // list: secret shows last4 + hasSecret, NEVER the plaintext / hash
+  const listed = (await listSettings(db, admin)).find((s) => s.key === 'security.core_api_secret');
+  assert.ok(listed, 'secret row listed');
+  assert.equal(listed!.hasSecret, true);
+  assert.equal(listed!.last4, r1.last4);
+  assert.equal(listed!.value, undefined, 'value never leaves for secrets');
+  const rawJson = JSON.stringify(listed);
+  assert.ok(!rawJson.includes(r1.secret), 'plaintext absent from list DTO');
+  assert.ok(!rawJson.includes('apx_live_sec_'), 'even the prefix stays out of the listed row');
+
+  // idempotent replay: same response (same plaintext!) and no second audit for that key+op
+  const replay = await rotateSecret(db, admin, 'security.core_api_secret', { idempotencyKey: 'set-rot-it-01' });
+  assert.equal(replay.secret, r1.secret, 'idempotent replay returns the stored envelope (same plaintext once-more)');
+  assert.equal(await countAudit('SETTINGS_SECRET_ROTATE') - before, 1, 'replay did not re-audit');
+
+  // second rotate: NEW secret, new hash; old plaintext long gone from records
+  const r2 = await rotateSecret(db, admin, 'security.core_api_secret');
+  assert.notEqual(r2.secret, r1.secret);
+  assert.notEqual(r2.last4 === r1.last4 && r2.secret === r1.secret, true);
+  const listed2 = (await listSettings(db, admin)).find((s) => s.key === 'security.core_api_secret');
+  assert.equal(listed2!.last4, r2.last4, 'latest rotation wins');
+  assert.equal(await countAudit('SETTINGS_SECRET_ROTATE') - before, 2, 'second rotation audited');
+
+  // decoy cannot rotate/read canon rows; rotate in decoy is isolated
+  const { ctx: decoy } = await gap14Decoy();
+  const decoyList = await listSettings(db, decoy);
+  assert.ok(!decoyList.some((s) => s.key === 'security.core_api_secret'), 'decoy sees no canon secret');
+  const dr = await rotateSecret(db, decoy, 'security.core_api_secret');
+  const decoyAgain = (await listSettings(db, decoy)).find((s) => s.key === 'security.core_api_secret');
+  assert.equal(decoyAgain!.last4, dr.last4, 'decoy rotates in its own tenant');
+  const canonAgain = (await listSettings(db, admin)).find((s) => s.key === 'security.core_api_secret');
+  assert.equal(canonAgain!.last4, r2.last4, 'canon secret untouched by decoy rotate');
+
+  // PUT on a secret key with kind=secret is rejected even after the row exists
+  await expectDomainError(
+    () => putSetting(db, admin, 'security.core_api_secret', { value: 'x', kind: 'secret' }),
+    400, 'SECRET_VIA_ROTATE',
+  );
+});
+
+test('handovers (GAP-22/F27): create happy + idempotent replay + validation, audit HANDOVER_CREATE', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+  // seed is intentionally empty (no fictional HND-* rows)
+  assert.equal((await listHandovers(db, admin)).length, 0, 'seed ships zero handover rows');
+
+  const before = await countAudit('HANDOVER_CREATE');
+  const payload = {
+    shiftFrom: 'Shift A (Day)', shiftTo: 'Shift B (Evening)',
+    leadFrom: 'Elena Voronova', leadTo: 'David Chen',
+    woRef: 'WO-2026-0894', items: 'Seal replacement in progress', notes: 'Stopwatch transferred',
+  };
+  const h = await createHandover(db, admin, payload, { idempotencyKey: 'hnd-it-01', requestId: 'it-hnd-1' });
+  assert.equal(h.status, 'PENDING');
+  assert.equal(h.leadTo, 'David Chen');
+  assert.equal(h.woRef, 'WO-2026-0894');
+  const replay = await createHandover(db, admin, payload, { idempotencyKey: 'hnd-it-01' });
+  assert.equal(replay.id, h.id, 'idempotent replay returns same row');
+  assert.equal((await listHandovers(db, admin)).length, 1, 'replay created no duplicate');
+  assert.equal(await countAudit('HANDOVER_CREATE') - before, 1, 'create audited exactly once');
+
+  await expectDomainError(
+    () => createHandover(db, admin, { ...payload, leadTo: '  ' }),
+    400, 'VALIDATION_ERROR',
+  );
+});
+
+test('handovers (GAP-22/F27): accept → terminal 409 · reject needs reason 400 → REJECTED + audit, tenant guard', async () => {
+  const created = await createHandover(db, admin, {
+    shiftFrom: 'Shift B', shiftTo: 'Shift C', leadFrom: 'David Chen', leadTo: 'Sarah Al-Mansoor',
+    items: 'Cleanroom BMS telemetry nominal',
+  });
+
+  // reject without a reason → honest 400
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'reject', reason: '' }),
+    400, 'REASON_REQUIRED',
+  );
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'reject' }),
+    400, 'REASON_REQUIRED',
+  );
+  let row = (await listHandovers(db, admin)).find((r) => r.id === created.id)!;
+  assert.equal(row.status, 'PENDING', 'failed reject leaves row PENDING');
+
+  // unknown id → 404
+  await expectDomainError(
+    () => decideHandover(db, admin, '00000000-0000-0000-0000-000000000000', { action: 'accept' }),
+    404, 'HANDOVER_NOT_FOUND',
+  );
+
+  // accept happy → ACCEPTED + decidedBy + audit
+  const accepted = await decideHandover(db, admin, created.id, { action: 'accept' }, { idempotencyKey: 'hnd-dec-it-1' });
+  assert.equal(accepted.status, 'ACCEPTED');
+  assert.equal(accepted.decidedBy, admin.name);
+  assert.ok(accepted.decidedAt, 'decision stamped');
+  const audits = await db.select().from(auditEvents).where(eq(auditEvents.action, 'HANDOVER_ACCEPT'));
+  const mine = audits.filter((a) => a.entityId === created.id);
+  assert.equal(mine.length, 1, 'HANDOVER_ACCEPT written');
+  assert.deepEqual((mine[0]!.before as { status: string }).status, 'PENDING');
+  assert.deepEqual((mine[0]!.after as { status: string }).status, 'ACCEPTED');
+
+  // second decision on terminal row → 409 (and idempotent replay of the SAME key still returns accepted)
+  const replayDec = await decideHandover(db, admin, created.id, { action: 'accept' }, { idempotencyKey: 'hnd-dec-it-1' });
+  assert.equal(replayDec.status, 'ACCEPTED', 'same key replays the stored envelope');
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'reject', reason: 'late objection' }),
+    409, 'HANDOVER_TERMINAL',
+  );
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'accept' }),
+    409, 'HANDOVER_TERMINAL',
+  );
+
+  // reject with reason on a fresh row → REJECTED + reason stored + audit REJECT
+  const second = await createHandover(db, admin, {
+    shiftFrom: 'Shift B', shiftTo: 'Shift C', leadFrom: 'Robert Langdon', leadTo: 'Sarah Al-Mansoor',
+    items: 'ELEC-TR-880 bushing kit incomplete',
+  });
+  const rejected = await decideHandover(db, admin, second.id, { action: 'reject', reason: 'LOTO padlock #4091 key missing from lockbox' });
+  assert.equal(rejected.status, 'REJECTED');
+  assert.match(rejected.rejectReason ?? '', /#4091/);
+  const rejAudits = (await db.select().from(auditEvents).where(eq(auditEvents.action, 'HANDOVER_REJECT')))
+    .filter((a) => a.entityId === second.id);
+  assert.equal(rejAudits.length, 1, 'HANDOVER_REJECT written');
+
+  // tenant isolation: decoy sees zero rows, cannot decide canon rows (404), lives in own bucket
+  const { ctx: decoy } = await gap14Decoy();
+  assert.equal((await listHandovers(db, decoy)).length, 0, 'decoy org blind to canon handovers');
+  await expectDomainError(
+    () => decideHandover(db, decoy, second.id, { action: 'accept' }),
+    404, 'HANDOVER_NOT_FOUND',
+  );
+  await createHandover(db, decoy, {
+    shiftFrom: 'X', shiftTo: 'Y', leadFrom: 'Decoy One', leadTo: 'Decoy Two',
+  });
+  assert.equal((await listHandovers(db, decoy)).length, 1, 'decoy creates in its own org');
+  const canonAfter = await listHandovers(db, admin);
+  assert.ok(!canonAfter.some((r) => r.leadFrom === 'Decoy One'), 'no decoy bleed into canon list');
 });

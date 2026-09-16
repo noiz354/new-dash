@@ -92,9 +92,9 @@
 
 - [x] BROKEN baru: wire `finding.convert` ke FindingDesk convert + dismiss ke endpoint nyata (GAP-4 CLOSED 2026-09-16: `dismissFinding()` + POST dismiss + perm finding.dismiss; desk live-status + convert/dismiss/PM via API nyata; 74/74 test; runtime MCP terverifikasi)
 - [x] BROKEN baru: wire `GET/POST /api/auth/sessions` ke ProfileSessions (GAP-5 CLOSED 2026-09-16: GET tandai current via hash cookie sendiri + POST mode others/all + revokeOtherUserSessions + audit REVOKE_OTHERS; SESSIONS const + copy SCIM-mock dihapus; 77/77 test; runtime MCP: 2 sesi live → revoke-others → 1 sesi + toast count nyata, 0 console error)
-- [ ] BACKEND-ONLY → putuskan expose atau kunci: inspections CRUD + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing UI, signup form
-- [ ] FRONTEND-ONLY → wire atau label jujur: reports hub, PM hub, shifts plan, facilities hub, vendors flows, settings hub, jobs page (SEED), print templates (WO/PO/badge/permit: nyatakan sumber CANON)
-- [ ] DEAD-END: buat rute `/inventory/transfers`, `/inventory/adjustments`, `/field/runs` atau cabut referensinya (TO-8891/ADJ/INS-… menggantung)
+- [ ] BACKEND-ONLY → putuskan expose atau kunci: inspections CRUD + force-dispatch, wo tasks, parts/movements, purchasing/grn, ~~queue/jobs~~ (EXPOSED+honest — GAP-16 TASK 3 CLOSED 2026-09-16), ~~retention/digest~~ (DEPRECATED eksplisit — GAP-16 TASK 4 CLOSED, sunset 2026-12-15), reports/aggregates, telemetry ingest/metrics, billing UI, ~~signup form~~ (signup form EXPOSED — GAP-16 TASK 1 CLOSED 2026-09-16)
+- [ ] FRONTEND-ONLY → wire atau label jujur: reports hub, PM hub, ~~shifts plan~~ (handover backend+badge fix — GAP-16 TASK 7 CLOSED 2026-09-16), ~~facilities hub~~ (backend+wire — GAP-16 TASK 5 CLOSED 2026-09-16), vendors flows, ~~settings hub~~ (KV backend+wire — GAP-16 TASK 6 CLOSED 2026-09-16), jobs page (SEED), print templates (WO/PO/badge/permit: nyatakan sumber CANON)
+- [x] DEAD-END refs inventory: `TRF-2026-0044`/`ADJ-2026-0019` (MOV_SEED) + `ADJ-2026-Q1` (SKU detail TXN-811) DICABUT — GAP-16 TASK 2 CLOSED 2026-09-16; rute `/inventory/transfers|adjustments` out-of-scope eksplisit (tanpa backend transfer). Sisa DEAD-END: `/field/runs` (F18 ber-badge honest, menunggu keputusan)
 - [ ] OrgHub provision: daftar roster masih SEED meski POST nyata → refetch setelah provision (PARTIAL → END-TO-END)
 
 ## Audit non-E2E 32 fitur — remediation order (detail: `docs/audit-non-e2e-remediation-map.md`)
@@ -111,7 +111,7 @@
 - [x] GAP-13 P1: evidence GET ter-otentikasi + viewer; rotate-key endpoint nyata (F6/F30 CLOSED 2026-09-16: download route auth + traversal-guard + 410/500 jujur + WoChecklist viewer thumbnail/download di 2 branch page; tabel api_keys hash-only + issue show-once + revoke + audit; UI ProfileSessions live; 2 test; npm test 132/132, tsc bersih; runtime MCP: AK-2026-0001 issue→revoke→list-kosong, upload 201→download 200 byte-identik, cross-WO 404, unauth 401, viewer 2 files termuat, console 0 error)
 - [x] GAP-14 P2: reports + vendors + BIM wire ke backend yang sudah ada (F21/F14/F8 CLOSED 2026-09-16: vendor-service + migrasi 0004 + RBAC vendors.manage + routes GET/POST/PATCH + VendorList/Detail/dialogs live + demo fallback + DUNS format-only + dispatch→WO nyata; ReportsHub KPI live aggregates on-mount + Refresh + katalog design-reference; AssetBim refresh→ingest + honest empty; 4 test, npm test 136/136, tsc exit 0; runtime MCP: onboard 5→6 via UI + dispatch WO-2026-0911 + KPI konsisten API (9 total) + ingest 77.5→WARNING→refresh live + recordedAt server; console hanya 400 artefak probe negatif)
 - [x] GAP-15 P2/P3: export label "CSV (loaded rows)" + badge "Fase 2" di kartu runs (F11/F18 CLOSED 2026-09-16: 1 baris label ledger; badge Phase 2 gate `a.id !== CANON.inspection`; situs export lain terverifikasi jujur tak diubah; 2 guard-test, npm test 138/138, tsc exit 0; runtime MCP: tombol live di /inventory + badge tampil pada kartu LIVE non-kanon INS-2026-1093; console 0 error)
-- [ ] GAP-16: NEED PRODUCT DECISION — signup-UI? transfer-routes? jobs-satu-dunia? digest-cron? facilities-KV? settings-KV? handover-backend? (F2/F12/F23/F25/F15/F26/F27)
+- [x] GAP-16: 7 keputusan produk (F2/F12/F23/F25/F15/F26/F27) — **SEMUA 7/7 DONE 2026-09-16**: T1 F2 signup UI; T2 F12 refs TRF-/ADJ- dihapus; T3 F23 jobs jujur+wire queue; T4 F25 retention digest deprecated eksplisit (sunset 2026-12-15); T5 F15 facilities backend+wire; T6 F26 settings KV backend + hash-only secrets (`88b4a08`→`3639bb3`); T7 F27 handover backend + badge-first fix (`/api/shifts/handovers`, 400/404/409 jujur, audit HANDOVER_*) — runtime penuh per task; suite 166/166; gerbang sweep banned-strings aktif (guard-test)
 - [ ] GAP-17: KEEP batch no-op — SSO, clone-policy, print, ledger-fallback, telemetry-infra, import-defer (F1/F4/F7/F9/F22/F28)
 
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
@@ -258,6 +258,8 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Master prompt siap-tempel untuk agent berikutnya: `docs/MASTER_PROMPT_CLAUDE_CODE.md`.
 
 ### 0. URUTAN EKSEKUSI — BY IMPACT (disepakati 2026-09-16; backlog kanonis = file ini)
+
+> Spec eksekusi SDD per tier: `docs/sdd/00-master-spec.md` (10 file spec, ±200 unit, ditulis 2026-09-16).
 
 > Aturan: tiap item aktif diverifikasi runtime via Chrome CDP :9227 (screenshot + console + network + runtime state) dengan verdict PASS/PARTIAL/FAIL/BLOCKED. TASK-27+ terkunci sampai runtime verification Wave 3–4 selesai.
 > Status implementasi file-level (cek 2026-09-16 — BUKAN verdict runtime): TASK-01..03, 05..21, 23..26 ada file + wiring; TASK-04, 22, 27, 28, 29, 30, FONT belum.

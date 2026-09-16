@@ -315,6 +315,90 @@ export const vendors = pgTable(
   (t) => [primaryKey({ columns: [t.organizationId, t.slug] })],
 );
 
+// ------------------------------------------------------------ facilities (GAP-20/F15) --
+
+/** Facility locations (rooms/sub-locations). Flat rows keyed by an org-unique
+ *  code derived server-side from the name (mirror vendor slug) — NO canon
+ *  numbering (product decision). `geojson` stays null until a facility is
+ *  mapped ("unmapped"); `meta` JSON holds server-staged entries the UI wires:
+ *  { defects: [{ text, at, by }], transfers: [{ assetCode, toCode, at, by }] }
+ *  (chosen over a separate defect table — see docs/remediation-gap-20-spec.md). */
+export const facilities = pgTable(
+  'facilities',
+  {
+    id: uuid('id').notNull().defaultRandom(), // opaque server id
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(), // org-unique: B2-MECH-204
+    name: text('name').notNull(),
+    geojson: text('geojson'), // raw GeoJSON geometry/feature JSON; null = unmapped
+    meta: text('meta'), // JSON blob: staged defects/transfers (see comment above)
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.code] }),
+    uniqueIndex('facilities_id_uq').on(t.id),
+  ],
+);
+
+// ------------------------------------------------------------ settings KV (GAP-21/F26) --
+
+/** Org-scoped key-value settings. `value` is JSON-encoded text. kind='secret'
+ *  rows NEVER store plaintext — `value` holds sha256(plaintext) and `last4`
+ *  the display hint; the plaintext leaves the server exactly once (rotate
+ *  response), mirroring the api-keys pattern. Backup snapshot/restore keys
+ *  store honest metadata ({mode:'simulated', rowsTouched:0}) — never claims
+ *  of a real backup. */
+export const settingsKv = pgTable(
+  'settings_kv',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(), // dot-hierarchy: general.profile, integrations.broker, ops.maint_mode
+    kind: text('kind').notNull().default('value'), // value | secret
+    value: text('value').notNull(), // JSON-encoded value | sha256 hash (secret)
+    last4: text('last4'), // secret display hint only
+    updatedBy: text('updated_by').notNull(), // actor display name
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.key] })],
+);
+
+// ------------------------------------------------------------ shift handovers (GAP-22/F27) --
+
+/** Shift handover records. Seed ships ZERO rows (the old UI hard-coded fake
+ *  HND-2026-* history + a compliance badge with no ledger behind it) — rows are
+ *  created by operators via POST /api/shifts/handovers and move through
+ *  PENDING → ACCEPTED | REJECTED (terminal) via the decision endpoint only.
+ *  Every transition writes a HANDOVER_* audit row in the same transaction. */
+export const HANDOVER_STATUSES = ['PENDING', 'ACCEPTED', 'REJECTED'] as const;
+export type HandoverStatus = (typeof HANDOVER_STATUSES)[number];
+
+export const handovers = pgTable(
+  'handovers',
+  {
+    id: uuid('id').notNull().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    shiftFrom: text('shift_from').notNull(),
+    shiftTo: text('shift_to').notNull(),
+    leadFrom: text('lead_from').notNull(),
+    leadTo: text('lead_to').notNull(),
+    woRef: text('wo_ref'), // bound WO when initiated from a WO context (e.g. canonical seal WO)
+    items: text('items').notNull().default(''),
+    notes: text('notes').notNull().default(''),
+    status: text('status').notNull().default('PENDING'), // HANDOVER_STATUSES
+    rejectReason: text('reject_reason'), // REQUIRED when status=REJECTED; cleared/null otherwise
+    decidedBy: text('decided_by'), // actor who made the terminal decision
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('handovers_org_status_idx').on(t.organizationId, t.status),
+  ],
+);
+
 export const PO_STATUSES = [
   'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DISPATCHED', 'PARTIAL', 'RECEIVED', 'REJECTED', 'CLOSED',
 ] as const;

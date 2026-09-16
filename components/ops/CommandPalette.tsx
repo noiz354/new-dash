@@ -24,7 +24,7 @@ const COMMANDS = [
   { label: 'System Audit Trail & Merkle Root', hint: 'Forensic event proof', href: '/audit-trail' },
   { label: 'Print Work Permit (PTW)', hint: 'Physical LOTO signoff', href: '/permits/PTW-2026-0814/print' },
   { label: 'Print Personnel Badge (CR80)', hint: 'RFID-9021 · physical ID card', href: '/badges/RFID-9021/print' },
-  { label: 'System Maintenance & Jobs History', hint: 'S3 snapshot & WAL restore', href: '/settings/jobs' },
+  { label: 'Background Job Queue', hint: 'Live in-memory dispatch queue (ephemeral)', href: '/settings/jobs' },
   { label: 'UI State Matrix & Component Gallery', hint: 'Design system QA harness', href: '/ui-patterns' },
 ];
 

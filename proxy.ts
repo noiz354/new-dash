@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 const SESSION_COOKIE = 'apex_session';
 
-const PUBLIC_PREFIXES = ['/login', '/api'];
+const PUBLIC_PREFIXES = ['/login', '/signup', '/api'];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

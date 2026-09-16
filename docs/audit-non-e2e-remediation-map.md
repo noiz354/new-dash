@@ -37,6 +37,18 @@ Canon: DB organizations. Persist: PERSISTED (atomic). Contract:
 `POST {…}→201+cookie` (MATCH, uncalled). Tests: NONE. **Decision: NEED
 PRODUCT DECISION** (admin-UI vs API-only vs hapus). Target: TBD. Reason:
 tenant-provisioning tanpa wajah = risiko orphan tenant. P3/M/MODULE.
+**[CLOSED GAP-16 TASK 1 2026-09-16]:** DECISION bangun-UI dieksekusi —
+`app/(auth)/signup/page.tsx` + `components/auth/SignupForm.tsx` baru (5 field,
+validasi klien mirror zod server, POST `/api/auth/signup` via apiFetch, error
+409/400 ditampilkan apa adanya); `proxy.ts` `PUBLIC_PREFIXES` +`/signup`
+(routing terbukti kurang: tanpa cookie, `/signup` 307→`/login` — tanpa fix
+ini halaman tak pernah terjangkau calon tenant). Backend route/service/DB
+TAK berubah. Spec: `docs/remediation-gap-16-spec.md`. 3 test (happy+session
+verify+isolasi tenant+sequences, 409 EMAIL_EXISTS global+tanpa-artefak, 400
+zod via POST handler pre-DB; npm test 141/141; tsc exit 0). Runtime curl dev
+:3157: GET /signup 200; happy 201+cookie→GET `/` 200 authed; org kedua 201 +
+roster terisolasi; 409/400×2/401 jujur; log server bersih (hanya structured
+request log). Target: END-TO-END tercapai.
 
 **F3 — Org provision refetch.** Current: PARTIAL. Yang nyata: roster live GET,
 POST provision persist + audit. Yang lokal: append tanpa revalidate (server
@@ -131,6 +143,18 @@ render teks, bukan link). Gap: MISSING ROUTE + PRODUCT DECISION MISSING.
 Break: UI→route. Tests: NONE. **Decision: NEED PRODUCT DECISION** (buat rute
 vs hapus refs; sementara biarkan teks — tak ada link menggantung). Target:
 TBD. P3/S/LOCAL.
+**[CLOSED GAP-16 TASK 2 2026-09-16]:** DECISION hapus-refs dieksekusi (tanpa
+backend transfer) — 2 entri fiktif `MOV_SEED` dihapus dari
+`InventoryLedger.tsx` (`TRF-2026-0044` kurir/waybill + `ADJ-2026-0019`
+scrap/cc-QA) beserta baris statis `ADJ-2026-Q1` (situs ke-2:
+`app/(ops)/inventory/[sku]/page.tsx` TXN-811). Fallback feed kini 3 entri
+kanon WO/PO/PM yang semuanya resolvable sebagai link; cabang teks-biasa
+dipertahankan untuk ADJ/TRF sah dari server. Grep components/+app/+lib:
+nol `TRF-`/`ADJ-`. Guard-test absence di audit-truthfulness (2 test;
+143/143; tsc exit 0). Runtime curl :3157: `/inventory` SSR nol fiksi + canon
+link live; `/inventory/PART-SEAL-8821` nol ADJ-; feed server honest (kosong)
+; unauth → 307/401. Out-of-scope eksplisit: tabel transfers + rute
+transfers/adjustments.
 
 **F13 — Purchasing authorize/GRN.** Current: BROKEN. Gap: FAKE SUCCESS penuh
 (endorse/GRN-9941/match/RFQ toast tanpa 1 request) sementara `po-service`+
@@ -162,7 +186,54 @@ onboard via UI 5→6 + dispatch WO-2026-0911 nyata.
 MISLEADING SUCCESS. Break: handler→backend. Persist: NOT PERSISTED. Tests:
 NONE. **Decision: HONEST PLACEHOLDER sekarang + NEED PRODUCT DECISION**
 (facilities backend vs hapus klaim). Target: FRONTEND-honest. Reason: klaim
-realtime tanpa broker = harus turun dulu. P2/S/MODULE.
+realtime tanpa broker = harus turun dulu. P2/S/MODULE. **[CLOSED GAP-16
+(F15=TASK 5) 2026-09-16 — backend dibangun 2 fase: tabel `facilities`
+(org+code PK, code turunan nama di server, geojson nullable, meta JSON
+staged defects/transfers); `facility-service.ts` (zod-validated list/get/
+create/update, audit FACILITY_CREATE/UPDATE transaksional, idempotency scopes
+facility.create/update, 404 FACILITY_NOT_FOUND + 409 FACILITY_CODE_EXISTS +
+400 empty patch); routes GET/POST /api/facilities + GET/PATCH
+/api/facilities/[id] dengan izin baru facilities.read/manage (read untuk semua
+role; manage = Facility Director / Engineering Lead / Enterprise Admin —
+pola vendors); FacilityHub di-wire: Server locations panel LIVE, POST add,
+PATCH defect/transfer, export GeoJSON dari rows server (null geometry →
+unmapped jujur), fallback offline berlabel `local staging — not persisted`/API
+unreachable, ID server di-noted di toast; test 3 integration + 2 guard
+truthfulness; runtime isolasi :3158 (dev :3157 PGlite pra-migrasi): create
+201·reload persist·PATCH meta 200·{}→400·409 dup·404 unknown·401 unauth·
+audit 2C+2U·/facilities 200 tanpa MODEL MATCHED/10.14.0.8 · tests 157/157 ·
+tsc bersih]**
+
+> **CLOSED GAP-16 TASK 5 (2026-09-16)** — keputusan produk: **bangun backend
+> facilities**, dua fase dalam satu task (spec `docs/remediation-gap-20-spec.md`;
+> r@a: PM/Eng Lead). FASE 1 copy honest: Recalibrate → "local demo — no GIS
+> write"; "BIM … MODEL MATCHED" → "BIM reference (design only — not connected)";
+> dispatchAudit AUD id label "local counter — not persisted"; prefix/labels
+> nomor staging tetap. FASE 2 backend nyata: tabel `facilities` (migrasi 0005;
+> PK org+code, `id` uuid opaque, `code` turunan slug UPPER dari nama TANPA
+> nomor canon, `geojson` TEXT NULL = unmapped, `meta` JSON staged
+> defective/transfer — PILIHAN: defect+transfer di-update facility/meta, BUKAN
+> tabel defect kecil) + seed idempoten (canon `B2-MECH-204` + decoy) +
+> `lib/services/facility-service.ts` (list/get/create/update; zod-validasi di
+> service; audit `FACILITY_CREATE`/`FACILITY_UPDATE` transaksional; idempoten
+> `facility.create`/`facility.update`; 409 `FACILITY_CODE_EXISTS`; 404
+> `FACILITY_NOT_FOUND`; patch kosong 400) + routes `app/api/facilities` +
+> `[id]` (GET/POST/PATCH; izin facilities.read/manage di RBAC — read untuk
+> semua, manage = peran vendors.manage) + UI `FacilityHub`: daftar lokasi
+> "Server locations" LIVE + provenance badge + wire addSub-location
+> (POST)/reassign (PATCH transfer)/logDefect (PATCH defect)/exportGeo (fitur
+> dari rows server, mapped/unmapped jujur) dengan fallback offline ber-label
+> `local staging — not persisted` + toast sukses memuat ID server; tree
+> struktural tetap demo ber-label. Test: 3 integrasi service-level (create
+> +replay+409+guard decoy+audit CREATE; update defect/transfer idempotent-no-
+> double-append+rename+map/unmap+400+404+audit UPDATE; RBAC) + 2 guard
+> truthfulness (fiction absent + backend honest markers) → 157/157; tsc → 0.
+> Runtime diverifikasi di instance dev ISOLASI :3158 (PGlite singleton dev
+> utama :3157 pra-migrasi — rute baru menunggu restart dev user; route lama
+> tetap 200): GET seed 1 → POST 201 → GET 2 → PATCH defect+transfer 200 →
+> PATCH kosong 400 → POST dup-nama 409 → GET unknown 404 → unauth 401 →
+> FACILITY_CREATE×2+UPDATE×2 di audit → /facilities 200 dengan copy honest.
+> [ASUMSI OTOMATIS-USER-ACTION: restart dev :3157 untuk memuat kode rute baru]
 
 **F16 — Field queue/run checklist.** Current: FRONTEND-ONLY + fake
 ("Submitted — WO auto-dispatched" tanpa WO, "audit-chained" tanpa write, PIN
@@ -252,6 +323,20 @@ page→API + no cron. Persist: NOT PERSISTED (keduanya). Tests: NONE.
 **Decision: NEED PRODUCT DECISION** (monitor beneran vs hapus) + **MUST FIX**
 link auditHash fiktif sementara. Target: TBD. Reason: klaim SOC2/audit-hash
 tanpa write = compliance-adjacent. P2/M/MODULE.
+**[CLOSED GAP-16 TASK 3 2026-09-16]:** DECISION jujur+wire dieksekusi — page
+ditulis ulang sebagai klien atas `GET /api/queue/jobs` (kolom yang didukung
+API saja); JOBS const + `DAEMON OPERATIONAL`/`SOC2 AUDIT READY` + 4 KPI +
+auditHash/link Inspect Chain + narasi snapshot DIHAPUS; banner ephemeral
+in-memory + tombol nyata Run cycle (confirm)/Retry/Enqueue (izin org.manage;
+403 tampil apa adanya). Worker preseed 3 job: **PILIHAN = HAPUS** (bukan
+label) — preseed lama bocorkan baris APX-NUSA-01 ke semua tenant+filter;
+komentar pilhan di kode. Route fix terbukti-kurang: retry jobId tak ada → 404
+`JOB_NOT_FOUND` (dulu 200 data:null). CommandPalette hint dijujurkan. Test:
+4 unit worker (empty-store/no-preseed, tenant+filter, run_cycle, retry/null)
++ 2 guard-test fiksi (149/149; tsc exit 0). Runtime curl :3157: GET [], enqueue
+201, filter jujur (webhook_fanout kosong bukan preseed), run_cycle
+{processed:1,completed:1}, retry-unknown 404, topic-invalid 400, unauth 401;
+page HTML 200 tanpa SOC2/DAEMON/482.
 
 **F24 — Billing.** Current: BACKEND-ONLY. Gap: `catch{}` telan BAD_SIGNATURE
 (**auth/security BROKEN**), checkout stub `cs_${Date.now()}` tanpa Stripe SDK,
@@ -273,13 +358,44 @@ Gap: BACKEND MISSING + FAKE SUCCESS. Break: handler→API. Persist: NOT
 PERSISTED (refresh hilang). Tests: NONE. **Decision: MUST FIX copy dulu (S)
 + NEED PRODUCT DECISION** (KV backend vs local). Target: FRONTEND-honest.
 Reason: "persisted production" tanpa write = klaim compliance. P2/S-then-L/
-MODULE.
+MODULE. **[CLOSED GAP-16 (F26=TASK 6) 2026-09-16 — KV backend dibangun 2
+fase (spec `docs/remediation-gap-21-spec.md`): tabel `settings_kv` (migrasi
+0006; PK org+key; value JSON-encoded; kind value|secret — secret HASH-ONLY
+sha256+last4, plaintext hanya keluar sekali di respons rotate, meniru
+api-key GAP-13) + seed minimal `ops.maint_mode=false` + service
+`settings-service.ts` (list/put/rotate; audit `SETTINGS_UPDATE`/
+`SETTINGS_SECRET_ROTATE` transaksional; idempoten `settings.put`/
+`settings.rotate`; jaminan PUT kind=secret → 400 `SECRET_VIA_ROTATE`; zod key
+regex+16KB) + routes GET /api/settings, PUT /api/settings/[key], POST
+/api/settings/[key]/rotate (izin `settings.manage`) + SettingsHub di-wire
+semua handler (profile/broker/hooks/maint=snapshot&restore metadata
+`simulated · 0 rows touched`/rotate issue reveal-hash-only) dengan fallback
+offline berlabel; FASE-1: PIN `2468` DIHAPUS, broker `10.14.0.8` → not
+configured, ENV PROD → demo workspace, hook '200 OK' → never probed, glue
+S3/SOC2/Fixer/Oracle/99.94 berqualifier planned; test 2 integration
+(round-trip+replay+400 SECRET_VIA_ROTATE+400 size/key+tenant guard+rotate
+2× hash-only+replay persist+audit×2 zeira) + 2 guard truthfulness; runtime
+isolasi :3158: PUT persists-reload OK · rotate 1× plaintext · GET hash-only ·
+400+401 OK · audit 5U+2R · /settings 200 nol klaim fiksi · tests 161/161 ·
+tsc bersih]**
 
-**F27 — Shifts.** Current: FRONTEND-ONLY + badge "AUDIT COMPLIANT" tanpa
-ledger, HND-* historis tanpa DB. Gap: BACKEND MISSING + MISLEADING badge.
-Break: component→API. Persist: NOT PERSISTED. Tests: NONE. **Decision: MUST
-FIX badge (S) + NEED PRODUCT DECISION** (handover backend — serah-terima
-shift = inti ops). Target: TBD. P2/S-then-M/MODULE.
+**F27 — Shifts. [CLOSED GAP-16 (F27=TASK 7) 2026-09-16 — handover backend
+dibangun 1 task, badge-first]** — laksana TASK-07.md. Was: FRONTEND-ONLY
++ badge "AUDIT COMPLIANT" tanpa ledger + HND-* fiktif. Now: tabel
+`handovers` (migrasi 0007, org-scoped PK, CHECK status, seed **KOSONG**),
+`lib/services/handover-service.ts` (create/decide; 400 REASON_REQUIRED,
+404 HANDOVER_NOT_FOUND, 409 HANDOVER_TERMINAL; audit transaksional
+HANDOVER_CREATE/ACCEPT/REJECT; withIdempotency), routes dipilih PERSIS SATU
+path `/api/shifts/handovers` (+`/[id]` decide), RBAC `shifts.read`
+(READ_ALL) + `shifts.manage` (FD/EL/EA via vendors-pattern), ShiftPlan
+server-aware: badge compliance → label berbasis state server (SERVER
+RECORDS/NO RECORDS/LOCAL DEMO), HISTORIC hanya fallback offline ber-label
+"local demo — not persisted", Initiate Handover saat server kosong,
+Accept/Reject POST vs row PENDING. Spec: docs/remediation-gap-22-spec.md.
+Tests: integration ×2 (create+replay+validasi; accept→409/400/404/decoy,
+audit rows) + truthfulness ×2 + gerbang sweep; runtime :3158 matrix penuh
+(201/replay-id/accept-200/409-terminal/400-no-reason/404/401/audit rows/
+halaman 200 σ nol badge fiktif). Target: END-TO-END. P2/S-then-M/MODULE.
 
 **F28 — Import CSV.** Current: NOT FOUND (koreksi UNKNOWN→absent; hanya
 export). Gap: none claimed. **Decision: DEFER** (tak ada klaim, tak ada harm;
@@ -321,7 +437,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | # | Domain | Feature | Current | Root Cause | Decision | Target | Pri | Eff | Blast |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | Auth | SSO | FRONTEND-ONLY | BACKEND MISSING | HONEST PLACEHOLDER | FE by design | P3 | S | LOCAL |
-| 2 | Auth | Signup tenant | BACKEND-ONLY | MISSING UI | NEED DECISION | TBD | P3 | M | MODULE |
+| 2 | Auth | Signup tenant | END-TO-END [CLOSED GAP-16-T1] | UI BUILT (was MISSING UI) | NEED DECISION (decided: build UI) | E2E | P3 | M | MODULE |
 | 3 | Org | Provision refetch | PARTIAL | MISSING REFRESH | COMPLETE PARTIAL ⭐ | E2E | P1 | S | LOCAL |
 | 4 | Org | Clone-policy/deploy | FRONTEND-ONLY | PRODUCT DECISION MISSING | PLACEHOLDER+DEFER | FE by design | P3 | S | LOCAL |
 | 5 | WO | Tasks checklist | BACKEND-ONLY | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P1 | S | MODULE |
@@ -331,10 +447,10 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 9 | Inventory | Ledger fallback | PARTIAL | — (honest) | KEEP BY DESIGN | PARTIAL-honest | P3 | S | LOCAL |
 | 10 | Inventory | KPI cards | PARTIAL | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P1 | S | MODULE |
 | 11 | Inventory | Export CSV | PARTIAL | MISSING BACKEND + label | COMPLETE PARTIAL ⭐ | PARTIAL-honest | P2 | S | LOCAL |
-| 12 | Inventory | Transfer/adjust refs | DEAD-END | MISSING ROUTE | NEED DECISION | TBD | P3 | S | LOCAL |
+| 12 | Inventory | Transfer/adjust refs | REMOVED [CLOSED GAP-16-T2] | REFS DIHAPUS (was MISSING ROUTE) | NEED DECISION (decided: remove) | no-refs honest | P3 | S | LOCAL |
 | 13 | Purchasing | PO/GRN/authorize | BROKEN | FAKE SUCCESS + NOT WIRED | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 14 | Vendors | Onboard/amend/MSA | DEAD-END | BACKEND MISSING | MUST INTEGRATE | E2E | P2 | M | MODULE |
-| 15 | Facilities | Hub actions | FRONTEND-ONLY | BACKEND MISSING + fake | PLACEHOLDER+DECISION | FE-honest | P2 | S | MODULE |
+| 15 | Facilities | Hub actions | CLOSED [GAP-16-T5] | RESOLVED (backend built, 2 fase) | DECIDED: bangun backend facilities | END-TO-END | P2 | S | MODULE |
 | 16 | Field | Queue/run checklist | END-TO-END [CLOSED GAP-11] | WIRED (was FAKE+NOT WIRED) | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 17 | Field | Outbox auto-flush | PARTIAL | MISSING COVERAGE | COMPLETE PARTIAL ⭐ | E2E | P1 | S | MODULE |
 | 18 | Field | Runs Fase-2 cards | DEAD-END | MISSING UI honesty | HONEST PLACEHOLDER ⭐ | honest | P3 | S | LOCAL |
@@ -342,11 +458,11 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 20 | Insp | CRUD+force-dispatch | END-TO-END [CLOSED GAP-11] | FIXED (was SERVICE BYPASS + no UI) | MUST FIX+INTEGRATE 🪨 | E2E | P1 | M | MODULE |
 | 21 | Reports | Hub+builder | FRONTEND-ONLY | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P2 | M | MODULE |
 | 22 | Telemetry | Ingest/metrics | BACKEND-ONLY | — (infra) | KEEP BY DESIGN | BE by design | P3 | S | LOCAL |
-| 23 | Jobs | Dua dunia | FE-ONLY+BE-ONLY | DUAL SOURCE | NEED DECISION + FIX links | TBD | P2 | M | MODULE |
+| 23 | Jobs | Dua dunia | END-TO-END [CLOSED GAP-16-T3] | WIRED (was DUAL SOURCE) | NEED DECISION (decided: honest+wire) | E2E-ephemeral | P2 | M | MODULE |
 | 24 | Billing | HMAC/checkout | BACKEND-ONLY | AUTH BYPASS (catch) | MUST FIX | BE-hardened | P0 | M | MODULE |
-| 25 | Retention | Digest orphan | BACKEND-ONLY | NO TRIGGER | NEED DECISION | TBD | P3 | S | LOCAL |
-| 26 | Settings | Keys/rotate/maint | FRONTEND-ONLY | BACKEND MISSING + fake | FIX copy + DECISION | FE-honest | P2 | S→L | MODULE |
-| 27 | Shifts | Accept/reject | FRONTEND-ONLY | BACKEND MISSING + fake badge | FIX badge + DECISION | TBD | P2 | S→M | MODULE |
+| 25 | Retention | Digest orphan | DEPRECATED [CLOSED GAP-16-T4] | FLAGGED (was NO TRIGGER) | NEED DECISION (decided: deprecate, sunset 2026-12-15) | deprecated-honest | P3 | S | LOCAL |
+| 26 | Settings | Keys/rotate/maint | CLOSED [GAP-16-T6] | BACKEND BUILT + WIRED | FIXED (settings.manage; settings_kv hash-only secrets) | E2E + staged fallback | P2 | S→L | MODULE |
+| 27 | Shifts | Accept/reject | CLOSED [GAP-16-T7] | BACKEND BUILT + badge fixed | FIXED (shifts.manage; handovers terminal) | E2E + demo fallback | P2 | S→M | MODULE |
 | 28 | Import | CSV import | NOT FOUND | — | DEFER | NONE | P3 | — | — |
 | 29 | AuthZ | Impersonate | MOCKED | FAKE SUCCESS (audit) | MUST FIX | E2E/honest | P0 | S/M | MODULE |
 | 30 | Profile | Rotate Key | MOCKED | BACKEND MISSING + fake | MUST FIX | E2E/placeholder | P1 | S | MODULE |
