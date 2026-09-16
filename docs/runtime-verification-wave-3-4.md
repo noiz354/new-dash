@@ -419,7 +419,7 @@ Source code menunjukkan intent. Browser runtime menunjukkan kenyataan.
 - [x] TASK-19 Barcode → verdict: PARTIAL (`docs/runtime-verification-task19.md`)
 - [ ] TASK-20 Audit truthfulness → verdict: _
 - [ ] TASK-21 Windowing → verdict: _
-- [ ] TASK-23 PWA Manifest → verdict: _
+- [x] TASK-23 PWA Manifest → verdict: PASS (`docs/runtime-verification-task23.md`)
 - [ ] TASK-24 Service Worker → verdict: _
 - [ ] TASK-25 Background Sync + Badging → verdict: _
 - [ ] TASK-26 SSE Alerts → verdict: _

@@ -339,7 +339,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [x] TASK-19 Barcode → PARTIAL (laporan: `docs/runtime-verification-task19.md`; A+E PASS, B/C/D/F BLOCKED BY ENVIRONMENT — Win64 Chrome tak punya BarcodeDetector)
 - [ ] TASK-20 Audit truthfulness (no pseudo-crypto, hash dari server, verify-chain)
 - [ ] TASK-21 Windowing (DOM << dataset, scroll, filter)
-- [ ] TASK-23 PWA Manifest (icons 200 + MIME, installability)
+- [x] TASK-23 PWA Manifest → PASS (laporan: `docs/runtime-verification-task23.md`; link manifest + JSON valid + 4/4 ikon 200 + installabilityErrors [])
 - [ ] TASK-24 Service Worker (register/activate/control, cache strategy, offline /offline, logout purge)
 - [ ] TASK-25 Background Sync + Badging (outbox, badge, offline→online flush)
 - [ ] TASK-26 SSE Alerts (stream, heartbeat, reconnect/backoff, fallback polling)
