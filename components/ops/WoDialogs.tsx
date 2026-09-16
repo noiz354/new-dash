@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
+import { ApiError as ApiClientError, apiFetch } from '@/lib/api/client';
 import type { WoAction, WoStatus } from '@/lib/domain/work-orders';
 import { isTerminal } from '@/lib/domain/work-orders';
 
@@ -38,23 +39,20 @@ function useTransition(number: string) {
     setError(null);
     setDone(null);
     try {
-      const res = await fetch(`/api/work-orders/${number}/transitions`, {
+      const data = await apiFetch<{ statusLabel?: string }>(`/api/work-orders/${number}/transitions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({ action, reason: reason ?? null }),
+        body: { action, reason: reason ?? null },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Request failed' };
-        setError(err);
-        if (err.code === 'WO_STALE_STATE' || err.code === 'WO_INVALID_TRANSITION') router.refresh();
-        return false;
-      }
-      setDone(body.data.statusLabel ?? action);
+      setDone(data.statusLabel ?? action);
       router.refresh();
       return true;
-    } catch {
-      setError({ code: 'NETWORK', message: 'Network error — nothing was changed. Retry.' });
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        setError({ code: err.code, message: err.message });
+        if (err.code === 'WO_STALE_STATE' || err.code === 'WO_INVALID_TRANSITION') router.refresh();
+      } else {
+        setError({ code: 'NETWORK', message: 'Network error — nothing was changed. Retry.' });
+      }
       return false;
     } finally {
       setBusy(false);

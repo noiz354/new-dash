@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
-  CloudDone,
+  CloudCog,
   Download,
   Eye,
   FileDown,
@@ -28,7 +28,7 @@ import {
   RefreshCw,
   Search,
   Send,
-  Sensors,
+  Radar,
   ShieldAlert,
   Smartphone,
   Sparkles,
@@ -461,7 +461,7 @@ export function FieldInspectionsHub() {
           <div className="flex items-center justify-between text-[11px] pt-1 text-muted border-t border-border-subtle">
             <span>Shift A: <strong className="text-body font-mono">9</strong> | B: <strong className="text-body font-mono">5</strong></span>
             <span className="text-pass-ink font-semibold flex items-center gap-1">
-              <CloudDone size={12} /> 100% Synced
+              <CloudCog size={12} /> 100% Synced
             </span>
           </div>
         </div>
@@ -503,7 +503,7 @@ export function FieldInspectionsHub() {
                     { id: 'overdue', label: 'Overdue / SLA Risk (2)', alert: true },
                     { id: 'completed', label: 'Completed (10)' },
                     { id: 'templates', label: 'Templates & Forms' },
-                  ] as const
+                  ] as Array<{ id: QueueTab; label: string; alert?: boolean }>
                 ).map((t) => (
                   <button
                     key={t.id}
@@ -746,7 +746,7 @@ export function FieldInspectionsHub() {
           <div className="rounded-xl bg-card border border-border-subtle p-4 shadow-card flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-cobalt-tint flex items-center justify-center text-cobalt">
-                <Sensors size={20} />
+                <Radar size={20} />
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-ink">Substation IoT Gateway Link</span>

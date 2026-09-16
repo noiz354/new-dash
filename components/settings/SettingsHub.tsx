@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 const TABS = ['General Configuration', 'Data & Seed Controls', 'Integrations & Webhooks', 'Localization & Units', 'Security & Auth Keys'] as const;
 
@@ -42,17 +43,7 @@ const HOOKS: Hook[] = [
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1500;
 
-function download(filename: string, text: string, type = 'application/json') {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string, type = 'application/json') => downloadText(filename, text, type);
 
 const genKey = () => `apx_live_sec_${Array.from(crypto.getRandomValues(new Uint8Array(16))).map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 

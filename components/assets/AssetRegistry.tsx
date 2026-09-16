@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 import type { AssetRow } from '@/lib/services/asset-service';
 
 /**
@@ -56,12 +57,7 @@ export function AssetRegistry({ rows, orgId }: { rows: AssetRow[]; orgId: string
       `"${r.code}"`, `"${r.name}"`, r.klass, `"${r.location}"`, `"${r.oem}"`, `"${r.serial}"`,
       r.health, r.status, r.commissionedOn ?? '', r.openWos, r.totalWos, r.activeSrs,
     ].join(','));
-    const blob = new Blob([[head, ...body].join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'asset-registry.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadText('asset-registry.csv', [head, ...body].join('\n'));
   };
 
   return (

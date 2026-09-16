@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { ApiError, apiFetch } from '@/lib/api/client';
+import { downloadText } from '@/lib/download';
 import type { SrRow } from '@/lib/services/sr-service';
 
 /**
@@ -82,12 +84,7 @@ export function ServiceRequestList({
   const exportCsv = () => {
     const head = 'number,title,requester,priority,status,sla,asset,converted_wo';
     const body = filtered.map((r) => [`"${r.number}"`, `"${r.title}"`, `"${r.requesterName}"`, r.priority, `"${r.statusLabel}"`, `"${r.slaLabel}"`, `"${r.assetCode ?? ''}"`, `"${r.convertedWoNumber ?? ''}"`].join(','));
-    const blob = new Blob([[head, ...body].join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'service-requests-queue.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadText('service-requests-queue.csv', [head, ...body].join('\n'));
     push(true, 'Queue exported', `${filtered.length} tickets → service-requests-queue.csv (client-side CSV of persisted rows).`);
   };
 
@@ -103,28 +100,25 @@ export function ServiceRequestList({
     if (!nameOk || !titleOk || !assetOk) return;
     setBusy('create');
     try {
-      const res = await fetch('/api/service-requests', {
+      const data = await apiFetch<{ number: string; slaLabel: string }>('/api/service-requests', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({
+        body: {
           title: nwTitle.trim(),
           requesterName: nwName.trim(),
           priority: nwPri,
           assetCode: nwAsset.trim() || null,
-        }),
+        },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Create failed' };
-        push(false, 'Intake rejected', `${err.message} (${err.code})`);
-        return;
-      }
-      push(true, 'Request queued — persisted', `${body.data.number} · OPEN · triage clock ${body.data.slaLabel} · numbered by server sequence.`);
+      push(true, 'Request queued — persisted', `${data.number} · OPEN · triage clock ${data.slaLabel} · numbered by server sequence.`);
       setNewOpen(false);
       setNwName(''); setNwTitle(''); setNwAsset(''); setNwTouched(false);
       router.refresh();
-    } catch {
-      push(false, 'Network error', 'Nothing was created. Check the server and retry.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        push(false, 'Intake rejected', `${err.message} (${err.code})`);
+      } else {
+        push(false, 'Network error', 'Nothing was created. Check the server and retry.');
+      }
     } finally {
       setBusy(null);
     }
@@ -139,23 +133,20 @@ export function ServiceRequestList({
     if (busy) return false;
     setBusy(srNumber + payload.action);
     try {
-      const res = await fetch(`/api/service-requests/${srNumber}/transitions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify(payload),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Transition failed' };
-        push(false, `${okTitle} rejected`, `${err.message} (${err.code})`);
-        if (err.code === 'SR_INVALID_TRANSITION' || err.code === 'SR_STALE_STATE') router.refresh();
-        return false;
-      }
-      push(true, okTitle, okMsg(body.data));
+      const data = await apiFetch<{ sr: SrRow; workOrder?: { number: string } }>(
+        `/api/service-requests/${srNumber}/transitions`,
+        { method: 'POST', body: payload },
+      );
+      push(true, okTitle, okMsg(data));
       router.refresh();
       return true;
-    } catch {
-      push(false, 'Network error', 'Nothing was changed. Retry.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        push(false, `${okTitle} rejected`, `${err.message} (${err.code})`);
+        if (err.code === 'SR_INVALID_TRANSITION' || err.code === 'SR_STALE_STATE') router.refresh();
+      } else {
+        push(false, 'Network error', 'Nothing was changed. Retry.');
+      }
       return false;
     } finally {
       setBusy(null);

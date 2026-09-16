@@ -11,7 +11,7 @@ import {
   Layers,
   MapPin,
   Play,
-  Sensors,
+  Radar,
   ShieldAlert,
   Smartphone,
   User,

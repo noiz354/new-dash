@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { CANON } from '@/lib/canon';
+import { ApiError, apiFetch } from '@/lib/api/client';
+
+interface DbSearchResult { id: string; type: string; title: string; subtitle: string; badge?: string; href: string }
 
 /** [POLA-BARU] M4/L4 command palette — global ⌘K target. */
 const COMMANDS = [
@@ -27,7 +30,7 @@ const COMMANDS = [
 
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [q, setQ] = useState('');
-  const [searchResults, setSearchResults] = useState<Array<{ id: string; type: string; title: string; subtitle: string; badge?: string; href: string }>>([]);
+  const [searchResults, setSearchResults] = useState<DbSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const router = useRouter();
 
@@ -43,28 +46,36 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     }
   }, [open]);
 
+  // FP-01/TASK-05: debounce + AbortController — query baru membatalkan request lama,
+  // respons basi tidak pernah menimpa hasil terbaru (race fix).
   useEffect(() => {
     if (!q || q.trim().length < 2) {
       setSearchResults([]);
       return;
     }
 
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q.trim())}`);
-        if (res.ok) {
-          const body = await res.json();
-          setSearchResults(body?.data?.results || []);
+        const data = await apiFetch<{ results: DbSearchResult[] }>(
+          `/api/search?q=${encodeURIComponent(q.trim())}`,
+          { signal: controller.signal },
+        );
+        setSearchResults(data?.results || []);
+      } catch (err) {
+        if (!(err instanceof ApiError && err.code === 'ABORTED')) {
+          // kegagalan jaringan: biarkan hasil terakhir tampil (graceful)
         }
-      } catch {
-        // graceful fallback
       } finally {
-        setIsSearching(false);
+        if (!controller.signal.aborted) setIsSearching(false);
       }
     }, 200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [q]);
 
   useEffect(() => {

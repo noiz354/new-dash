@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { ApiError, apiFetch } from '@/lib/api/client';
 
 function NewWorkOrderForm() {
   const router = useRouter();
@@ -46,26 +47,19 @@ function NewWorkOrderForm() {
     setSubmitting(true);
 
     try {
-      const res = await fetch('/api/work-orders', {
+      const data = await apiFetch<{ number?: string }>('/api/work-orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           title,
           priority,
           assetCode: assetCode.trim() || undefined,
           location: location.trim() || undefined,
-        }),
+        },
       });
-
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error?.message || 'Failed to dispatch work order');
-      }
-
-      const newId = json.data?.number || 'WO-2026-0894';
+      const newId = data.number || 'WO-2026-0894';
       router.push(`/work-orders/${newId}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Unknown dispatch failure');
+      setError(err instanceof ApiError ? `${err.message} (${err.code})` : err instanceof Error ? err.message : 'Unknown dispatch failure');
       setSubmitting(false);
     }
   };

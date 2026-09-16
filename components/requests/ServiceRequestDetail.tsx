@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { ApiError, apiFetch } from '@/lib/api/client';
 import type { SrRow, SrHistoryEntry } from '@/lib/services/sr-service';
 import type { WoRow } from '@/lib/services/wo-service';
 
@@ -57,23 +58,20 @@ export function ServiceRequestDetail({
     if (busy) return false;
     setBusy(key);
     try {
-      const res = await fetch(`/api/service-requests/${sr.number}/transitions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify(payload),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Action failed' };
-        push(false, `${okTitle} rejected`, `${err.message} (${err.code})`);
-        if (err.code === 'SR_INVALID_TRANSITION' || err.code === 'SR_STALE_STATE') router.refresh();
-        return false;
-      }
-      push(true, okTitle, okMsg(body.data));
+      const data = await apiFetch<{ sr: SrRow; workOrder?: WoRow }>(
+        `/api/service-requests/${sr.number}/transitions`,
+        { method: 'POST', body: payload },
+      );
+      push(true, okTitle, okMsg(data));
       router.refresh();
       return true;
-    } catch {
-      push(false, 'Network error', 'Nothing was changed. Retry.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        push(false, `${okTitle} rejected`, `${err.message} (${err.code})`);
+        if (err.code === 'SR_INVALID_TRANSITION' || err.code === 'SR_STALE_STATE') router.refresh();
+      } else {
+        push(false, 'Network error', 'Nothing was changed. Retry.');
+      }
       return false;
     } finally {
       setBusy(null);

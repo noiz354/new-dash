@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Bell, Building2, ChevronDown, LoaderCircle, LogOut, Plus, Search } from 'lucide-react';
+import { apiFetch } from '@/lib/api/client';
+import { postAuthSignal, purgeLocalState } from '@/lib/auth/broadcast';
 import type { SessionUserView } from './OpsShell';
 
 /** Top bar — shows the REAL session user (from the DB-backed layout) + logout. */
@@ -13,10 +15,14 @@ export function TopBar({ onPalette, user }: { onPalette: () => void; user: Sessi
     if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } finally {
-      window.location.assign('/login');
+      await apiFetch('/api/auth/logout', { method: 'POST', timeoutMs: 10_000 });
+    } catch {
+      // Jaringan putus — tetap bersihkan state perangkat (shared tablet).
     }
+    // FP-05: purge draft/antrian lokal lalu kabari tab lain SEBELUM navigasi.
+    purgeLocalState();
+    postAuthSignal('LOGOUT');
+    window.location.assign('/login');
   };
 
   return (

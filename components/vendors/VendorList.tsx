@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 interface V {
   slug: string; name: string; code: string; duns?: string; tier: string; scope: string;
@@ -29,17 +30,7 @@ const TIERS = ['Tier-1', 'Tier-2', 'Tier-3'] as const;
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1900;
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string) => downloadText(filename, text);
 
 /**
  * Vendor directory — mined from the vendors-hub archive + M1 Trane profile.

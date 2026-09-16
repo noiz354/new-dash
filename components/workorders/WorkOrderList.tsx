@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { CANON } from '@/lib/canon';
+import { ApiError, apiFetch } from '@/lib/api/client';
+import { downloadText } from '@/lib/download';
 import type { WoRow } from '@/lib/services/wo-service';
 
 /**
@@ -85,12 +87,7 @@ export function WorkOrderList({
   const exportCsv = () => {
     const head = 'number,title,location,priority,status,sla,assignee';
     const body = filtered.map((r) => [`"${r.number}"`, `"${r.title}"`, `"${r.location}"`, r.priority, `"${r.statusLabel}"`, `"${r.slaLabel}"`, `"${r.tech ?? ''}"`].join(','));
-    const blob = new Blob([[head, ...body].join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'work-orders-pipeline.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    downloadText('work-orders-pipeline.csv', [head, ...body].join('\n'));
     push(true, 'Pipeline exported', `${filtered.length} work orders → work-orders-pipeline.csv (client-side CSV of persisted rows).`);
   };
 
@@ -102,26 +99,23 @@ export function WorkOrderList({
     if (!titleOk || !assetOk) return;
     setBusy(true);
     try {
-      const res = await fetch('/api/work-orders', {
+      const data = await apiFetch<{ workOrder?: WoRow } & Partial<WoRow>>('/api/work-orders', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({ title: nwTitle.trim(), priority: nwPri, assetCode: nwAsset.trim() || null }),
+        body: { title: nwTitle.trim(), priority: nwPri, assetCode: nwAsset.trim() || null },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Create failed' };
-        push(false, 'Create rejected', `${err.message} (${err.code})`);
-        return;
-      }
-      const wo: WoRow = body.data.workOrder ?? body.data;
+      const wo = (data.workOrder ?? data) as WoRow;
       push(true, 'Work order created — persisted', `${wo.number} · OPEN · SLA ${wo.slaLabel} · numbered by server sequence.`);
       setNewOpen(false);
       setNwTitle('');
       setNwAsset('');
       setNwTouched(false);
       router.refresh();
-    } catch {
-      push(false, 'Network error', 'Nothing was created. Check the server and retry.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        push(false, 'Create rejected', `${err.message} (${err.code})`);
+      } else {
+        push(false, 'Network error', 'Nothing was created. Check the server and retry.');
+      }
     } finally {
       setBusy(false);
     }
@@ -131,23 +125,20 @@ export function WorkOrderList({
     if (!reWO || busy) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/work-orders/${reWO.number}/transitions`, {
+      const data = await apiFetch<{ statusLabel?: string }>(`/api/work-orders/${reWO.number}/transitions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({ action: 'assign', assigneeEmail: reEmail }),
+        body: { action: 'assign', assigneeEmail: reEmail },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Reassign failed' };
-        push(false, 'Reassign rejected', `${err.message} (${err.code})`);
-        return;
-      }
       const tech = techs.find((t) => t.email === reEmail);
-      push(true, 'Tech assigned — persisted', `${reWO.number} → ${tech?.name ?? reEmail} · status unchanged (${body.data.statusLabel}).`);
+      push(true, 'Tech assigned — persisted', `${reWO.number} → ${tech?.name ?? reEmail} · status unchanged (${data.statusLabel}).`);
       setReWO(null);
       router.refresh();
-    } catch {
-      push(false, 'Network error', 'Nothing was changed. Retry.');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        push(false, 'Reassign rejected', `${err.message} (${err.code})`);
+      } else {
+        push(false, 'Network error', 'Nothing was changed. Retry.');
+      }
     } finally {
       setBusy(false);
     }

@@ -3,7 +3,7 @@ import { and, asc, eq, notInArray, isNotNull } from 'drizzle-orm';
 import { withRoute } from '@/lib/api/http';
 import { getDb } from '@/db/client';
 import { workOrders } from '@/db/schema';
-import { TERMINAL_STATUSES } from '@/lib/domain/work-orders';
+import { WO_TERMINAL } from '@/lib/domain/work-orders';
 
 export interface NotificationItem {
   id: string;
@@ -21,7 +21,7 @@ export interface NotificationItem {
  * Computes live SLA-at-risk alerts dynamically from `sla_due_at` in the work orders table.
  */
 export async function GET(req: NextRequest) {
-  return withRoute({ op: 'notifications.list', method: 'GET', permission: 'wo.read' }, req, async (ctx) => {
+  return withRoute({ op: 'notifications.list', method: 'GET', permission: 'wo.read', etag: true }, req, async (ctx) => {
     const db = getDb();
     const now = new Date();
 
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       .where(
         and(
           eq(workOrders.organizationId, ctx!.orgId),
-          notInArray(workOrders.status, [...TERMINAL_STATUSES]),
+          notInArray(workOrders.status, [...WO_TERMINAL]),
           isNotNull(workOrders.slaDueAt),
         ),
       )

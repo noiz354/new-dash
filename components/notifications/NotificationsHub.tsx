@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON, canonPhone } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 type Cls = 'Critical' | 'Stock' | 'PO' | 'WO' | 'Security';
 type Sev = 'P1' | 'P2' | 'P3';
@@ -75,17 +76,7 @@ const TECHS = ['Marcus Kowalski (HVAC Lead)', 'Elena Voronova (SCADA)', 'Sarah A
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1300;
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string) => downloadText(filename, text);
 
 const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -477,7 +468,7 @@ export function NotificationsHub() {
               </div>
               <p className="text-muted">Inject a real-time synthetic P1 telemetry alarm into the live message bus to test dispatch triggers.</p>
               <Button onClick={injectTest}><Zap size={15} /> Trigger Test P1 Alert (simulated)</Button>
-              <p className="text-xs text-muted">WebSocket: Channel: sha256-aes-gcm · {extra.length}/3 synthetic on bus</p>
+              <p className="text-xs text-muted">Transport: manual refresh — live SSE stream arrives with the realtime wave · {extra.length}/3 synthetic on bus</p>
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2 text-[13px]">

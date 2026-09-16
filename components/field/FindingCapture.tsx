@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -22,6 +22,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { ApiError, apiFetch } from '@/lib/api/client';
+import { enqueueOutbox } from '@/lib/offline/outbox';
+import { formatCoords, getCurrentCoords, type DeviceCoords } from '@/lib/platform/geolocation';
+import { prepareEvidence } from '@/lib/media/evidence';
 import { FieldToasts, useFieldToasts } from './toasts';
 
 type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -30,7 +34,7 @@ export function FindingCapture() {
   const router = useRouter();
   const { toasts, push } = useFieldToasts();
 
-  const [asset, setAsset] = useState(CANON.assetSeal);
+  const [asset, setAsset] = useState<string>(CANON.assetSeal);
   const [zone, setZone] = useState('Basement Mech Room B-204');
   const [severity, setSeverity] = useState<Severity>('CRITICAL');
   const [title, setTitle] = useState('');
@@ -39,6 +43,19 @@ export function FindingCapture() {
   const [hasPhoto, setHasPhoto] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [gpsCoords, setGpsCoords] = useState<DeviceCoords | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoInfo, setPhotoInfo] = useState<{ name: string; hash: string; resized: boolean; release(): void } | null>(null);
+
+  // GPS perangkat NYATA (FP-01/TASK-02) — fallback ke default site jika ditolak/di-deny.
+  useEffect(() => {
+    let live = true;
+    void getCurrentCoords().then((c) => { if (live) setGpsCoords(c); });
+    return () => { live = false; };
+  }, []);
+
+  // Bebaskan object URL saat komponen unmount / foto diganti.
+  useEffect(() => () => photoInfo?.release(), [photoInfo]);
 
   const simulateScan = () => {
     setScanning(true);
@@ -46,25 +63,75 @@ export function FindingCapture() {
       setScanning(false);
       setAsset('AST-HVAC-004');
       setZone('Basement Mech Room B-204 · Trane CVHE Chiller #04');
-      push(true, 'Barcode Scanned', 'Asset AST-HVAC-004 verified via camera barcode scanner.');
+      push(true, 'Asset Selected', 'AST-HVAC-004 filled in (demo entry — camera barcode scan ships with the BarcodeDetector wave).');
     }, 800);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      const prep = await prepareEvidence(f);
+      photoInfo?.release();
+      setPhotoInfo({ name: prep.fileName, hash: prep.sha256Hash, resized: prep.wasResized, release: prep.release });
+      setHasPhoto(true);
+      push(
+        true,
+        'Photo Attached',
+        prep.sha256Hash
+          ? `${prep.fileName} · SHA-256 verified locally${prep.wasResized ? ' · resized ≤1600px for upload' : ''}.`
+          : `${prep.fileName} attached (hashing unavailable — server will compute).`,
+      );
+    } catch {
+      push(false, 'Photo Failed', 'Could not read that file — try another capture.');
+    }
+  };
+
+  const dropPhoto = () => {
+    photoInfo?.release();
+    setPhotoInfo(null);
+    setHasPhoto(false);
+  };
+
+  // POST /api/findings NYATA (TASK-17). Offline → outbox dengan Idempotency-Key asli.
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       push(false, 'Validation Error', 'Finding title is required.');
       return;
     }
 
+    const body = {
+      title: title.trim(),
+      assetCode: asset.trim(),
+      severity,
+      zone: zone.trim() || undefined,
+      description: description.trim() || undefined,
+    };
+
     setSubmitting(true);
-    setTimeout(() => {
+    try {
+      const data = await apiFetch<{ id: string }>('/api/findings', { method: 'POST', body });
+      push(true, 'Finding Captured', `${data.id} recorded — persisted via /api/findings.`);
+      setTimeout(() => router.push('/field/audits'), 900);
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === 'NETWORK' || err.code === 'TIMEOUT')) {
+        await enqueueOutbox({
+          op: 'finding.create',
+          url: '/api/findings',
+          method: 'POST',
+          body,
+          idempotencyKey: crypto.randomUUID(),
+        });
+        push(true, 'Offline — Finding Queued', 'Stored on-device with its idempotency key. Replay from the Sync tab when the link returns.');
+        setTimeout(() => router.push('/field/sync'), 1200);
+      } else {
+        push(false, 'Capture Rejected', err instanceof ApiError ? `${err.message} (${err.code})` : 'Unexpected failure — finding NOT recorded. Retry.');
+      }
+    } finally {
       setSubmitting(false);
-      push(true, 'Finding Queued', 'Defect captured and added to Field Sync queue.');
-      setTimeout(() => {
-        router.push('/field/audits');
-      }, 1000);
-    }, 700);
+    }
   };
 
   return (
@@ -193,24 +260,33 @@ export function FindingCapture() {
               <span className="text-xs font-bold uppercase tracking-wider text-muted">
                 Mandatory Evidence Media
               </span>
-              <span className="font-mono text-[10px] text-muted">GPS: 0.7893°S 113.9213°E</span>
+              <span className="font-mono text-[10px] text-muted">
+                GPS: {gpsCoords ? `${formatCoords(gpsCoords)} (device)` : 'zone default — manual'}
+              </span>
             </div>
 
             {hasPhoto ? (
-              <div className="relative rounded border-2 border-pass bg-pass-bg p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded bg-pass flex items-center justify-center text-white font-bold">
+              <div className="relative rounded border-2 border-pass bg-pass-bg p-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded bg-pass flex items-center justify-center text-white font-bold shrink-0">
                     <CheckCircle2 size={24} />
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold font-display">Macro Hazard Evidence Photo</span>
-                    <span className="text-xs font-mono text-muted">Watermark: 14:15 WIB · GPS Locked</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-bold font-display truncate">{photoInfo?.name ?? 'Evidence photo'}</span>
+                    <span className="text-xs font-mono text-muted truncate">
+                      {photoInfo?.hash ? `SHA-256 ${photoInfo.hash.slice(0, 12)}… verified locally` : 'server will compute hash'}
+                      {gpsCoords ? ` · GPS ${formatCoords(gpsCoords)}` : ''}
+                      {photoInfo?.resized ? ' · resized ≤1600px' : ''}
+                    </span>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setHasPhoto(false)}
-                  className="text-xs text-fail font-bold hover:underline"
+                  onClick={() => {
+                    dropPhoto();
+                    fileRef.current?.click();
+                  }}
+                  className="text-xs text-fail font-bold hover:underline shrink-0"
                 >
                   Retake
                 </button>
@@ -218,19 +294,25 @@ export function FindingCapture() {
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  setHasPhoto(true);
-                  push(true, 'Photo Attached', 'High-res hazard photo geotagged and watermarked.');
-                }}
+                onClick={() => fileRef.current?.click()}
                 className="rounded border-2 border-dashed border-border-strong p-6 flex flex-col items-center justify-center gap-2 hover:border-slate900 active:scale-98 bg-surface"
               >
                 <div className="w-12 h-12 rounded-full bg-slate900 text-white flex items-center justify-center">
                   <Camera size={22} />
                 </div>
                 <span className="text-sm font-bold font-display">Capture Evidence Photo</span>
-                <span className="text-xs text-muted">Tap to activate camera with GPS &amp; time overlay</span>
+                <span className="text-xs text-muted">Opens device camera/picker · hashed + resized on-device before upload</span>
               </button>
             )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              aria-label="Capture evidence photo"
+              onChange={onPickPhoto}
+            />
           </div>
 
           {/* Safety & Lockout Guardrails */}

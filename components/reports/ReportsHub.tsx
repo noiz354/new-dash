@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 const MONTHS = [
   { m: 'JAN', v: 292 }, { m: 'FEB', v: 298 }, { m: 'MAR', v: 275 },
@@ -54,17 +55,7 @@ const OUTPUTS = ['PDF Executive Dossier', 'Formatted Excel (.xlsx)', 'Raw CSV / 
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1400;
 
-function download(filename: string, text: string, type = 'text/csv') {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string, type = 'text/csv') => downloadText(filename, text, type);
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 

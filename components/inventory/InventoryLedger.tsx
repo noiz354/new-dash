@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 interface Sku {
   id: string; cat: string; name: string; spec: string; bin: string; hub: string;
@@ -56,17 +57,7 @@ const DESTS = ['Substation Locker 4B (Bldg B - L1)', 'Mobile Van 03 - Field Serv
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 900;
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string) => downloadText(filename, text);
 
 const utcNow = () => `${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 

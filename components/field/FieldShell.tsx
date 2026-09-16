@@ -1,24 +1,55 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ClipboardList, CloudUpload, ListChecks, TriangleAlert } from 'lucide-react';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { subscribeAuthSignals } from '@/lib/auth/broadcast';
+import { listOutbox, subscribeOutbox } from '@/lib/offline/outbox';
 
 const RUN_HREF = `/field/audits/${CANON.inspection}/run`;
 
 /**
  * FieldShell — System B (rugged field) chrome: bottom tab bar + safe padding.
  * Each page renders its own fixed header (H2 parity); the shell owns the nav.
+ * Badge Sync = jumlah antrian outbox NYATA (FP-06), lintas-tab sinkron.
  */
 export function FieldShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const [pending, setPending] = useState(0);
+
+  useEffect(() => {
+    const refresh = async () => {
+      const items = await listOutbox();
+      setPending(items.filter((i) => i.status !== 'SYNCED' && i.status !== 'EXPIRED').length);
+    };
+    void refresh();
+    const unsub = subscribeOutbox(() => void refresh());
+    window.addEventListener('online', refresh);
+    window.addEventListener('offline', refresh);
+    return () => {
+      unsub();
+      window.removeEventListener('online', refresh);
+      window.removeEventListener('offline', refresh);
+    };
+  }, []);
+
+  // FP-05: logout/revoke di tab lain → tab ini ikut keluar.
+  useEffect(
+    () =>
+      subscribeAuthSignals(() => {
+        window.location.assign('/login');
+      }),
+    [],
+  );
+
   const tabs = [
     { href: '/field/audits', label: 'Audits', Icon: ClipboardList, badge: 3, badgeTone: 'bg-fail', active: path === '/field/audits' },
     { href: RUN_HREF, label: 'Checklist', Icon: ListChecks, badge: 0, badgeTone: '', active: path.endsWith('/run') },
     { href: '/field/findings/new', label: 'Finding', Icon: TriangleAlert, badge: 0, badgeTone: '', active: path.startsWith('/field/findings') },
-    { href: '/field/sync', label: 'Sync', Icon: CloudUpload, badge: 2, badgeTone: 'bg-warn', active: path === '/field/sync' },
+    { href: '/field/sync', label: 'Sync', Icon: CloudUpload, badge: pending, badgeTone: 'bg-warn', active: path === '/field/sync' },
   ];
   return (
     <div className="min-h-screen flex flex-col">

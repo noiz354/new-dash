@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 interface Room { id: string; name: string; counts: string; seeded: boolean }
 
@@ -36,17 +37,7 @@ const SEL_ROOMS = ['Room #B-201: Generator Vault', 'Room #B-204: Centrifugal Chi
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1000;
 
-function download(filename: string, text: string, type = 'application/geo+json') {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string, type = 'application/geo+json') => downloadText(filename, text, type);
 
 /**
  * Facility Locations & Spatial Topology Hub — archive port (unit 10).

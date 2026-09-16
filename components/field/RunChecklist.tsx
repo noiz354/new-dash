@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
@@ -10,10 +10,15 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { CANON, wibNow } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { ApiError, apiFetch } from '@/lib/api/client';
+import { prepareEvidence, toEvidenceFormData } from '@/lib/media/evidence';
+import { formatCoords, getCurrentCoords } from '@/lib/platform/geolocation';
+import { haptic } from '@/lib/platform/haptics';
+import { createScreenWakeLock } from '@/lib/platform/wake-lock';
 import { FieldOffline } from './FieldOffline';
 import { FieldToasts, useFieldToasts } from './toasts';
 
-const GPS = '0.7893°S 113.9213°E';
+const DEFAULT_GPS = '0.7893°S 113.9213°E (site default)';
 const READING_RE = /^\d+(\.\d+)?$/;
 const SUPERVISOR_PIN = '2468';
 
@@ -39,6 +44,25 @@ export function RunChecklist({ auditId }: { auditId: string }) {
   );
   const [submitted, setSubmitted] = useState(false);
   const [autosave, setAutosave] = useState('Saved');
+  const [gpsText, setGpsText] = useState(DEFAULT_GPS);
+  const [evidenceUploading, setEvidenceUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Screen Wake Lock NYATA (FP-08): layar tidak tidur selama eksekusi; best-effort.
+  useEffect(() => {
+    const wl = createScreenWakeLock();
+    void wl.acquire();
+    return () => { void wl.release(); };
+  }, []);
+
+  // GPS NYATA (FP-01/TASK-02): 1× high-accuracy saat mount; fallback site default.
+  useEffect(() => {
+    let live = true;
+    void getCurrentCoords().then((c) => {
+      if (live && c) setGpsText(`${formatCoords(c)} (device)`);
+    });
+    return () => { live = false; };
+  }, []);
 
   const readingOk = READING_RE.test(reading.trim());
   const noteOk = note.trim().length > 0;
@@ -50,17 +74,20 @@ export function RunChecklist({ auditId }: { auditId: string }) {
   };
 
   const onFail = () => {
+    haptic.fail(); // FP-07: getar pola FAIL nyata (no-op saat unsupported)
     setVerdict('FAIL');
     markSaved();
-    push(true, 'Verdict recorded', 'Step 02 FAIL · finding FND-2026-0188 stays open.');
+    push(true, 'Verdict recorded', `Step 02 FAIL · finding FND-2026-0188 stays open · GPS ${gpsText}`);
   };
 
   const onVerifyPin = () => {
     if (pin.trim() !== SUPERVISOR_PIN) {
+      haptic.fail();
       setPinError(true);
       push(false, 'Override rejected', 'Wrong PIN — verdict stays FAIL.');
       return;
     }
+    haptic.pass();
     setPinOpen(false);
     setPin('');
     setPinError(false);
@@ -81,12 +108,38 @@ export function RunChecklist({ auditId }: { auditId: string }) {
     }
   };
 
+  // Capture foto NYATA → prepareEvidence (resize+SHA-256) → POST multipart (TASK-11).
   const onRetake = () => {
-    setPhotoState(`Uploading frame + GPS ${GPS}…`);
-    setTimeout(() => {
-      setPhotoState('2 frames attached · latest 14:36 WIB');
+    if (evidenceUploading) return;
+    photoInputRef.current?.click();
+  };
+
+  const onPickEvidence = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f || evidenceUploading) return;
+    setEvidenceUploading(true);
+    let prepared: Awaited<ReturnType<typeof prepareEvidence>> | null = null;
+    try {
+      prepared = await prepareEvidence(f);
+      setPhotoState(`Uploading ${prepared.fileName} · GPS ${gpsText}…`);
+      const ev = await apiFetch<{ id: string }>(
+        `/api/work-orders/${CANON.workOrderSeal}/evidence/upload`,
+        { method: 'POST', body: toEvidenceFormData(prepared), timeoutMs: 60_000 },
+      );
+      prepared.release();
+      setPhotoState(`2 frames attached · latest uploaded ${wibNow()} WIB · sha256 verified (${ev.id.slice(0, 8)})`);
       markSaved();
-    }, 900);
+      haptic.pass();
+      push(true, 'Evidence uploaded', 'Server re-computed its SHA-256 — hash matched, evidence sealed.');
+    } catch (err) {
+      prepared?.release();
+      haptic.fail();
+      setPhotoState('Upload failed — frame NOT stored. Retake when the link recovers (binary upload not queued in this wave).');
+      push(false, 'Evidence upload failed', err instanceof ApiError ? `${err.message} (${err.code})` : 'Unknown upload failure.');
+    } finally {
+      setEvidenceUploading(false);
+    }
   };
 
   const onIot = () => {
@@ -191,13 +244,24 @@ export function RunChecklist({ auditId }: { auditId: string }) {
                 <div className="rounded border-2 border-border-strong overflow-hidden">
                   <div className="bg-slate900 text-white px-3 py-2 flex items-center justify-between gap-2">
                     <span className="apex-id font-bold">PHOTO_CHILLER4_SEAL.RAW</span>
-                    <span className="text-xs">GPS {GPS}</span>
+                    <span className="text-xs">GPS {gpsText}</span>
                   </div>
                   <div className="p-3 bg-surface-subtle flex flex-col items-center gap-2 text-center">
                     <Camera size={44} className="text-muted" />
                     <p className="text-sm font-bold">Flange weeping · overlay GPS stamped</p>
-                    <Button variant="field" className="bg-slate900" onClick={onRetake}>Retake Photo</Button>
+                    <Button variant="field" className="bg-slate900" onClick={onRetake} disabled={evidenceUploading}>
+                      {evidenceUploading ? 'Uploading…' : 'Retake Photo'}
+                    </Button>
                     <p className="text-sm text-muted" role="status">{photoState}</p>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      aria-label="Capture step evidence photo"
+                      onChange={onPickEvidence}
+                    />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">

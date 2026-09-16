@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { SideNav } from './SideNav';
 import { TopBar } from './TopBar';
 import { CommandPalette } from './CommandPalette';
+import { subscribeAuthSignals } from '@/lib/auth/broadcast';
 
 function activeFromPath(pathname: string): string {
   if (pathname.startsWith('/work-orders')) return 'work-orders';
@@ -50,6 +51,15 @@ export function OpsShell({ children, user }: { children: React.ReactNode; user: 
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, []);
+
+  // FP-05: logout/revoke di tab lain → tab ini ikut keluar (shared workstations).
+  useEffect(
+    () =>
+      subscribeAuthSignals(() => {
+        window.location.assign('/login');
+      }),
+    [],
+  );
 
   return (
     <>

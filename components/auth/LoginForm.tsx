@@ -4,7 +4,16 @@ import { useState } from 'react';
 import { Lock, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CANON } from '@/lib/canon';
+import { ApiError, apiFetch } from '@/lib/api/client';
 import type { AuthContext } from '@/lib/auth/session';
+
+interface LoginResponse {
+  status?: string;
+  challengeId?: string;
+  devHint?: string;
+  redirect?: string;
+  user?: AuthContext;
+}
 
 /**
  * Real login (Phase 1, slice #1) — POSTs /api/auth/login (scrypt verify +
@@ -40,29 +49,28 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const data = await apiFetch<LoginResponse>('/api/auth/login', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password: pass }),
+        body: { email, password: pass },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Login failed' };
-        if (err.code === 'RATE_LIMITED') err.message += ' Try again shortly.';
-        setError(err);
-        return;
-      }
-      if (body.data.status === 'mfa_required') {
-        setChallengeId(body.data.challengeId);
-        setDevHint(body.data.devHint ?? null);
+      if (data.status === 'mfa_required') {
+        setChallengeId(data.challengeId ?? '');
+        setDevHint(data.devHint ?? null);
         setStep('mfa');
       } else {
-        setUser(body.data.user ?? null);
+        setUser(data.user ?? null);
         setStep('done');
-        setTimeout(() => window.location.assign(body.data.redirect || redirectTo), 400);
+        setTimeout(() => window.location.assign(data.redirect || redirectTo), 400);
       }
-    } catch {
-      setError({ code: 'NETWORK', message: 'Network error — server not reachable.' });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError({
+          code: err.code,
+          message: err.code === 'RATE_LIMITED' ? `${err.message} Try again shortly.` : err.message,
+        });
+      } else {
+        setError({ code: 'NETWORK', message: 'Network error — server not reachable.' });
+      }
     } finally {
       setBusy(false);
     }
@@ -73,23 +81,16 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
     setBusy(true);
     setMfaError('');
     try {
-      const res = await fetch('/api/auth/mfa', {
+      const data = await apiFetch<LoginResponse>('/api/auth/mfa', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ challengeId, code }),
+        body: { challengeId, code },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Verification failed' };
-        setMfaError(`${err.message} (${err.code})`);
-        setCode('');
-        return;
-      }
-      setUser(body.data.user ?? null);
+      setUser(data.user ?? null);
       setStep('done');
-      setTimeout(() => window.location.assign(body.data.redirect || redirectTo), 400);
-    } catch {
-      setMfaError('Network error — nothing verified. Retry.');
+      setTimeout(() => window.location.assign(data.redirect || redirectTo), 400);
+    } catch (err) {
+      setMfaError(err instanceof ApiError ? `${err.message} (${err.code})` : 'Network error — nothing verified. Retry.');
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) setCode('');
     } finally {
       setBusy(false);
     }

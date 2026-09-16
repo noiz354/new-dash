@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { apiFetch } from '@/lib/api/client';
+import { downloadText } from '@/lib/download';
 
 const ROLES6 = ['Enterprise Admin', 'Facility Director', 'Engineering Lead', 'Senior Field Tech', 'Vendor Partner Tech', 'Read-Only Auditor'] as const;
 
@@ -92,17 +94,7 @@ const SEEDED_TEMPLATES = ['Enterprise Admin', 'Senior Field Tech', 'Read-Only Au
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1100;
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string) => downloadText(filename, text);
 
 const initials = (n: string) => n.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
@@ -207,15 +199,14 @@ export function OrgHub() {
     setProvOpen(false);
 
     try {
-      await fetch('/api/organization/users', {
+      await apiFetch('/api/organization/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           name: prov.name.trim(),
           email: prov.email.trim().toLowerCase(),
           role: prov.role,
           title: `${prov.dept} · ${prov.role}`,
-        }),
+        },
       });
     } catch {
       // offline / client state persisted
@@ -455,7 +446,7 @@ export function OrgHub() {
               </ConfirmDialog>
             </div>
             <Link href={`/organization/users/${focusP.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
-              <Button variant="outline" className="w-full text-xs font-semibold border-cobalt text-cobalt hover:bg-cobalt-light/10">
+              <Button variant="ghost" className="w-full text-xs font-semibold border border-cobalt text-cobalt hover:bg-cobalt-light/10">
                 Deep User Security Dossier &amp; Deployed Rules →
               </Button>
             </Link>

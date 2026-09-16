@@ -43,6 +43,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 import type { AuditRow } from '@/lib/services/audit-service';
 
 /**
@@ -567,7 +568,7 @@ export function AuditTrail({
     setRefetching(true);
     setTimeout(() => {
       setRefetching(false);
-      push(true, 'Activity Feed Synchronized', 'Real-time WebSocket & Merkle chain verified. Zero hash mismatches.');
+      push(true, 'Activity Feed Refreshed', 'Manual refresh complete. Use Verify Chain for the server-side hash-chain check.');
     }, 650);
   };
 
@@ -1626,14 +1627,4 @@ export function AuditTrail({
   );
 }
 
-function downloadFile(filename: string, text: string, type: string) {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const downloadFile = (filename: string, text: string, type: string) => downloadText(filename, text, type);
