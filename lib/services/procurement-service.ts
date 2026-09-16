@@ -47,11 +47,12 @@ export interface GrnRow {
 export async function listPurchases(
   db: Db,
   ctx: AuthContext,
-  filter?: { kind?: 'PO' | 'PR'; status?: string; limit?: number; offset?: number },
+  filter?: { kind?: 'PO' | 'PR'; status?: string; number?: string; limit?: number; offset?: number },
 ): Promise<PurchaseDocument[]> {
   const conditions = [eq(purchaseOrders.organizationId, ctx.orgId)];
   if (filter?.kind) conditions.push(eq(purchaseOrders.kind, filter.kind));
   if (filter?.status) conditions.push(eq(purchaseOrders.status, filter.status));
+  if (filter?.number) conditions.push(eq(purchaseOrders.number, filter.number));
 
   let query = db
     .select()
@@ -161,6 +162,9 @@ export async function createRequisition(
   ctx: AuthContext,
   input: CreateRequisitionInput,
 ): Promise<PurchaseDocument> {
+  if (!input.lineItems || input.lineItems.length === 0) {
+    throw new DomainError(400, 'LINE_ITEMS_REQUIRED', 'A requisition needs at least one line item');
+  }
   const year = new Date().getFullYear();
   return db.transaction(async (tx) => {
     const number = await nextNumber(tx, ctx.orgId, 'PR', year);
@@ -219,10 +223,33 @@ export async function postGoodsReceipt(
   db: Db,
   ctx: AuthContext,
   input: PostGrnInput,
-  opts: { idempotencyKey?: string | null; requestId?: string } = {},
+  opts: { idempotencyKey?: string | null; requestId?: string; stepUpAt?: string | null } = {},
 ): Promise<GrnRow> {
+  // Step-up is enforced here, not just at the route (GAP-09): a GRN mutates
+  // stock, so every caller must carry a verified approver timestamp.
+  if (!opts.stepUpAt) {
+    throw new DomainError(403, 'STEP_UP_REQUIRED',
+      'Posting a goods receipt requires a verified approver code (step-up TOTP)');
+  }
   const exec = async (tx: Tx): Promise<GrnRow> => {
-    const grnId = input.grnNumber || `GRN-${Math.floor(1000 + Math.random() * 9000)}`;
+    // The referenced PO must exist and really be a PO (GAP-09: no blind writes).
+    const [po] = await tx
+      .select({ number: purchaseOrders.number, kind: purchaseOrders.kind })
+      .from(purchaseOrders)
+      .where(and(
+        eq(purchaseOrders.organizationId, ctx.orgId),
+        eq(purchaseOrders.number, input.poNumber),
+      ))
+      .limit(1);
+    if (!po) throw notFound('PURCHASE_DOCUMENT', input.poNumber);
+    if (po.kind !== 'PO') {
+      throw new DomainError(422, 'WRONG_DOCUMENT_KIND',
+        `Goods receipt requires a PO — ${input.poNumber} is a ${po.kind}`);
+    }
+
+    // Canon numbering (GAP-09): GRN-YYYY-NNNN from the sequences engine.
+    const year = new Date().getFullYear();
+    const grnId = input.grnNumber || await nextNumber(tx, ctx.orgId, 'GRN', year);
 
     const existing = await tx
       .select()
@@ -251,7 +278,8 @@ export async function postGoodsReceipt(
       })
       .returning();
 
-    // Call stock receive mutation
+    // Call stock receive mutation (step-up approval carried over from the
+    // GRN route, GAP-03/GAP-09: audit PART_RECEIVE.after.stepUpAt stays filled).
     await mutateStock(
       tx as unknown as Db,
       ctx,
@@ -262,6 +290,7 @@ export async function postGoodsReceipt(
         refNumber: input.poNumber,
         reason: `Dock Bay GRN ${grnId} receipt from ${input.poNumber}`,
       },
+      { stepUpAt: opts.stepUpAt ?? undefined, requestId: opts.requestId ?? undefined },
     );
 
     // Update PO status to RECEIVED or PARTIAL
@@ -277,7 +306,7 @@ export async function postGoodsReceipt(
       number: grn.number,
       poNumber: grn.poNumber,
       waybill: grn.waybill,
-      dockLocation: grn.dockLocation,
+      dockLocation: grn.dockLocation ?? input.dockLocation ?? 'Dock Bay 02',
       status: grn.status as GrnRow['status'],
       verifiedBy: grn.verifiedBy,
       createdAt: grn.createdAt.toISOString(),
@@ -293,6 +322,110 @@ export async function postGoodsReceipt(
     const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'procurement.grn', hash, async () => {
       const body = await exec(tx);
       return { status: 201, body };
+    });
+    return res.body;
+  });
+}
+
+export type PurchaseDecision = 'APPROVE' | 'REJECT';
+
+export interface DecidePurchaseInput {
+  decision: PurchaseDecision;
+  /** Required when decision is REJECT (min 3 chars). */
+  reason?: string;
+}
+
+export interface DecisionRow {
+  number: string;
+  kind: 'PO' | 'PR';
+  status: string;
+  decidedBy: string;
+  decidedAt: string;
+  reason: string | null;
+}
+
+const DECIDABLE_FROM = ['PENDING_APPROVAL', 'CREATED'];
+const TERMINAL_DECISION = ['APPROVED', 'DISPATCHED', 'RECEIVED', 'REJECTED'];
+
+/**
+ * Approve / reject a requisition or order (GAP-09: the missing "authorize"
+ * half of F13). Records PO_APPROVE / PO_REJECT in the audit trail.
+ * Honest scope: approval is recorded — vendor EDI dispatch stays manual
+ * (no transmit integration exists).
+ */
+export async function decidePurchase(
+  db: Db,
+  ctx: AuthContext,
+  number: string,
+  input: DecidePurchaseInput,
+  opts: { idempotencyKey?: string | null; requestId?: string } = {},
+): Promise<DecisionRow> {
+  if (input.decision === 'REJECT' && !(input.reason ?? '').trim()) {
+    throw new DomainError(400, 'REASON_REQUIRED', 'Rejecting a purchase document requires a reason');
+  }
+
+  const exec = async (tx: Tx): Promise<DecisionRow> => {
+    const [doc] = await tx
+      .select()
+      .from(purchaseOrders)
+      .where(and(
+        eq(purchaseOrders.organizationId, ctx.orgId),
+        eq(purchaseOrders.number, number),
+      ))
+      .limit(1);
+    if (!doc) throw notFound('PURCHASE_DOCUMENT', number);
+    if (TERMINAL_DECISION.includes(doc.status)) {
+      throw new DomainError(409, 'ALREADY_DECIDED',
+        `${number} is already ${doc.status} — decision is terminal`);
+    }
+    if (!DECIDABLE_FROM.includes(doc.status)) {
+      throw new DomainError(409, 'NOT_DECIDABLE',
+        `${number} is ${doc.status} — only PENDING_APPROVAL or CREATED documents can be decided`);
+    }
+
+    const status = input.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
+    const reason = input.decision === 'REJECT' ? input.reason!.trim().slice(0, 300) : null;
+    const decidedAt = new Date().toISOString();
+
+    await tx
+      .update(purchaseOrders)
+      .set({ status })
+      .where(and(
+        eq(purchaseOrders.organizationId, ctx.orgId),
+        eq(purchaseOrders.number, number),
+      ));
+
+    await tx.insert(auditEvents).values({
+      organizationId: ctx.orgId,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: input.decision === 'APPROVE' ? 'PO_APPROVE' : 'PO_REJECT',
+      entityType: 'purchase_document',
+      entityId: number,
+      requestId: opts.requestId ?? null,
+      before: { status: doc.status },
+      after: { status, reason, decidedBy: ctx.name, decidedAt },
+    });
+
+    return {
+      number: doc.number,
+      kind: doc.kind as 'PO' | 'PR',
+      status,
+      decidedBy: ctx.name,
+      decidedAt,
+      reason,
+    };
+  };
+
+  if (!opts.idempotencyKey) {
+    return db.transaction(exec);
+  }
+
+  const hash = requestHash({ number, ...input });
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'procurement.decision', hash, async () => {
+      const body = await exec(tx);
+      return { status: 200, body };
     });
     return res.body;
   });

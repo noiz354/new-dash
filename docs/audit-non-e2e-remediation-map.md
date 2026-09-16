@@ -114,6 +114,7 @@ routes+DB+idempotency nganggur. Break: component→API (fetch never issued).
 Canon: SEED lokal (UI) vs procurement-service (nyata). Persist: NOT
 PERSISTED (UI) / capable (BE). Contract: BROKEN (unused). Tests: NONE.
 Observability: nol (tanpa audit). **Decision: MUST INTEGRATE**
+**[CLOSED GAP-09 2026-09-16]: kini END-TO-END** — decidePurchase + POST decision + GET ?number= + GRN step-up + UI live + 8 test (124/124) + runtime MCP (GRN-2026-0001 VERIFIED, stok 2→4).
 (`BIG ROCK`-lite M/L). Target: END-TO-END. Reason: EDI-sukses fiktif di
 procurement = correctness risk tertinggi sisa. P1/M/CROSS-MODULE.
 

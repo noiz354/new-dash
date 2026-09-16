@@ -10,48 +10,79 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { CANON } from '@/lib/canon';
+import { ApiError, apiFetch } from '@/lib/api/client';
 
 export type ToastFn = (ok: boolean, title: string, msg: string, retry?: boolean) => void;
 
-/** H3 authorize: summary ($2,900 vs $64,200 envelope) → EDI transmit → DISPATCHED. */
-export function AuthDialog({ push }: { push: ToastFn }) {
+interface DecisionRow {
+  number: string;
+  kind: 'PO' | 'PR';
+  status: string;
+  decidedBy: string;
+  decidedAt: string;
+  reason: string | null;
+}
+
+/**
+ * Authorize dialog (GAP-09, wired): APPROVE via
+ * POST /api/purchasing/[number]/decision. Honest scope: approval is recorded
+ * in the audit trail — vendor EDI auto-dispatch is NOT connected, dispatch
+ * stays manual.
+ */
+export function AuthDialog({ push, docId, amount, status, onDecided }: {
+  push: ToastFn;
+  docId: string;
+  amount: string;
+  status: string;
+  onDecided?: () => void;
+}) {
   const [phase, setPhase] = useState<'ready' | 'sending' | 'done' | 'failed'>('ready');
-  const confirm = () => {
+  const [msg, setMsg] = useState('');
+  const decidable = status === 'PENDING_APPROVAL' || status === 'CREATED';
+  const confirm = async () => {
     if (phase === 'sending') return;
     setPhase('sending');
-    setTimeout(() => {
-      // Standalone-safe: no backend → demonstrate success path + idempotency note.
+    try {
+      const row = await apiFetch<DecisionRow>(
+        `/api/purchasing/${encodeURIComponent(docId)}/decision`,
+        { method: 'POST', body: { decision: 'APPROVE' } },
+      );
       setPhase('done');
-      push(true, 'Authorized + dispatched', 'PO-2026-0315 · $2,900.00 within $64,200.00 envelope · key idem-auth-po0315.');
-    }, 1100);
+      setMsg(`${row.number} APPROVED by ${row.decidedBy} · recorded in audit trail.`);
+      push(true, 'Approved & recorded', `${row.number} APPROVED — EDI auto-dispatch not connected, dispatch stays manual.`);
+      onDecided?.();
+    } catch (e) {
+      setPhase('failed');
+      const m = e instanceof ApiError ? `${e.message} (${e.code})` : 'Unexpected error — nothing was approved.';
+      setMsg(m);
+      push(false, 'Approval failed', m);
+    }
   };
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>Authorize &amp; Auto-Dispatch</Button>
+        <Button disabled={!decidable} title={decidable ? 'Approve this document' : `Already ${status} — decision is terminal`}>
+          Authorize{decidable ? '' : ` (${status})`}
+        </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Authorize &amp; Auto-Dispatch</DialogTitle>
-        <DialogDescription>PO-2026-0315 (from PR-2026-0314) → Trane EarthWise Direct</DialogDescription>
+        <DialogTitle>Authorize</DialogTitle>
+        <DialogDescription>{docId} → approval recorded in audit trail (no EDI transmit)</DialogDescription>
         <ul className="text-[13px] flex flex-col gap-1.5">
-          <li className="flex justify-between"><span className="text-muted">Amount</span><strong className="apex-id">$2,900.00</strong></li>
-          <li className="flex justify-between"><span className="text-muted">Envelope CUP Maintenance Capex Q1</span><strong className="apex-id">$64,200.00</strong></li>
-          <li className="flex justify-between"><span className="text-muted">Remaining after post</span><strong className="apex-id text-pass">$61,300.00</strong></li>
-          <li className="flex justify-between"><span className="text-muted">Signatures</span><strong>2 of 3 (quorum met)</strong></li>
-          <li className="flex justify-between"><span className="text-muted">Idempotency-Key</span><span className="apex-id">idem-auth-po0315</span></li>
+          <li className="flex justify-between"><span className="text-muted">Amount</span><strong className="apex-id">{amount}</strong></li>
+          <li className="flex justify-between"><span className="text-muted">Current status</span><strong className="apex-id">{status}</strong></li>
+          <li className="flex justify-between"><span className="text-muted">Effect</span><strong>APPROVED + audit event</strong></li>
         </ul>
         <p className="text-xs text-muted" role="status">
-          {phase === 'ready' && 'Ready — EDI dispatch to vendor on confirm.'}
-          {phase === 'sending' && 'Transmitting EDI to Trane EarthWise Direct…'}
-          {phase === 'done' && 'PO-2026-0315 DISPATCHED (local simulation — no EDI transmit) · key idem-auth-po0315.'}
-          {phase === 'failed' && 'EDI failed — PO status unchanged (no half-dispatch). Retry with the same key.'}
+          {phase === 'ready' && 'Ready — approval is recorded server-side. Dispatch stays manual.'}
+          {phase === 'sending' && 'Recording approval…'}
+          {(phase === 'done' || phase === 'failed') && msg}
         </p>
-        {phase === 'done' && <Badge variant="pass">PO-2026-0315 DISPATCHED (local)</Badge>}
+        {phase === 'done' && <Badge variant="pass">{docId} APPROVED</Badge>}
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setPhase('ready')}>Reset demo</Button>
-          <Button onClick={confirm} disabled={phase === 'sending'}>
-            {phase === 'sending' ? 'Transmitting…' : 'Confirm & Dispatch'}
+          <Button variant="secondary" onClick={() => setPhase('ready')}>Reset</Button>
+          <Button onClick={confirm} disabled={phase === 'sending' || !decidable}>
+            {phase === 'sending' ? 'Recording…' : 'Confirm & Approve'}
           </Button>
         </div>
       </DialogContent>
@@ -59,20 +90,20 @@ export function AuthDialog({ push }: { push: ToastFn }) {
   );
 }
 
-/** H3 RFQ: vendor multi-select guard → RFQ_SENT. */
+/** RFQ: no vendor integration exists — logged locally (honest placeholder). */
 const RFQ_VENDORS = [
   { id: 'earthwise', label: 'Trane EarthWise Direct', sub: '+62-21-5090-0440' },
   { id: 'supplyco', label: 'Trane Supply Co', sub: 'SLA Platinum' },
 ];
 
-export function RfqDialog({ push }: { push: ToastFn }) {
+export function RfqDialog({ push, sku }: { push: ToastFn; sku: string }) {
   const [sel, setSel] = useState<string[]>(['earthwise', 'supplyco']);
   const [sent, setSent] = useState(false);
   const toggle = (id: string) =>
     setSel((s) => (s.includes(id) ? s.filter((v) => v !== id) : [...s, id]));
   const send = () => {
     setSent(true);
-    push(true, 'RFQ sent', `PART-SEAL-8821 quotes requested from ${sel.length} OEM channel(s). Due 16:30 WIB.`);
+    push(true, 'RFQ logged locally', `Quotes for ${sku} noted for ${sel.length} channel(s) — no vendor integration, nothing was sent.`);
   };
   return (
     <Dialog>
@@ -81,7 +112,7 @@ export function RfqDialog({ push }: { push: ToastFn }) {
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Request OEM Quotes</DialogTitle>
-        <DialogDescription>{CANON.sealSku} · select at least one vendor</DialogDescription>
+        <DialogDescription>{sku} · select at least one vendor · local log only (no vendor integration)</DialogDescription>
         <div className="flex flex-col gap-2 text-sm">
           {RFQ_VENDORS.map((v) => (
             <label key={v.id} className="flex items-center gap-2 rounded border border-border-subtle p-3 cursor-pointer">
@@ -99,31 +130,59 @@ export function RfqDialog({ push }: { push: ToastFn }) {
           ))}
         </div>
         <p className="text-xs text-muted" role="status">
-          {sent ? 'RFQ_SENT · quotes due 16:30 WIB.' : sel.length === 0 ? 'Select at least one vendor.' : `${sel.length} vendor(s) selected.`}
+          {sent ? 'RFQ noted locally — no vendor integration.' : sel.length === 0 ? 'Select at least one vendor.' : `${sel.length} vendor(s) selected.`}
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary">Cancel</Button>
-          <Button disabled={sel.length === 0} onClick={send}>Send RFQ</Button>
+          <Button disabled={sel.length === 0} onClick={send}>Log RFQ</Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
 
-/** H3 reject PR: destructive, reason required (AlertDialog contract). */
-export function RejectDialog({ push }: { push: ToastFn }) {
+/**
+ * Reject dialog (GAP-09, wired): REJECT via
+ * POST /api/purchasing/[number]/decision with a mandatory reason.
+ * The reason IS written to the audit trail (PO_REJECT).
+ */
+export function RejectDialog({ push, docId, onDecided }: {
+  push: ToastFn;
+  docId: string;
+  onDecided?: () => void;
+}) {
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState(false);
-  const ok = reason.trim().length > 0;
+  const [busy, setBusy] = useState(false);
+  const ok = reason.trim().length >= 3;
+  const reject = async () => {
+    if (!ok || busy) return;
+    setBusy(true);
+    try {
+      const row = await apiFetch<DecisionRow>(
+        `/api/purchasing/${encodeURIComponent(docId)}/decision`,
+        { method: 'POST', body: { decision: 'REJECT', reason: reason.trim() } },
+      );
+      setOpen(false);
+      setReason('');
+      push(true, `${row.number} REJECTED`, `Reason recorded in audit trail by ${row.decidedBy}.`);
+      onDecided?.();
+    } catch (e) {
+      const m = e instanceof ApiError ? `${e.message} (${e.code})` : 'Unexpected error — nothing was rejected.';
+      push(false, 'Rejection failed', m);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="destructive">Reject</Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Reject PR-2026-0314</DialogTitle>
-        <DialogDescription>Destructive — requires a reason</DialogDescription>
-        <label className="text-xs font-semibold" htmlFor="pr-reject-reason">Reason (required)</label>
+        <DialogTitle>Reject {docId}</DialogTitle>
+        <DialogDescription>Destructive — requires a reason (written to the audit trail)</DialogDescription>
+        <label className="text-xs font-semibold" htmlFor="pr-reject-reason">Reason (required, min 3 chars)</label>
         <textarea
           id="pr-reject-reason"
           rows={2}
@@ -131,18 +190,15 @@ export function RejectDialog({ push }: { push: ToastFn }) {
           onChange={(e) => setReason(e.target.value)}
           className="w-full p-2 border border-border-strong rounded text-sm outline-none focus:border-cobalt focus:ring-1 focus:ring-cobalt"
         />
-        {!ok && <p className="text-[11px] font-semibold text-fail">A reason is required to reject a P1 request.</p>}
+        {!ok && <p className="text-[11px] font-semibold text-fail">A reason (min 3 chars) is required to reject.</p>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
           <Button
             variant="destructive"
-            disabled={!ok}
-            onClick={() => {
-              setOpen(false);
-              push(false, 'PR-2026-0314 REJECTED', 'Reason logged to audit trail.', true);
-            }}
+            disabled={!ok || busy}
+            onClick={reject}
           >
-            Reject PR
+            {busy ? 'Rejecting…' : 'Reject'}
           </Button>
         </div>
       </DialogContent>
@@ -152,13 +208,15 @@ export function RejectDialog({ push }: { push: ToastFn }) {
 
 export type DisputeKind = 'return' | 'claim' | 'partial';
 
-/** H3 GRN dispute: kind radio + required note → GRN DISPUTED. */
+/** GRN dispute: no dispute endpoint exists — logged locally (honest placeholder). */
 export function DisputeDialog({
   push,
   onDisputed,
+  docId,
 }: {
   push: ToastFn;
   onDisputed: (kind: DisputeKind) => void;
+  docId: string;
 }) {
   const [kind, setKind] = useState<DisputeKind>('return');
   const [note, setNote] = useState('');
@@ -171,7 +229,7 @@ export function DisputeDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogTitle>Flag Discrepancy</DialogTitle>
-        <DialogDescription>GRN-9941 · PO-2026-0298</DialogDescription>
+        <DialogDescription>{docId} · local log only (no dispute endpoint)</DialogDescription>
         <div className="flex flex-col gap-2 text-sm" role="radiogroup" aria-label="Dispute kind">
           {(
             [
@@ -202,10 +260,10 @@ export function DisputeDialog({
             onClick={() => {
               setOpen(false);
               onDisputed(kind);
-              push(false, 'GRN-9941 DISPUTED', `Vendor claim opened (${kind}).`, true);
+              push(false, 'Discrepancy logged locally', `Vendor claim noted (${kind}) — no dispute endpoint, GRN unchanged.`, true);
             }}
           >
-            File Dispute
+            Log Dispute
           </Button>
         </div>
       </DialogContent>

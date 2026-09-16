@@ -269,3 +269,13 @@ Frontend: ~40 edit string jujur ("WS-PUSH"→"SSE", "SSE only", "STANDBY", "loca
 Tests: guard-test GAP-08 di tests/audit-truthfulness.test.ts (absence file-scoped + presence qualifier + Math.random check); npm test 121/121; tsc exit 0.
 Runtime proof (MCP browser dev :3145, m.vance): /notifications render "SSE: 12ms" + live stream intact + 0 console error; /settings General+Integrations+Security render semua copy jujur. Temuan: GET /api/auth/passkeys/login→500 pre-existing — dev DB .data/pg tak punya tabel webauthn_credentials (migrasi 0002), drift infra dev, BUKAN akibat GAP-08 (hanya ubah string klien); dipicu buka tab Security/PasskeyManager.
 NEXT GAP: #9 purchasing wire (F13, big rock M/L).
+
+GAP CLOSED #9 (2026-09-16): purchasing wire (F13 BROKEN→END-TO-END).
+Spec: docs/remediation-gap-09-spec.md (ditulis dulu — spec-driven; tanpa migrasi; GRN wajib step-up TOTP; nomor GRN via sequence).
+Backend: SequenceEntity+='GRN' + seedAll baris GRN nextVal 1; decidePurchase() (APPROVE/REJECT + guard terminal 409 ALREADY_DECIDED + reason-wajib 400 + audit PO_APPROVE/PO_REJECT + idempoten scope procurement.decision); POST /api/purchasing/[number]/decision (perm po.approve); GET /api/purchasing?number= (404 jujur); POST grn wajib stepUpCode→verifyStepUpCode→stepUpAt ke mutateStock; postGoodsReceipt guard PO-ada 404/kind-PO 422 + nomor GRN-YYYY-NNNN via nextNumber + enforcement STEP_UP_REQUIRED 403 + requestId; createRequisition guard LINE_ITEMS_REQUIRED 400.
+Frontend: dialogs.tsx (AuthDialog/RejectDialog wired + Rfq/Dispute honest-local, tanpa hardcode ID); PurchaseList.tsx live GET?limit=100 + SEED fallback demo ber-badge + KPI server + create-PR SKU/qty/harga; PurchaseDetail.tsx live GET?number= + 404 jujur + SLA countdown server + form GRN + match honest-placeholder + signatures dari status + print-link hanya PO.
+Tests: 8 kasus service-level baru di tests/integration.test.ts; npm test 124/124; tsc exit 0.
+Runtime proof (MCP browser dev :3145, m.vance): /purchasing live 7 records → New Requisition via UI → PR-2026-0316 PENDING_APPROVAL → Authorize via dialog → APPROVED terminal → Receiving tab (PR-kind guard jujur) → PO-2026-0298 GRN form + TOTP → GRN-2026-0001 VERIFIED → PO RECEIVED → /inventory PART-SEAL-8821 on-hand 2→4 live → reload RECEIVED persists → console 1 issue dev-only CSP-eval (pre-existing). Screenshot /tmp/opencode/evidence/gap09/po-received.png.
+Insiden infra: .data/pg dev wedge (PGlite WASM abort; worker prod :3155 PID 15029 lolos kill pegang lock) → mv .data/pg-wedged-20260916 + fresh db:setup exit 0; dev :3145 UP 200.
+Temuan follow-up: /inventory/[sku] detail masih statis (3 hardcoded movements, on-hand 1) — bukan scope GAP-09, gap tersendiri.
+NEXT GAP: #10 PM hub wire (F19).

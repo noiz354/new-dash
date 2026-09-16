@@ -27,6 +27,8 @@ import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/service
 import { convertFindingToWo, createFinding, dismissFinding, getFinding, listFindings } from '../lib/services/inspection-service';
 import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
+import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
+import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
@@ -888,5 +890,119 @@ test('billing (GAP-6): checkout without STRIPE_SECRET_KEY is an honest 503 — n
   await expectDomainError(
     () => createCheckoutSession(db, admin, 'COMMUNITY', 'https://x.test/success'),
     503, 'BILLING_NOT_CONFIGURED',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Purchasing wire (GAP #9: list/detail/authorize/GRN were local-only fiction;
+// now backed by po-service + routes + DB)
+// ---------------------------------------------------------------------------
+test('purchasing (GAP-9): PR create persists with canon numbering + audit; empty lines → 400; tenant-scoped', async () => {
+  await expectDomainError(
+    () => createRequisition(db, admin, { title: 'Empty probe', lineItems: [] }),
+    400, 'LINE_ITEMS_REQUIRED',
+  );
+
+  const pr = await createRequisition(db, admin, {
+    title: 'GAP-9 probe requisition',
+    vendorSlug: 'grainger-industrial-supply',
+    lineItems: [{ sku: CANON.sealSku, description: 'GAP-9 probe seal', quantity: 2, unitPriceCents: 145000 }],
+  });
+  assert.match(pr.number, /^PR-\d{4}-\d{4}$/, 'canon PR numbering');
+  assert.equal(pr.status, 'PENDING_APPROVAL');
+  assert.equal(pr.totalCents, 290000);
+  assert.equal(pr.lineItems.length, 1);
+
+  const fetched = await getPurchase(db, admin, pr.number);
+  assert.equal(fetched.title, 'GAP-9 probe requisition');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'purchase_requisition' });
+  assert.ok(ledger.rows.some((e) => e.action === 'PR_CREATE' && e.entityId === pr.number), 'PR_CREATE audited');
+
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.ok(!(await listPurchases(db, decoy)).some((d) => d.number === pr.number), 'decoy tenant sees nothing');
+  await expectDomainError(() => getPurchase(db, decoy, pr.number), 404, 'PURCHASE_DOCUMENT_NOT_FOUND');
+});
+
+test('purchasing (GAP-9): approve persists + audited; replay idempotent; terminal 409; reject guards', async () => {
+  const key = `gap9-decide-${Date.now()}`;
+  const decided = await decidePurchase(db, admin, 'PO-2026-0315', { decision: 'APPROVE' }, { idempotencyKey: key });
+  assert.equal(decided.status, 'APPROVED');
+  assert.equal(decided.decidedBy, admin.name);
+
+  const audits = async () =>
+    (await listAuditEvents(db, admin, { entityType: 'purchase_document' })).rows
+      .filter((e) => e.action === 'PO_APPROVE' && e.entityId === 'PO-2026-0315');
+  assert.equal((await audits()).length, 1, 'exactly one PO_APPROVE audit');
+
+  const replay = await decidePurchase(db, admin, 'PO-2026-0315', { decision: 'APPROVE' }, { idempotencyKey: key });
+  assert.equal(replay.status, 'APPROVED');
+  assert.equal((await audits()).length, 1, 'idempotent replay writes no second audit');
+
+  await expectDomainError(() => decidePurchase(db, admin, 'PO-2026-0315', { decision: 'APPROVE' }), 409, 'ALREADY_DECIDED');
+  await expectDomainError(() => decidePurchase(db, admin, 'PO-2026-9999', { decision: 'APPROVE' }), 404, 'PURCHASE_DOCUMENT_NOT_FOUND');
+
+  const rej = await createRequisition(db, admin, {
+    title: 'GAP-9 reject-path probe',
+    lineItems: [{ sku: CANON.sealSku, description: 'probe', quantity: 1, unitPriceCents: 100 }],
+  });
+  await expectDomainError(() => decidePurchase(db, admin, rej.number, { decision: 'REJECT' }), 400, 'REASON_REQUIRED');
+  const rejected = await decidePurchase(db, admin, rej.number, { decision: 'REJECT', reason: 'GAP-9 probe: over budget cap' });
+  assert.equal(rejected.status, 'REJECTED');
+  assert.equal(rejected.reason, 'GAP-9 probe: over budget cap');
+  const ledger = await listAuditEvents(db, admin, { entityType: 'purchase_document' });
+  assert.ok(ledger.rows.some((e) => e.action === 'PO_REJECT' && e.entityId === rej.number), 'PO_REJECT audited');
+});
+
+test('purchasing (GAP-9): GRN posts with step-up, canon GRN number, stock loop closes; guards enforced', async () => {
+  const sku = CANON.sealSku;
+  const start = await getPart(db, admin, sku);
+  const stepUpAt = await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', waybill: 'GAP9-WB-1', skuReceived: sku, qtyReceived: 3 }),
+    403, 'STEP_UP_REQUIRED',
+  );
+
+  const grn = await postGoodsReceipt(
+    db, admin,
+    { poNumber: 'PO-2026-0315', waybill: 'GAP9-WB-1', skuReceived: sku, qtyReceived: 3 },
+    { idempotencyKey: `gap9-grn-${Date.now()}`, stepUpAt },
+  );
+  assert.match(grn.number, /^GRN-\d{4}-\d{4}$/, 'canon GRN numbering (no Math.random)');
+  assert.equal(grn.status, 'RECEIVED');
+  assert.equal(grn.verifiedBy, admin.name);
+
+  assert.equal((await getPart(db, admin, sku)).onHand, start.onHand + 3, 'GRN RECEIVE hits stock');
+  assert.equal((await getPurchase(db, admin, 'PO-2026-0315')).status, 'RECEIVED', 'PO flips to RECEIVED');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'part' });
+  const recv = ledger.rows.find((e) => e.action === 'PART_RECEIVE' && (e.after as { ref?: string })?.ref === 'PO-2026-0315');
+  assert.ok(recv, 'PART_RECEIVE audited with PO ref');
+  assert.ok((recv.after as { stepUpAt?: string })?.stepUpAt, 'step-up timestamp carried into stock audit');
+
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-9999', waybill: 'GAP9-WB-2', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
+    404, 'PURCHASE_DOCUMENT_NOT_FOUND',
+  );
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', waybill: 'GAP9-WB-2', skuReceived: 'PART-NOPE-000', qtyReceived: 1 }, { stepUpAt }),
+    404, 'PART_NOT_FOUND',
+  );
+
+  // GRN against a PR (not a PO) is refused.
+  const pr = await createRequisition(db, admin, {
+    title: 'GAP-9 kind-guard probe',
+    lineItems: [{ sku, description: 'probe', quantity: 1, unitPriceCents: 100 }],
+  });
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: pr.number, waybill: 'GAP9-WB-3', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
+    422, 'WRONG_DOCUMENT_KIND',
+  );
+
+  // Explicit duplicate GRN number → honest 409.
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', grnNumber: grn.number, waybill: 'GAP9-WB-4', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
+    409, 'DUPLICATE_RECEIPT',
   );
 });

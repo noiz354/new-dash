@@ -21,10 +21,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const kind = (searchParams.get('kind') as 'PO' | 'PR') || undefined;
     const status = searchParams.get('status') || undefined;
+    const number = searchParams.get('number') || undefined;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : undefined;
 
-    const list = await listPurchases(getDb(), ctx!, { kind, status, limit, offset });
+    const list = await listPurchases(getDb(), ctx!, { kind, status, number, limit, offset });
+    if (number && list.length === 0) {
+      const { notFound } = await import('@/lib/domain/errors');
+      throw notFound('PURCHASE_DOCUMENT', number);
+    }
     return { data: list };
   });
 }

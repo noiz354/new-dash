@@ -9,7 +9,7 @@ import type { Tx } from '../../db/client';
 import { sequences } from '../../db/schema';
 import { DomainError } from '../domain/errors';
 
-export type SequenceEntity = 'WO' | 'SR' | 'PO' | 'PR' | 'INS' | 'FND';
+export type SequenceEntity = 'WO' | 'SR' | 'PO' | 'PR' | 'INS' | 'FND' | 'GRN';
 
 export async function nextNumber(
   tx: Tx,
