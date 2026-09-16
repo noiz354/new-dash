@@ -122,29 +122,121 @@ export async function updateInspectionProgress(
   number: string,
   progressPct: number,
   status?: string,
+  opts: { requestId?: string } = {},
 ): Promise<InspectionRow> {
   const validatedProgress = Math.max(0, Math.min(100, Math.round(progressPct)));
   const nextStatus = status ?? (validatedProgress === 100 ? 'COMPLETED' : 'IN_PROGRESS');
 
-  const [updated] = await db
-    .update(inspections)
-    .set({
-      progressPct: validatedProgress,
-      status: nextStatus,
-    })
-    .where(and(eq(inspections.organizationId, ctx.orgId), eq(inspections.number, number)))
-    .returning();
+  return db.transaction(async (tx) => {
+    const before = await tx
+      .select()
+      .from(inspections)
+      .where(and(eq(inspections.organizationId, ctx.orgId), eq(inspections.number, number)))
+      .limit(1);
 
-  if (!updated) throw notFound('INSPECTION', number);
+    if (!before[0]) throw notFound('INSPECTION', number);
 
-  return {
-    number: updated.number,
-    title: updated.title,
-    auditorName: updated.auditorName,
-    progressPct: updated.progressPct,
-    status: updated.status,
-    createdAt: updated.createdAt.toISOString(),
+    const [updated] = await tx
+      .update(inspections)
+      .set({
+        progressPct: validatedProgress,
+        status: nextStatus,
+      })
+      .where(and(eq(inspections.organizationId, ctx.orgId), eq(inspections.number, number)))
+      .returning();
+
+    await tx.insert(auditEvents).values({
+      organizationId: ctx.orgId,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: 'INSPECTION_PROGRESS',
+      entityType: 'inspection',
+      entityId: number,
+      before: { progressPct: before[0].progressPct, status: before[0].status },
+      after: { progressPct: updated.progressPct, status: updated.status },
+      requestId: opts.requestId ?? null,
+    });
+
+    return {
+      number: updated.number,
+      title: updated.title,
+      auditorName: updated.auditorName,
+      progressPct: updated.progressPct,
+      status: updated.status,
+      createdAt: updated.createdAt.toISOString(),
+    };
+  });
+}
+
+/**
+ * Force-dispatch an inspection to the active crew (GAP-11, F20).
+ * Terminal COMPLETED runs are final → 409 ALREADY_COMPLETED.
+ * Progress is PRESERVED (the old inline route reset it to 0 — silent
+ * data loss). Writes INSPECTION_FORCE_DISPATCH to the audit ledger in
+ * the same transaction. Idempotent via scope 'inspection.force_dispatch'.
+ */
+export async function forceDispatchInspection(
+  db: Db,
+  ctx: AuthContext,
+  number: string,
+  input: { reason?: string } = {},
+  opts: { idempotencyKey?: string | null; requestId?: string } = {},
+): Promise<InspectionRow> {
+  const exec = async (tx: Tx): Promise<InspectionRow> => {
+    const rows = await tx
+      .select()
+      .from(inspections)
+      .where(and(eq(inspections.organizationId, ctx.orgId), eq(inspections.number, number)))
+      .limit(1);
+
+    if (!rows[0]) throw notFound('INSPECTION', number);
+    const cur = rows[0];
+
+    if (cur.status === 'COMPLETED') {
+      throw new DomainError(409, 'ALREADY_COMPLETED',
+        `Inspection ${number} is already COMPLETED and cannot be re-dispatched`);
+    }
+
+    const [updated] = await tx
+      .update(inspections)
+      .set({ status: 'IN_PROGRESS' })
+      .where(and(eq(inspections.organizationId, ctx.orgId), eq(inspections.number, number)))
+      .returning();
+
+    await tx.insert(auditEvents).values({
+      organizationId: ctx.orgId,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: 'INSPECTION_FORCE_DISPATCH',
+      entityType: 'inspection',
+      entityId: number,
+      before: { progressPct: cur.progressPct, status: cur.status },
+      after: { progressPct: updated.progressPct, status: updated.status, reason: input.reason ?? null },
+      requestId: opts.requestId ?? null,
+    });
+
+    return {
+      number: updated.number,
+      title: updated.title,
+      auditorName: updated.auditorName,
+      progressPct: updated.progressPct,
+      status: updated.status,
+      createdAt: updated.createdAt.toISOString(),
+    };
   };
+
+  if (!opts.idempotencyKey) {
+    return db.transaction(exec);
+  }
+
+  const hash = requestHash({ number, reason: input.reason ?? null });
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'inspection.force_dispatch', hash, async () => {
+      const body = await exec(tx);
+      return { status: 200, body };
+    });
+    return res.body;
+  });
 }
 
 export async function listFindings(

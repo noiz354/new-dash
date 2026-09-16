@@ -50,6 +50,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { CANON } from '@/lib/canon';
+import { ApiError, apiFetch } from '@/lib/api/client';
 
 /**
  * Inspection & Audit Engine Hub (Desktop Screen 5 — field_inspections_audit_queue_hub).
@@ -74,9 +75,45 @@ interface AuditItem {
   assignee: string;
   assigneeRole: string;
   assigneeInitials: string;
-  status: 'IN_PROGRESS' | 'OVERDUE' | 'SCHEDULED' | 'FINDINGS' | 'READY';
+  status: 'IN_PROGRESS' | 'OVERDUE' | 'SCHEDULED' | 'FINDINGS' | 'READY' | 'COMPLETED';
   progress?: number;
   findingsCount?: number;
+}
+
+interface ServerInspection {
+  number: string;
+  title: string;
+  auditorName: string;
+  progressPct: number;
+  status: string;
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '?') + (parts[1]?.[0] ?? '')).toUpperCase();
+}
+
+/** Map a server inspection row onto a hub queue row (GAP-11). */
+function toHubRow(r: ServerInspection): AuditItem {
+  const st = r.status.toUpperCase();
+  const status: AuditItem['status'] =
+    st === 'IN_PROGRESS' ? 'IN_PROGRESS'
+    : st === 'OVERDUE' ? 'OVERDUE'
+    : st === 'COMPLETED' ? 'COMPLETED'
+    : 'SCHEDULED';
+  return {
+    id: r.number,
+    name: r.title,
+    assetId: '—',
+    zone: 'Server record',
+    dueText: status === 'COMPLETED' ? 'Completed' : status === 'OVERDUE' ? 'Overdue' : status === 'IN_PROGRESS' ? 'Today' : 'Scheduled',
+    dueSub: `progress ${r.progressPct}%`,
+    assignee: r.auditorName,
+    assigneeRole: 'Field Tech',
+    assigneeInitials: initialsOf(r.auditorName),
+    status,
+    progress: r.progressPct,
+  };
 }
 
 const INITIAL_AUDITS: AuditItem[] = [
@@ -211,6 +248,8 @@ export function FieldInspectionsHub() {
   const [zone, setZone] = useState('All Facilities');
   const [discipline, setDiscipline] = useState('All');
   const [audits, setAudits] = useState<AuditItem[]>(INITIAL_AUDITS);
+  const [live, setLive] = useState(false);
+  const [dispatching, setDispatching] = useState<string | null>(null);
   const [steps, setSteps] = useState<ChecklistStep[]>(INITIAL_STEPS);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -236,17 +275,53 @@ export function FieldInspectionsHub() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // GAP-11: queue ← GET /api/inspections. Failure keeps INITIAL_* as a
+  // labeled demo fallback (template/protocol CRUD stays local by design —
+  // needs a product decision, tracked for GAP-16).
+  useEffect(() => {
+    let alive = true;
+    void apiFetch<{ rows: ServerInspection[]; total: number }>('/api/inspections')
+      .then((res) => {
+        if (!alive) return;
+        if (res.rows.length > 0) setAudits(res.rows.map(toHubRow));
+        setLive(true);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setLive(false);
+        pushToast(false, 'Offline', 'Inspection queue served from demo fallback.');
+      });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const pushToast = (ok: boolean, title: string, msg: string) => {
     const id = toastIdSeq++;
     setToasts((t) => [...t, { id, ok, title, msg }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 6000);
   };
 
-  const handleForceDispatch = (auditId: string) => {
-    setAudits((prev) =>
-      prev.map((a) => (a.id === auditId ? { ...a, status: 'IN_PROGRESS', progress: 0, dueText: 'Today 17:00' } : a))
-    );
-    pushToast(true, 'Force Dispatch Executed', `Audit ${auditId} has been escalated and dispatched to active crew.`);
+  const handleForceDispatch = async (auditId: string) => {
+    if (dispatching) return;
+    setDispatching(auditId);
+    try {
+      const data = await apiFetch<{ number: string; status: string; progressPct: number }>(
+        `/api/inspections/${auditId}/force-dispatch`,
+        { method: 'POST', body: {} },
+      );
+      setAudits((prev) =>
+        prev.map((a) =>
+          a.id === auditId
+            ? { ...a, status: 'IN_PROGRESS', progress: data.progressPct, dueText: 'Today 17:00', dueSub: 'dispatched by server' }
+            : a
+        )
+      );
+      pushToast(true, 'Force Dispatch Executed', `Audit ${data.number} escalated to IN_PROGRESS (server-confirmed).`);
+    } catch (err) {
+      pushToast(false, 'Force Dispatch Failed', err instanceof ApiError ? `${err.message} (${err.code})` : 'Unknown dispatch failure.');
+    } finally {
+      setDispatching(null);
+    }
   };
 
   const handleSaveDraft = () => {
@@ -277,7 +352,7 @@ export function FieldInspectionsHub() {
   const filteredAudits = audits.filter((a) => {
     if (tab === 'today' && !a.dueText.toLowerCase().includes('today') && !a.dueSub.toLowerCase().includes('45m')) return false;
     if (tab === 'overdue' && a.status !== 'OVERDUE') return false;
-    if (tab === 'completed' && a.status !== 'FINDINGS') return false;
+    if (tab === 'completed' && a.status !== 'FINDINGS' && a.status !== 'COMPLETED') return false;
     if (zone !== 'All Facilities' && !a.zone.includes(zone)) return false;
     const q = search.trim().toLowerCase();
     if (q && !`${a.id} ${a.name} ${a.assetId} ${a.assignee} ${a.zone}`.toLowerCase().includes(q)) return false;
@@ -676,6 +751,11 @@ export function FieldInspectionsHub() {
                             READY
                           </span>
                         )}
+                        {a.status === 'COMPLETED' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pass-bg border border-pass/30 text-pass-ink font-mono text-[10px] font-bold">
+                            <Check size={11} /> COMPLETED
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-3 px-3 text-right">
@@ -689,10 +769,11 @@ export function FieldInspectionsHub() {
                         {a.status === 'OVERDUE' && (
                           <Button
                             variant="destructive"
-                            onClick={() => handleForceDispatch(a.id)}
+                            onClick={() => void handleForceDispatch(a.id)}
+                            disabled={dispatching === a.id}
                             className="h-7 px-2.5 text-xs gap-1"
                           >
-                            Force Dispatch <Bolt size={11} />
+                            {dispatching === a.id ? 'Dispatching…' : 'Force Dispatch'} <Bolt size={11} />
                           </Button>
                         )}
                         {a.status === 'SCHEDULED' && (
@@ -720,6 +801,15 @@ export function FieldInspectionsHub() {
                             Details <ChevronRight size={11} />
                           </Button>
                         )}
+                        {a.status === 'COMPLETED' && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => setPreviewAudit(a)}
+                            className="h-7 px-2.5 text-xs gap-1"
+                          >
+                            Review <Eye size={11} />
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -729,7 +819,7 @@ export function FieldInspectionsHub() {
 
             {/* Table Footer / Pagination */}
             <div className="p-3 bg-surface border-t border-border-subtle flex items-center justify-between text-xs text-muted">
-              <span>Showing {filteredAudits.length} of 18 Scheduled Audits</span>
+              <span>Showing {filteredAudits.length} of {audits.length} audits {live ? '(live server list)' : '(demo offline)'}</span>
               <div className="flex items-center gap-1 font-mono">
                 <Button variant="secondary" className="h-7 px-2 text-xs" disabled>
                   Prev

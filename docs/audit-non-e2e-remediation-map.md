@@ -141,6 +141,11 @@ consts. Persist: NOT PERSISTED. Tests: NONE. **Decision: MUST INTEGRATE**
 (queue ← inspections list; run ← updateProgress; hapus PIN/fake-toasts).
 Target: END-TO-END. Reason: inti field-flow; fiksi dispatch = P1.
 P1/M-L/CROSS-MODULE (dep: F20-fix).
+**[CLOSED GAP-11 2026-09-16]:** END-TO-END — AuditQueue + hub live GET
+(list server + demo fallback ber-badge + sync-count nyata + Last Completed
+turunan server); RunChecklist submit → POST progress 100/COMPLETED +
+prefill server; PIN 2468 + modal + toast fiksi + autosave timer dihapus;
+3 test (129/129) + runtime MCP terverifikasi.
 
 **F17 — Outbox auto-flush.** Current: PARTIAL (store+enqueue+flush+retry+
 idempotency NYATA; delivery findings kini persist GAP-1). Gap: MISSING
@@ -174,6 +179,10 @@ Canon: inspection-service (route-nya shadow). Persist: PERSISTED (unused
 paths). Tests: NONE. **Decision: MUST FIX dulu (route → service + audit),
 lalu MUST INTEGRATE (F16 caller)**. Target: END-TO-END. Reason: prerequisite
 F16; inline-write tanpa audit = compliance hole. P1/M/MODULE.
+**[CLOSED GAP-11 2026-09-16]:** END-TO-END — `forceDispatchInspection`
+(audit transaksional + idempoten + guard 409 + progress preserved),
+POST→`createInspection` (nomor canon), GET tanpa fallback CANON, route
+progress baru, `INSPECTION_PROGRESS` diaudit; 3 test + runtime MCP.
 
 **F21 — Reports hub.** Current: FRONTEND-ONLY + fiksi ("46ms · 412 records",
 `telemetry_mart` tak ada di schema, "READ REPLICA SYNCED"). Gap: FRONTEND
@@ -280,11 +289,11 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 13 | Purchasing | PO/GRN/authorize | BROKEN | FAKE SUCCESS + NOT WIRED | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 14 | Vendors | Onboard/amend/MSA | DEAD-END | BACKEND MISSING | MUST INTEGRATE | E2E | P2 | M | MODULE |
 | 15 | Facilities | Hub actions | FRONTEND-ONLY | BACKEND MISSING + fake | PLACEHOLDER+DECISION | FE-honest | P2 | S | MODULE |
-| 16 | Field | Queue/run checklist | FRONTEND-ONLY | FAKE SUCCESS + NOT WIRED | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
+| 16 | Field | Queue/run checklist | END-TO-END [CLOSED GAP-11] | WIRED (was FAKE+NOT WIRED) | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 17 | Field | Outbox auto-flush | PARTIAL | MISSING COVERAGE | COMPLETE PARTIAL ⭐ | E2E | P1 | S | MODULE |
 | 18 | Field | Runs Fase-2 cards | DEAD-END | MISSING UI honesty | HONEST PLACEHOLDER ⭐ | honest | P3 | S | LOCAL |
 | 19 | PM | Hub dispatch/batch | FRONTEND-ONLY | FAKE SUCCESS + NOT WIRED | MUST INTEGRATE | E2E | P1 | M | MODULE |
-| 20 | Insp | CRUD+force-dispatch | BACKEND-ONLY | SERVICE BYPASS + no UI | MUST FIX+INTEGRATE 🪨 | E2E | P1 | M | MODULE |
+| 20 | Insp | CRUD+force-dispatch | END-TO-END [CLOSED GAP-11] | FIXED (was SERVICE BYPASS + no UI) | MUST FIX+INTEGRATE 🪨 | E2E | P1 | M | MODULE |
 | 21 | Reports | Hub+builder | FRONTEND-ONLY | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P2 | M | MODULE |
 | 22 | Telemetry | Ingest/metrics | BACKEND-ONLY | — (infra) | KEEP BY DESIGN | BE by design | P3 | S | LOCAL |
 | 23 | Jobs | Dua dunia | FE-ONLY+BE-ONLY | DUAL SOURCE | NEED DECISION + FIX links | TBD | P2 | M | MODULE |

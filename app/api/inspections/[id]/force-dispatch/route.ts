@@ -1,10 +1,14 @@
 import type { NextRequest } from 'next/server';
-import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { withRoute } from '@/lib/api/http';
 import { getDb } from '@/db/client';
-import { inspections } from '@/db/schema';
+import { forceDispatchInspection } from '@/lib/services/inspection-service';
 
-/** POST /api/inspections/[id]/force-dispatch — escalates and dispatches an overdue inspection. */
+const ForceDispatchSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
+/** POST /api/inspections/[id]/force-dispatch — escalate + dispatch via service (GAP-11: audit + idempotency, no inline write). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,22 +18,16 @@ export async function POST(
   return withRoute(
     { op: 'inspections.force_dispatch', method: 'POST', permission: 'assets.read' },
     req,
-    async (ctx) => {
-      const db = getDb();
-      await db
-        .update(inspections)
-        .set({ status: 'IN_PROGRESS', progressPct: 0 })
-        .where(
-          and(eq(inspections.organizationId, ctx!.orgId), eq(inspections.number, id))
-        );
-
-      return {
-        data: {
-          number: id,
-          status: 'IN_PROGRESS',
-          dispatchedAt: new Date().toISOString(),
-        },
-      };
+    async (ctx, requestId) => {
+      const body = ForceDispatchSchema.parse(await req.json().catch(() => ({})));
+      const row = await forceDispatchInspection(
+        getDb(),
+        ctx!,
+        id,
+        { reason: body.reason },
+        { idempotencyKey: req.headers.get('idempotency-key'), requestId },
+      );
+      return { data: { ...row, dispatchedAt: new Date().toISOString() } };
     }
   );
 }

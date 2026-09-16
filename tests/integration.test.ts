@@ -24,7 +24,7 @@ import {
 } from '../lib/services/sr-service';
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
-import { convertFindingToWo, createFinding, dismissFinding, getFinding, listFindings } from '../lib/services/inspection-service';
+import { convertFindingToWo, createFinding, createInspection, dismissFinding, forceDispatchInspection, getFinding, getInspection, listFindings, listInspections, updateInspectionProgress } from '../lib/services/inspection-service';
 import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
@@ -1071,4 +1071,66 @@ test('pm (GAP-10): generate WO from rule; idempotent replay; nextDueAt advances;
     ledger.rows.some((e) => e.action === 'PM_GENERATE_WO' && e.entityId === rule.id),
     'PM_GENERATE_WO audited',
   );
+});
+
+// ---------------------------------------------------------------------------
+// GAP-11: inspections + force-dispatch (F20→F16)
+// ---------------------------------------------------------------------------
+test('inspections (GAP-11): create persists with canon numbering + audit; tenant-scoped', async () => {
+  const ins = await createInspection(db, admin, { title: 'GAP-11 probe inspection', auditorName: 'GAP Probe' });
+  assert.match(ins.number, /^INS-\d{4}-\d{4}$/, 'canon INS numbering (no Math.random)');
+  assert.equal(ins.status, 'SCHEDULED');
+  assert.equal(ins.progressPct, 0);
+
+  const fetched = await getInspection(db, admin, ins.number);
+  assert.equal(fetched.title, 'GAP-11 probe inspection');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'inspection' });
+  assert.ok(ledger.rows.some((e) => e.action === 'INSPECTION_CREATE' && e.entityId === ins.number), 'INSPECTION_CREATE audited');
+
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.ok(!(await listInspections(db, decoy)).some((r) => r.number === ins.number), 'decoy tenant sees nothing');
+  await expectDomainError(() => getInspection(db, decoy, ins.number), 404, 'INSPECTION_NOT_FOUND');
+});
+
+test('inspections (GAP-11): force-dispatch persists + audited; replay idempotent; 404/409 guards; progress preserved', async () => {
+  const ins = await createInspection(db, admin, { title: 'GAP-11 dispatch probe' });
+  const key = `gap11-dispatch-${Date.now()}`;
+
+  const disp = await forceDispatchInspection(db, admin, ins.number, { reason: 'GAP-11 probe' }, { idempotencyKey: key });
+  assert.equal(disp.status, 'IN_PROGRESS');
+  assert.equal(disp.progressPct, 0, 'fresh dispatch keeps progress');
+
+  const audits = async () =>
+    (await listAuditEvents(db, admin, { entityType: 'inspection' })).rows
+      .filter((e) => e.action === 'INSPECTION_FORCE_DISPATCH' && e.entityId === ins.number);
+  assert.equal((await audits()).length, 1, 'exactly one INSPECTION_FORCE_DISPATCH audit');
+
+  const replay = await forceDispatchInspection(db, admin, ins.number, { reason: 'GAP-11 probe' }, { idempotencyKey: key });
+  assert.equal(replay.status, 'IN_PROGRESS');
+  assert.equal((await audits()).length, 1, 'idempotent replay writes no second audit');
+
+  // Progress preserved across dispatch (old inline route reset to 0).
+  await updateInspectionProgress(db, admin, ins.number, 45);
+  const redispatched = await forceDispatchInspection(db, admin, ins.number, {}, {});
+  assert.equal(redispatched.progressPct, 45, 'dispatch preserves existing progress');
+  assert.equal(redispatched.status, 'IN_PROGRESS');
+
+  await expectDomainError(() => forceDispatchInspection(db, admin, 'INS-2099-9999', {}, {}), 404, 'INSPECTION_NOT_FOUND');
+
+  await updateInspectionProgress(db, admin, ins.number, 100);
+  await expectDomainError(() => forceDispatchInspection(db, admin, ins.number, {}, {}), 409, 'ALREADY_COMPLETED');
+});
+
+test('inspections (GAP-11): progress persists COMPLETED + audit; clamps; unknown → 404', async () => {
+  const ins = await createInspection(db, admin, { title: 'GAP-11 progress probe' });
+
+  const done = await updateInspectionProgress(db, admin, ins.number, 150);
+  assert.equal(done.progressPct, 100, 'service clamps to 100');
+  assert.equal(done.status, 'COMPLETED');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'inspection' });
+  assert.ok(ledger.rows.some((e) => e.action === 'INSPECTION_PROGRESS' && e.entityId === ins.number), 'INSPECTION_PROGRESS audited');
+
+  await expectDomainError(() => updateInspectionProgress(db, admin, 'INS-2099-9999', 10), 404, 'INSPECTION_NOT_FOUND');
 });

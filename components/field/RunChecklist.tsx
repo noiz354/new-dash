@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
-  ArrowLeft, Camera, Check, CloudUpload, Image as ImageIcon, Lock, Mic, X,
+  ArrowLeft, Camera, CloudUpload, Image as ImageIcon, Lock, Mic, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -20,21 +20,23 @@ import { FieldToasts, useFieldToasts } from './toasts';
 
 const DEFAULT_GPS = '0.7893°S 113.9213°E (site default)';
 const READING_RE = /^\d+(\.\d+)?$/;
-const SUPERVISOR_PIN = '2468';
+
+interface ServerInspection {
+  number: string;
+  progressPct: number;
+  status: string;
+}
 
 /** Run Checklist — H2 mobile execution desk (reference: web/run-checklist.html). */
 export function RunChecklist({ auditId }: { auditId: string }) {
   const { toasts, push } = useFieldToasts();
   const [verdict, setVerdict] = useState<'FAIL' | 'PASS-OVERRIDE'>('FAIL');
   const [reading, setReading] = useState('18.4');
-  const [pinOpen, setPinOpen] = useState(false);
-  const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState(false);
   const [lotoOpen, setLotoOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [voiceState, setVoiceState] = useState('No voice note yet');
-  const [photoState, setPhotoState] = useState('1 frame attached 14:20 WIB');
-  const [iotState, setIotState] = useState('118 PSI · saved');
+  const [photoState, setPhotoState] = useState('No photo attached yet — retake to capture + upload.');
+  const [iotState, setIotState] = useState('118 PSI · demo reading (not saved to ledger)');
   const [iotBusy, setIotBusy] = useState(false);
   const [note, setNote] = useState(
     '18.4 ppm breach exceeds 5 ppm run-check limit. Seal PART-SEAL-8821 replacement + WO dispatch recommended.'
@@ -43,7 +45,9 @@ export function RunChecklist({ auditId }: { auditId: string }) {
     'Severe weeping observed around shaft seal housing. Recommend immediate replacement of PART-SEAL-8821 before shift end.'
   );
   const [submitted, setSubmitted] = useState(false);
-  const [autosave, setAutosave] = useState('Saved');
+  const [submitting, setSubmitting] = useState(false);
+  const [serverStatus, setServerStatus] = useState<string | null>(null);
+  const [autosave, setAutosave] = useState('Server ledger');
   const [gpsText, setGpsText] = useState(DEFAULT_GPS);
   const [evidenceUploading, setEvidenceUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -64,44 +68,50 @@ export function RunChecklist({ auditId }: { auditId: string }) {
     return () => { live = false; };
   }, []);
 
+  // GAP-11: prefill progres server untuk run ini; run yang sudah COMPLETED
+  // di server tampil sebagai submitted (jujur dua arah).
+  useEffect(() => {
+    let live = true;
+    void apiFetch<{ rows: ServerInspection[] }>('/api/inspections')
+      .then((res) => {
+        if (!live) return;
+        const row = res.rows.find((r) => r.number === auditId);
+        if (!row) return;
+        setServerStatus(row.status);
+        if (row.status.toUpperCase() === 'COMPLETED') setSubmitted(true);
+      })
+      .catch(() => { /* offline — run tetap bisa diisi, submit antre gagal jujur */ });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auditId]);
+
   const readingOk = READING_RE.test(reading.trim());
   const noteOk = note.trim().length > 0;
   const guardOk = readingOk && noteOk;
 
-  const markSaved = () => {
-    setAutosave('Saving…');
-    setTimeout(() => setAutosave(`Saved ${wibNow()} WIB`), 500);
-  };
+  /** Autosave indicator jujur: hanya "Saved" setelah tulis server sukses. */
+  const markDirty = () => setAutosave('Unsaved changes');
 
   const onFail = () => {
     haptic.fail(); // FP-07: getar pola FAIL nyata (no-op saat unsupported)
     setVerdict('FAIL');
-    markSaved();
-    push(true, 'Verdict recorded', `Step 02 FAIL · finding FND-2026-0188 stays open · GPS ${gpsText}`);
+    markDirty();
+    push(true, 'Verdict recorded (local)', `Step 02 FAIL · persists to server on submit · GPS ${gpsText}`);
   };
 
-  const onVerifyPin = () => {
-    if (pin.trim() !== SUPERVISOR_PIN) {
-      haptic.fail();
-      setPinError(true);
-      push(false, 'Override rejected', 'Wrong PIN — verdict stays FAIL.');
-      return;
-    }
+  const onPassOverride = () => {
     haptic.pass();
-    setPinOpen(false);
-    setPin('');
-    setPinError(false);
     setVerdict('PASS-OVERRIDE');
-    markSaved();
-    push(true, 'Override logged', 'PASS OVERRIDE by supervisor · audit-chained.');
+    markDirty();
+    push(true, 'Verdict recorded (local)', 'PASS OVERRIDE self-assessed · persists to server on submit. No supervisor countersign on file.');
   };
 
   const onVoice = () => {
     if (recording) {
       setRecording(false);
-      setVoiceState('Voice Note Saved · 0:12 · queued to sync');
-      markSaved();
-      push(true, 'Voice Note Saved', '0:12 attached to Step 02.');
+      setVoiceState('Voice Note Saved · 0:12 · stored on this device only (not synced)');
+      markDirty();
+      push(true, 'Voice Note Saved', '0:12 attached to Step 02 (device-local).');
     } else {
       setRecording(true);
       setVoiceState('Recording… 0:07');
@@ -129,7 +139,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
       );
       prepared.release();
       setPhotoState(`2 frames attached · latest uploaded ${wibNow()} WIB · sha256 verified (${ev.id.slice(0, 8)})`);
-      markSaved();
+      markDirty();
       haptic.pass();
       push(true, 'Evidence uploaded', 'Server re-computed its SHA-256 — hash matched, evidence sealed.');
     } catch (err) {
@@ -142,22 +152,40 @@ export function RunChecklist({ auditId }: { auditId: string }) {
     }
   };
 
+  // IoT demo-explicit (GAP-11): tombol baca Modbus belum punya backend —
+  // wiring ke GET /api/telemetry/ingest = GAP-14 (F8). Tanpa klaim "saved".
   const onIot = () => {
     if (iotBusy) return;
     setIotBusy(true);
     setIotState('Reading Modbus 10.14.0.8…');
     setTimeout(() => {
       setIotBusy(false);
-      setIotState('118 PSI · saved');
-      markSaved();
-      push(true, 'Live reading synced', '118 PSI within 110–130 envelope · saved.');
+      setIotState('118 PSI · demo reading (not saved to ledger)');
+      push(true, 'Demo reading shown', 'Live telemetry wiring lands separately — this value is not saved.');
     }, 800);
   };
 
-  const onSubmit = () => {
-    setSubmitted(true);
-    push(true, 'Audit submitted', `WO auto-dispatch queued. See ${CANON.workOrderSeal}.`);
-    document.getElementById('finding-capture')?.scrollIntoView({ behavior: 'smooth' });
+  // GAP-11: submit persists ke server via POST progress (100/COMPLETED).
+  const onSubmit = async () => {
+    if (submitting || submitted) return;
+    setSubmitting(true);
+    try {
+      const data = await apiFetch<{ number: string; status: string; progressPct: number }>(
+        `/api/inspections/${auditId}/progress`,
+        { method: 'POST', body: { progressPct: 100, status: 'COMPLETED' } },
+      );
+      setSubmitted(true);
+      setServerStatus(data.status);
+      setAutosave(`Saved ${wibNow()} WIB`);
+      haptic.pass();
+      push(true, 'Run recorded', `${data.number} → ${data.status} (server-confirmed).`);
+      document.getElementById('finding-capture')?.scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+      haptic.fail();
+      push(false, 'Submit failed — run NOT recorded', err instanceof ApiError ? `${err.message} (${err.code})` : 'Unknown submit failure.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -230,17 +258,17 @@ export function RunChecklist({ auditId }: { auditId: string }) {
                     type="text"
                     inputMode="decimal"
                     value={reading}
-                    onChange={(e) => { setReading(e.target.value); markSaved(); }}
+                    onChange={(e) => { setReading(e.target.value); markDirty(); }}
                     aria-invalid={!readingOk}
                     className={cn('min-h-[48px] px-3 rounded border-2 font-mono text-base outline-none focus:border-slate900', readingOk ? 'border-hold' : 'border-fail')}
                   />
                   {!readingOk && <p className="text-sm font-bold text-fail">Enter a numeric reading, e.g. 18.4.</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-2" role="group" aria-label="Pass or fail step 2">
-                  <Button variant="pass" onClick={() => { setPin(''); setPinError(false); setPinOpen(true); }}>PASS</Button>
+                  <Button variant="pass" onClick={onPassOverride}>PASS</Button>
                   <Button variant="fail" className={cn(verdict === 'FAIL' && 'ring-4 ring-slate900')} onClick={onFail}>FAIL</Button>
                 </div>
-                <p className="text-sm text-muted">Tapping PASS over an active FAIL requires a supervisor PIN.</p>
+                <p className="text-sm text-muted">Verdict is self-assessed and persists to the server on submit. No supervisor countersign on file.</p>
                 <div className="rounded border-2 border-border-strong overflow-hidden">
                   <div className="bg-slate900 text-white px-3 py-2 flex items-center justify-between gap-2">
                     <span className="apex-id font-bold">PHOTO_CHILLER4_SEAL.RAW</span>
@@ -274,7 +302,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
                   rows={2}
                   aria-label="Technician notes"
                   value={techNotes}
-                  onChange={(e) => { setTechNotes(e.target.value); markSaved(); }}
+                  onChange={(e) => { setTechNotes(e.target.value); markDirty(); }}
                   className="w-full p-3 bg-surface-subtle border-2 border-hold rounded text-sm outline-none focus:border-slate900"
                 />
               </div>
@@ -304,7 +332,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
           </div>
           <div className="p-3 flex flex-col gap-2">
             <p className="text-sm">
-              FAIL verdict opens finding <strong className="apex-id">{CANON.finding}</strong> (Primary Shaft Seal Refrigerant Leak &amp; Bearing Contamination). Completing this run auto-dispatches a work order.
+              FAIL verdict opens finding <strong className="apex-id">{CANON.finding}</strong> (Primary Shaft Seal Refrigerant Leak &amp; Bearing Contamination). Submitting this run records it as COMPLETED in the inspection ledger.
             </p>
             <div className="flex flex-col gap-1">
               <label className="apex-id font-bold" htmlFor="finding-note">Finding note (required for FAIL submit)</label>
@@ -312,7 +340,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
                 id="finding-note"
                 rows={2}
                 value={note}
-                onChange={(e) => { setNote(e.target.value); markSaved(); }}
+                onChange={(e) => { setNote(e.target.value); markDirty(); }}
                 className="w-full p-3 border-2 border-hold rounded text-sm outline-none focus:border-slate900"
               />
               {!noteOk && <p className="text-sm font-bold text-fail">A finding note is required before submitting a FAIL.</p>}
@@ -333,15 +361,15 @@ export function RunChecklist({ auditId }: { auditId: string }) {
           <p className={cn('text-sm font-bold', guardOk ? 'text-pass' : 'text-warn')} role="status">
             {guardOk ? 'Guard pass — ready to submit.' : 'Guard: reading + photo + finding note required.'}
           </p>
-          <Button variant="field" className="bg-slate900 min-h-[56px] text-lg disabled:opacity-40" disabled={!guardOk || submitted} onClick={onSubmit}>
-            {submitted ? 'Submitted ✓' : 'Submit Audit & Auto-Dispatch WO'}
+          <Button variant="field" className="bg-slate900 min-h-[56px] text-lg disabled:opacity-40" disabled={!guardOk || submitted || submitting} onClick={() => void onSubmit()}>
+            {submitted ? 'Submitted ✓' : submitting ? 'Recording…' : 'Submit Audit Run'}
           </Button>
           {submitted && (
             <div className="flex flex-col gap-2">
-              <p className="text-sm font-bold text-pass">Submitted 14:35 WIB — WO auto-dispatched.</p>
+              <p className="text-sm font-bold text-pass">Run recorded{serverStatus ? ` · ${serverStatus} (server)` : ''}.</p>
               <div className="flex gap-2">
-                <Link href={`/work-orders/${CANON.workOrderSeal}`} className="flex-1 min-h-[48px] rounded bg-pass text-white text-sm font-bold inline-flex items-center justify-center">
-                  Open {CANON.workOrderSeal}
+                <Link href={`/field/findings/${CANON.finding}`} className="flex-1 min-h-[48px] rounded bg-pass text-white text-sm font-bold inline-flex items-center justify-center">
+                  Open Conversion Desk
                 </Link>
                 <Link href="/field/audits" className="flex-1 min-h-[48px] rounded border-2 border-slate900 text-sm font-bold inline-flex items-center justify-center">
                   Back to Audits
@@ -372,41 +400,6 @@ export function RunChecklist({ auditId }: { auditId: string }) {
                 <p className="text-sm font-bold">PASS VERIFIED — 0.0V measured</p>
                 <p className="text-xs">Point {CANON.lotoPoint} · {CANON.lotoPanel} · 08:04 WIB</p>
               </div>
-            </DialogPrimitive.Content>
-          </div>
-        </DialogPrimitive.Portal>
-      </Dialog>
-
-      {/* PIN OVERRIDE MODAL */}
-      <Dialog open={pinOpen} onOpenChange={setPinOpen}>
-        <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-[70] bg-black/70" />
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <DialogPrimitive.Content className="relative w-full max-w-sm bg-white rounded border-2 border-slate900 shadow-hard p-4 flex flex-col gap-3" aria-labelledby="pin-h">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <DialogTitle id="pin-h" className="text-lg font-semibold font-display">Supervisor Override</DialogTitle>
-                  <DialogDescription className="text-sm text-muted">Override FAIL → PASS on Step 02. Logged to audit trail.</DialogDescription>
-                </div>
-                <DialogPrimitive.Close aria-label="Close" className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded border-2 border-slate900">
-                  <X size={22} />
-                </DialogPrimitive.Close>
-              </div>
-              <label className="apex-id font-bold" htmlFor="pin-input">Supervisor PIN (demo: 2468)</label>
-              <input
-                id="pin-input"
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                value={pin}
-                onChange={(e) => { setPin(e.target.value); setPinError(false); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') onVerifyPin(); }}
-                className="min-h-[56px] px-3 rounded border-2 border-slate900 font-mono text-lg text-center tracking-[0.5em] outline-none"
-              />
-              {pinError && <p className="text-sm font-bold text-fail">Wrong PIN — verdict stays FAIL.</p>}
-              <Button variant="field" className="bg-slate900 min-h-[56px] text-lg" onClick={onVerifyPin}>
-                <Check size={20} /> Verify &amp; Override
-              </Button>
             </DialogPrimitive.Content>
           </div>
         </DialogPrimitive.Portal>
