@@ -146,3 +146,8 @@
 - Sorotan DONE baru: viewer dokumen `documents/[docId]`, BIM viewer, prefill WO/inspeksi via `?asset=`, GeoJSON export + "geometries unseeded" jujur, dialog Add Sub-Location/Reassign/Log Defect/Polygon, Receive Stock tervalidasi, SKU detail, tab 3-Way Match, kunci dispatch MSA-expired.
 - Sorotan PROMOTE terbesar: Asset Detail (10: sub-tab iot/pm/docs, dossier PDF, ledger 421, guardrail deficit, modal-modalan BOM/PR/PO), Facilities (kontrak JSON ganti HTMX, persist polygon, unifikasi hitungan), Inventory (POST idempoten + PIN nyata — keamanan), Purchasing (POST nyata + guard server-side), Vendors (onboard/amendment flows).
 - (U) = 11 item kedalaman belum terverifikasi — verifikasi saat implementasi backlog.
+### Step 2 batch 3 — triase governance & sistem (DONE 42 / PROMOTE 45 / (U) 4, USANG 0)
+- Sumber `docs/exp-check/part-governance.md` (244 baris, 91 checkbox, 8 layar) vs HEAD 361ff8f; detail tabel: `docs/triase-batch-3-governance.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 3.
+- Sorotan DONE baru: hash-chain audit + verify panel (buah TASK-20), transport SSE jujur + fallback (buah TASK-26), secret rotate crypto-random (P1 BLOKER selesai), ConfirmDialog destruktif, Schedule Dispatch, WoTimers BREACH, states adoption, markAllRead.
+- Sorotan PROMOTE terbesar: Notifications (8: Reassign/transfer crib, markAllRead rollback, kanal, banner WS jujur, eskalasi, query params), Reports (7: filter dimensi, job EXP/RPT, export async, badge LAG/STALE, validasi builder), Settings (7: konfirmasi destruktif, drawer editor, deep-link, Maint audit, lazy-fetch).
+- (U) = 4 item (cron persist, revoke perilaku, roster empty, restore viewer/RPO + seed feedback, FormField) — verifikasi saat implementasi backlog.

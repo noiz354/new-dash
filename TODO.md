@@ -370,6 +370,21 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [ ] (U) kedalaman belum terverifikasi — verifikasi saat implementasi: prefill WO/PM dari drawer registry, tombol copy tag + fallback, referensi gantung WO/PO/TO/ADJ, link simbol CHILLER #04, klik node tree spasial, polling feed inventory + badge hash, Print QR rak-bin, Expiry Ledger inline vs halaman, empty state direktori, `tel:` Direct Ring
 - [ ] Dependensi kanon belum diputus: WO seal ganda, OEM Trane vs Daikin, skor 68/88/88,4, harga PART-SEAL-8821, bin CRIB-B vs SUB-LCK-4B, MSA 312d vs 288d, label WO-0894 vs WO-2026-0894
 
+## Backlog Step 2 — Batch 3 Governance (triase PROMOTE, detail: `docs/triase-batch-3-governance.md`)
+
+> Hasil: DONE 42, PROMOTE 45, (U) 4, USANG 0 dari 91 item `docs/exp-check/part-governance.md` vs HEAD 361ff8f.
+
+- [ ] Dashboard: modal Quick Create WO + POST, aksi baris inline optimistis (Dispatch/Reassign/Auto-Assign/Expedite), banner Telemetry Degraded + Retry (wiring dashboard), filter rail via query params + reset, tab chart + skeleton/shimmer + Retry
+- [ ] Reports: drawer filter dimensi (tune), riwayat job EXP-*/RPT-*, generate/export async (Compiling→Ready, FAILED+Retry), badge replika SYNCED→LAG/STALE, validasi query builder + preview 0 records, filter kosong + Reset, toast export per baris
+- [ ] Audit Trail: ekspor log terjadwal berkala
+- [ ] Notifications: modal Reassign Tech, flow transfer antar-crib, markAllRead optimistic + rollback, toggle kanal/preferensi, banner WS putus ganti label jujur (label `WS-PUSH: 12ms` fiksi — lihat F-COPY), countdown auto-eskalasi + STALE, tab/search/severity via query params + empty message, kartu tetap unread bila gagal
+- [ ] Organization: auth prod SSO Okta SAML + MFA FIDO2, modal Edit Assignment, sync SCIM per user + retry + webhook log, PUT rules server + rollback (Deploy kini simulated), validasi modal Provision, banner sesi impersonasi
+- [ ] Settings: dialog konfirmasi destruktif (Reset/Purge/Rotate/Maint), drawer editor konfigurasi, deep-link `?tab=`, konfirmasi Maint Mode ON + audit, save banner TX + Retry, tab lazy-fetch + skeleton, empty webhook/snapshot/kunci
+- [ ] UI States: `TableSkeleton`, standar hover-reveal + focus ring + kanban drag, kontrak prod Force Ping + flush, Retry idempoten + Copy Log, skeleton→baris + STALE, guard submit + LOTO
+- [ ] Logo: varian logo-white/mark/favicon/PWA icon, keputusan tipografi wordmark, alt/fallback inisial AO, skeleton 36×36
+- [ ] (U) kedalaman belum terverifikasi — verifikasi saat implementasi (4 item): persistensi cron Schedule Dispatch; revoke perilaku profil user; empty state roster Displayed; viewer hasil restore + RPO/RTO/diff; feedback job seed/backup; adopsi FormField + guard
+- [ ] Dependensi kanon belum diputus: WO-2024 vs WO-2026, tenant APX-NUSA-01 vs APX-GL-9021, 6 vs 8 roles, Shift A, PR vs PO, Quiet Hours, zona, kontak, screen.png salah sorot, artefak mobile shell purchasing/vendors, ID contoh ui-patterns, presisi logo
+
 ### Definition of Done per slice (WAJIB semua)
 
 1. `npm run typecheck` hijau · `npm test` hijau (test baru untuk domain/service yang ditambah) · `npm run build` hijau (0 log level error)
