@@ -416,7 +416,7 @@ Source code menunjukkan intent. Browser runtime menunjukkan kenyataan.
 
 ## STATUS EKSEKUSI (diisi agent saat verifikasi berjalan)
 
-- [ ] TASK-19 Barcode → verdict: _
+- [x] TASK-19 Barcode → verdict: PARTIAL (`docs/runtime-verification-task19.md`)
 - [ ] TASK-20 Audit truthfulness → verdict: _
 - [ ] TASK-21 Windowing → verdict: _
 - [ ] TASK-23 PWA Manifest → verdict: _
