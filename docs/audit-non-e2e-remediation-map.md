@@ -358,7 +358,26 @@ Gap: BACKEND MISSING + FAKE SUCCESS. Break: handler→API. Persist: NOT
 PERSISTED (refresh hilang). Tests: NONE. **Decision: MUST FIX copy dulu (S)
 + NEED PRODUCT DECISION** (KV backend vs local). Target: FRONTEND-honest.
 Reason: "persisted production" tanpa write = klaim compliance. P2/S-then-L/
-MODULE.
+MODULE. **[CLOSED GAP-16 (F26=TASK 6) 2026-09-16 — KV backend dibangun 2
+fase (spec `docs/remediation-gap-21-spec.md`): tabel `settings_kv` (migrasi
+0006; PK org+key; value JSON-encoded; kind value|secret — secret HASH-ONLY
+sha256+last4, plaintext hanya keluar sekali di respons rotate, meniru
+api-key GAP-13) + seed minimal `ops.maint_mode=false` + service
+`settings-service.ts` (list/put/rotate; audit `SETTINGS_UPDATE`/
+`SETTINGS_SECRET_ROTATE` transaksional; idempoten `settings.put`/
+`settings.rotate`; jaminan PUT kind=secret → 400 `SECRET_VIA_ROTATE`; zod key
+regex+16KB) + routes GET /api/settings, PUT /api/settings/[key], POST
+/api/settings/[key]/rotate (izin `settings.manage`) + SettingsHub di-wire
+semua handler (profile/broker/hooks/maint=snapshot&restore metadata
+`simulated · 0 rows touched`/rotate issue reveal-hash-only) dengan fallback
+offline berlabel; FASE-1: PIN `2468` DIHAPUS, broker `10.14.0.8` → not
+configured, ENV PROD → demo workspace, hook '200 OK' → never probed, glue
+S3/SOC2/Fixer/Oracle/99.94 berqualifier planned; test 2 integration
+(round-trip+replay+400 SECRET_VIA_ROTATE+400 size/key+tenant guard+rotate
+2× hash-only+replay persist+audit×2 zeira) + 2 guard truthfulness; runtime
+isolasi :3158: PUT persists-reload OK · rotate 1× plaintext · GET hash-only ·
+400+401 OK · audit 5U+2R · /settings 200 nol klaim fiksi · tests 161/161 ·
+tsc bersih]**
 
 **F27 — Shifts.** Current: FRONTEND-ONLY + badge "AUDIT COMPLIANT" tanpa
 ledger, HND-* historis tanpa DB. Gap: BACKEND MISSING + MISLEADING badge.
@@ -430,7 +449,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 23 | Jobs | Dua dunia | END-TO-END [CLOSED GAP-16-T3] | WIRED (was DUAL SOURCE) | NEED DECISION (decided: honest+wire) | E2E-ephemeral | P2 | M | MODULE |
 | 24 | Billing | HMAC/checkout | BACKEND-ONLY | AUTH BYPASS (catch) | MUST FIX | BE-hardened | P0 | M | MODULE |
 | 25 | Retention | Digest orphan | DEPRECATED [CLOSED GAP-16-T4] | FLAGGED (was NO TRIGGER) | NEED DECISION (decided: deprecate, sunset 2026-12-15) | deprecated-honest | P3 | S | LOCAL |
-| 26 | Settings | Keys/rotate/maint | FRONTEND-ONLY | BACKEND MISSING + fake | FIX copy + DECISION | FE-honest | P2 | S→L | MODULE |
+| 26 | Settings | Keys/rotate/maint | CLOSED [GAP-16-T6] | BACKEND BUILT + WIRED | FIXED (settings.manage; settings_kv hash-only secrets) | E2E + staged fallback | P2 | S→L | MODULE |
 | 27 | Shifts | Accept/reject | FRONTEND-ONLY | BACKEND MISSING + fake badge | FIX badge + DECISION | TBD | P2 | S→M | MODULE |
 | 28 | Import | CSV import | NOT FOUND | — | DEFER | NONE | P3 | — | — |
 | 29 | AuthZ | Impersonate | MOCKED | FAKE SUCCESS (audit) | MUST FIX | E2E/honest | P0 | S/M | MODULE |

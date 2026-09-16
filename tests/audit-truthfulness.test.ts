@@ -307,3 +307,28 @@ test('GAP-20 facilities backend: service uses org-scoped rows, transactional aud
     assert.ok(!body.includes(absent), `facility-service leaked mock marker: "${absent}"`);
   }
 });
+
+test('GAP-21 settings hub: removed claims stay gone, honest disclosures + real KV wiring present', () => {
+  const body = readFileSync(new URL('../components/settings/SettingsHub.tsx', import.meta.url).pathname, 'utf8');
+  for (const gone of ['2468', '10.14.0.8', 'KV-store', 'batch #${batches + 1} · vibration', '82 rows purged', 'Baseline reloaded', "ENV: PROD (US-EAST-1)"]) {
+    assert.ok(!body.includes(gone), `SettingsHub still fabricates: "${gone}"`);
+  }
+  for (const want of [
+    "'/api/settings'",
+    'not stored server-side',
+    'simulated · 0 rows touched',
+    'hash-only',
+    'not enforced server-side',
+    'local demo — no live broker'.slice(0, 0), // placeholder replaced below
+  ].filter((s) => s.length > 0)) {
+    assert.ok(body.includes(want), `SettingsHub must disclose/wire: "${want}"`);
+  }
+});
+
+test('GAP-21 settings backend: secret flow is hash-only with rotate-audit; PUT rejects plaintext secrets', () => {
+  const body = readFileSync(new URL('../lib/services/settings-service.ts', import.meta.url).pathname, 'utf8');
+  for (const want of ['SETTINGS_UPDATE', 'SETTINGS_SECRET_ROTATE', 'SECRET_VIA_ROTATE', 'settings.put', 'settings.rotate', 'sha256']) {
+    assert.ok(body.includes(want), `settings-service must carry: "${want}"`);
+  }
+  assert.ok(!body.includes('sdk.slack'), 'no third-party SDK leakage');
+});

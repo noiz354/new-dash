@@ -34,6 +34,7 @@ import { addEvidence, listWoEvidence } from '../lib/services/task-service';
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
 import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
 import { createFacility, getFacility, listFacilities, updateFacility } from '../lib/services/facility-service';
+import { listSettings, putSetting, rotateSecret } from '../lib/services/settings-service';
 import { can } from '../lib/auth/rbac';
 import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
 import { provisionOrganization } from '../lib/services/onboarding-service';
@@ -1553,4 +1554,121 @@ test('facilities (GAP-20/F15): RBAC grants facilities.read to all roles and faci
   assert.ok(can('Engineering Lead', 'facilities.manage'), 'Engineering Lead manages facilities');
   assert.ok(can('Enterprise Admin', 'facilities.manage'), 'Enterprise Admin wildcard');
   assert.equal(can('Senior Field Tech', 'facilities.manage'), false, 'Senior Field Tech read-only');
+});
+
+// ---------------------------------------------------------------------------
+// Settings KV (GAP-21/F26)
+// ---------------------------------------------------------------------------
+test('settings KV (GAP-21/F26): PUT/GET round-trip, replay idempotent, kind=secret blocked on PUT, tenant guard, audit written', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  // seeded key present
+  const init = await listSettings(db, admin);
+  assert.ok(init.some((s) => s.key === 'ops.maint_mode' && s.value === false), 'seeded ops.maint_mode=false present');
+  assert.ok(!init.some((s) => s.kind === 'secret'), 'no secrets seeded');
+
+  // JSON-rich round trip
+  const before = await countAudit('SETTINGS_UPDATE');
+  const written = await putSetting(db, admin, 'general.profile', {
+    value: { company: 'Apex Nusantara', brand: 'Apex Ops East', ccy: 'IDR', tz: 'UTC+07:00', fiscal: 'Jan-Dec', week: 'Mon-Sat' },
+  }, { idempotencyKey: 'set-put-it-01' });
+  assert.equal(written.key, 'general.profile');
+  assert.deepEqual((written.value as Record<string, unknown>).ccy, 'IDR');
+  assert.equal(await countAudit('SETTINGS_UPDATE') - before, 1, 'exactly one SETTINGS_UPDATE audit row');
+
+  // replay returns stored row, no duplicate audit even though content is "same-looking"
+  const replay = await putSetting(db, admin, 'general.profile', {
+    value: { company: 'Apex Nusantara', brand: 'Apex Ops East', ccy: 'IDR', tz: 'UTC+07:00', fiscal: 'Jan-Dec', week: 'Mon-Sat' },
+  }, { idempotencyKey: 'set-put-it-01' });
+  assert.equal(replay.updatedAt, written.updatedAt, 'replay returns the original write (unchanged timestamp)');
+  assert.equal(await countAudit('SETTINGS_UPDATE') - before, 1, 'replay audited nothing new');
+
+  // PUT with different body but same key overwrites, latest update wins
+  const rePut = await putSetting(db, admin, 'general.profile', { value: { ccy: 'USD' } });
+  assert.equal((rePut.value as Record<string, unknown>).ccy, 'USD');
+
+  const listAgain = await listSettings(db, admin);
+  const profile = listAgain.find((s) => s.key === 'general.profile');
+  assert.ok(profile && (profile.value as Record<string, unknown>).ccy === 'USD', 'list reflects latest write');
+
+  // secrets must not be PUT-able
+  await expectDomainError(
+    () => putSetting(db, admin, 'security.core_api_secret', { value: 'apx_live_sec_plaintext_no', kind: 'secret' }),
+    400, 'SECRET_VIA_ROTATE',
+  );
+  assert.ok(
+    !(await listSettings(db, admin)).some((s) => s.key === 'security.core_api_secret'),
+    'blocked secret PUT left no secret row',
+  );
+
+  // validation
+  await expectDomainError(() => putSetting(db, admin, 'bad key with spaces', { value: 1 }), 400, 'VALIDATION_ERROR');
+  await expectDomainError(
+    () => putSetting(db, admin, 'toobig', { value: 'x'.repeat(20_000) }),
+    400, 'VALIDATION_ERROR',
+  );
+
+  // tenant guard: decoy tenant sees nothing of canon's rows, and its own isolated store
+  const { ctx: decoy } = await gap14Decoy();
+  const decoyList = await listSettings(db, decoy);
+  assert.ok(!decoyList.some((s) => s.key === 'general.profile' || s.key === 'ops.maint_mode'), 'decoy cannot see canon settings');
+  const decoyPut = await putSetting(db, decoy, 'general.profile', { value: { ccy: 'MYR' } });
+  assert.equal((decoyPut.value as Record<string, unknown>).ccy, 'MYR', 'decoy writes its own profile');
+  const canonAfter = (await listSettings(db, admin)).find((s) => s.key === 'general.profile');
+  assert.equal((canonAfter!.value as Record<string, unknown>).ccy, 'USD', 'canon row untouched by decoy write');
+});
+
+test('settings KV (GAP-21/F26): rotate hash-only — plaintext returned once, never listed, replaystable, audit written', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  const before = await countAudit('SETTINGS_SECRET_ROTATE');
+  const r1 = await rotateSecret(db, admin, 'security.core_api_secret', { idempotencyKey: 'set-rot-it-01' });
+  assert.match(r1.secret, /^apx_live_sec_[a-f0-9]{32}$/, 'server-side crypto secret pattern');
+  assert.equal(r1.secret.slice(-4), r1.last4);
+  assert.equal(await countAudit('SETTINGS_SECRET_ROTATE') - before, 1);
+
+  // list: secret shows last4 + hasSecret, NEVER the plaintext / hash
+  const listed = (await listSettings(db, admin)).find((s) => s.key === 'security.core_api_secret');
+  assert.ok(listed, 'secret row listed');
+  assert.equal(listed!.hasSecret, true);
+  assert.equal(listed!.last4, r1.last4);
+  assert.equal(listed!.value, undefined, 'value never leaves for secrets');
+  const rawJson = JSON.stringify(listed);
+  assert.ok(!rawJson.includes(r1.secret), 'plaintext absent from list DTO');
+  assert.ok(!rawJson.includes('apx_live_sec_'), 'even the prefix stays out of the listed row');
+
+  // idempotent replay: same response (same plaintext!) and no second audit for that key+op
+  const replay = await rotateSecret(db, admin, 'security.core_api_secret', { idempotencyKey: 'set-rot-it-01' });
+  assert.equal(replay.secret, r1.secret, 'idempotent replay returns the stored envelope (same plaintext once-more)');
+  assert.equal(await countAudit('SETTINGS_SECRET_ROTATE') - before, 1, 'replay did not re-audit');
+
+  // second rotate: NEW secret, new hash; old plaintext long gone from records
+  const r2 = await rotateSecret(db, admin, 'security.core_api_secret');
+  assert.notEqual(r2.secret, r1.secret);
+  assert.notEqual(r2.last4 === r1.last4 && r2.secret === r1.secret, true);
+  const listed2 = (await listSettings(db, admin)).find((s) => s.key === 'security.core_api_secret');
+  assert.equal(listed2!.last4, r2.last4, 'latest rotation wins');
+  assert.equal(await countAudit('SETTINGS_SECRET_ROTATE') - before, 2, 'second rotation audited');
+
+  // decoy cannot rotate/read canon rows; rotate in decoy is isolated
+  const { ctx: decoy } = await gap14Decoy();
+  const decoyList = await listSettings(db, decoy);
+  assert.ok(!decoyList.some((s) => s.key === 'security.core_api_secret'), 'decoy sees no canon secret');
+  const dr = await rotateSecret(db, decoy, 'security.core_api_secret');
+  const decoyAgain = (await listSettings(db, decoy)).find((s) => s.key === 'security.core_api_secret');
+  assert.equal(decoyAgain!.last4, dr.last4, 'decoy rotates in its own tenant');
+  const canonAgain = (await listSettings(db, admin)).find((s) => s.key === 'security.core_api_secret');
+  assert.equal(canonAgain!.last4, r2.last4, 'canon secret untouched by decoy rotate');
+
+  // PUT on a secret key with kind=secret is rejected even after the row exists
+  await expectDomainError(
+    () => putSetting(db, admin, 'security.core_api_secret', { value: 'x', kind: 'secret' }),
+    400, 'SECRET_VIA_ROTATE',
+  );
 });

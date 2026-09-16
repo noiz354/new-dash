@@ -341,6 +341,29 @@ export const facilities = pgTable(
   ],
 );
 
+// ------------------------------------------------------------ settings KV (GAP-21/F26) --
+
+/** Org-scoped key-value settings. `value` is JSON-encoded text. kind='secret'
+ *  rows NEVER store plaintext — `value` holds sha256(plaintext) and `last4`
+ *  the display hint; the plaintext leaves the server exactly once (rotate
+ *  response), mirroring the api-keys pattern. Backup snapshot/restore keys
+ *  store honest metadata ({mode:'simulated', rowsTouched:0}) — never claims
+ *  of a real backup. */
+export const settingsKv = pgTable(
+  'settings_kv',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(), // dot-hierarchy: general.profile, integrations.broker, ops.maint_mode
+    kind: text('kind').notNull().default('value'), // value | secret
+    value: text('value').notNull(), // JSON-encoded value | sha256 hash (secret)
+    last4: text('last4'), // secret display hint only
+    updatedBy: text('updated_by').notNull(), // actor display name
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.key] })],
+);
+
 export const PO_STATUSES = [
   'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DISPATCHED', 'PARTIAL', 'RECEIVED', 'REJECTED', 'CLOSED',
 ] as const;

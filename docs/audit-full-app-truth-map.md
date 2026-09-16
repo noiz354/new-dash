@@ -57,7 +57,7 @@
 | Billing | Plans/invoice + webhook | NOT FOUND | billing + webhook FOUND | FOUND | Stripe external (U) | — | BACKEND-ONLY hardened [CLOSED GAP-06 2026-09-16: HMAC raw-body fail-closed, event-id dedup, checkout Stripe asli/503] |
 | Retention | Digest | NOT FOUND (by design) | retention/digest FOUND — DEPRECATED [GAP-16-T4, sunset 2026-12-15] | FOUND | (U) | deprecated+note di respons | BACKEND-ONLY deprecated |
 | Audit | Trail + verify-chain + widget | AuditTrail POST FOUND | audit-trail + verify-chain FOUND | recompute FOUND | DB audit_events FOUND | Ledger + badge | END-TO-END |
-| Settings | Keys/rotate/maint/webhook | Nol fetch, state lokal | (parsial: rotate key lokal) | NOT FOUND | — | Toast lokal | FRONTEND-ONLY |
+| Settings | Keys/rotate/maint/webhook/KV reads | apiFetch /api/settings(+[key,+…/rotate) FOUND [GAP-16-T6] | settings-service hash-only/PUT/rotate FOUND | settings_kv table FOUND (0006) | — | wire semua handler + fallback berlabel | END-TO-END [GAP-16-T6 CLOSED 2026-09-16] |
 | Dashboard | Ops dashboard | Server comp FOUND | — (server comp) | getDashboard FOUND | DB FOUND | Kartu + antrean live | END-TO-END |
 | Shifts | Shift plan accept/reject | State lokal, nol fetch | NOT FOUND | NOT FOUND | — | Toast lokal | FRONTEND-ONLY |
 | Profile | Sessions list | SEED statis MOCKED | sessions ADA tak dipanggil | FOUND | DB (tak tersentuh) | Daftar statis | FRONTEND-ONLY |

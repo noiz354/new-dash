@@ -13,7 +13,7 @@ import { sql } from 'drizzle-orm';
 import type { Db } from './client';
 import {
   assets, facilities, findings, inspections, organizations, parts, purchaseOrders,
-  sequences, serviceRequests, users, vendors, workOrderEvents, workOrders, woTasks,
+  sequences, serviceRequests, settingsKv, users, vendors, workOrderEvents, workOrders, woTasks,
 } from './schema';
 import { CANON } from '../lib/canon';
 import { hashPassword } from '../lib/auth/password';
@@ -176,6 +176,13 @@ export async function seedAll(db: Db): Promise<void> {
   await db.insert(facilities).values([
     { organizationId: ORG, code: 'B2-MECH-204', name: 'Centrifugal Chiller Plant Room #B-204', geojson: null, meta: JSON.stringify({ defects: [], transfers: [] }) },
     { organizationId: DECOY_ORG, code: 'DOCK-QA-01', name: 'Decoy Dock QA Staging Room', geojson: null, meta: JSON.stringify({ defects: [], transfers: [] }) },
+  ]).onConflictDoNothing();
+
+  // -------------------------------------------- settings KV (GAP-21/F26) --
+  // One seeded key per prompt: maintenance-mode toggle defaults OFF.
+  // Everything else is created on first PUT (no fictional entries).
+  await db.insert(settingsKv).values([
+    { organizationId: ORG, key: 'ops.maint_mode', kind: 'value', value: 'false', updatedBy: 'seed' },
   ]).onConflictDoNothing();
 
   // ---------------------------------------------------- purchase orders --

@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
 import { downloadText } from '@/lib/download';
+import { ApiError, apiFetch } from '@/lib/api/client';
 
 const TABS = ['General Configuration', 'Data & Seed Controls', 'Integrations & Webhooks', 'Localization & Units', 'Security & Auth Keys'] as const;
 
@@ -35,10 +36,36 @@ const SNAPS: Snap[] = [
 interface Hook { url: string; name: string; topics: string; auth: string; health: string; lat: string }
 
 const HOOKS: Hook[] = [
-  { url: 'https://hooks.slack.com/services/T04/B08/x91...', name: 'Slack #ops-critical-dispatch', topics: 'wo.critical_sla · alert.p1', auth: 'HMAC-SHA256 Sig', health: '200 OK', lat: '68ms' },
-  { url: 'https://api.incident.io/v1/escalations', name: 'Incident.io Major Incident Trigger', topics: 'asset.tier1_failure', auth: 'Bearer Token', health: '200 OK', lat: '114ms' },
-  { url: 'https://pagerduty.com/integrations/v2/enqueue', name: 'PagerDuty Facilities On-Call Routing', topics: 'scada.refrigerant_leak', auth: 'Routing Key Header', health: '200 OK', lat: '92ms' },
+  { url: 'https://hooks.slack.com/services/T04/B08/x91...', name: 'Slack #ops-critical-dispatch', topics: 'wo.critical_sla · alert.p1', auth: 'HMAC-SHA256 Sig', health: '— (never probed)', lat: '—' },
+  { url: 'https://api.incident.io/v1/escalations', name: 'Incident.io Major Incident Trigger', topics: 'asset.tier1_failure', auth: 'Bearer Token', health: '— (never probed)', lat: '—' },
+  { url: 'https://pagerduty.com/integrations/v2/enqueue', name: 'PagerDuty Facilities On-Call Routing', topics: 'scada.refrigerant_leak', auth: 'Routing Key Header', health: '— (never probed)', lat: '—' },
 ];
+
+/** Mirrors the server's SettingRow DTO (settings_kv) — never imported. */
+interface SettingEntry {
+  key: string;
+  kind: 'value' | 'secret';
+  value: unknown;
+  last4: string | null;
+  hasSecret: boolean;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+const SETTINGS_API = '/api/settings';
+/** Canonical key map (docs/remediation-gap-21-spec.md §2 is the source of truth). */
+const SKEY = {
+  profile: 'general.profile',
+  broker: 'integrations.broker',
+  hooks: 'integrations.webhooks',
+  maint: 'ops.maint_mode',
+  snap: 'ops.backup_last_snapshot',
+  restore: 'ops.backup_last_restore',
+  coreSecret: 'security.core_api_secret',
+  issued: 'security.issued_keys',
+} as const;
+
+const encodeKey = (k: string) => `${SETTINGS_API}/${encodeURIComponent(k)}`;
 
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1500;
@@ -88,9 +115,9 @@ export function SettingsHub() {
   const [restoring, setRestoring] = useState<string | null>(null);
   const [restored, setRestored] = useState('');
   // Integrations
-  const [broker, setBroker] = useState('mqtt://10.14.0.8:1883');
+  const [broker, setBroker] = useState<string | null>(null);
   const [epOpen, setEpOpen] = useState(false);
-  const [epVal, setEpVal] = useState('mqtt://10.14.0.8:1883');
+  const [epVal, setEpVal] = useState('');
   const [epTouched, setEpTouched] = useState(false);
   const [connTest, setConnTest] = useState('');
   const [erpSync, setErpSync] = useState('4 mins ago');
@@ -108,17 +135,16 @@ export function SettingsHub() {
   const [key, setKey] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [pinOpen, setPinOpen] = useState(false);
-  const [pin, setPin] = useState('');
-  const [pinTouched, setPinTouched] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const [issueName, setIssueName] = useState('');
   const [issueTouched, setIssueTouched] = useState(false);
   const [extraKeys, setExtraKeys] = useState<{ name: string; last4: string }[]>([]);
   const [shownOnce, setShownOnce] = useState('');
-
-  useEffect(() => {
-    setKey(genKey());
-  }, []);
+  // GAP-21/F26: server-backed settings_kv state (fallback honest local demo).
+  const [settingsRows, setSettingsRows] = useState<SettingEntry[]>([]);
+  const [setLive, setSetLive] = useState<boolean | null>(null);
+  const [setBusy, setSetBusy] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
   const push = (ok: boolean, title: string, msg: string) => {
     const id = toastSeq++;
@@ -126,10 +152,104 @@ export function SettingsHub() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 8000);
   };
 
-  const save = () => {
+  const errMsg = (e: unknown) => (e instanceof ApiError ? `${e.message} (${e.code})` : 'Unexpected error — nothing persisted.');
+
+  /** Apply server-persisted values into the local form state truthfully. */
+  const applyEntries = (rows: SettingEntry[]) => {
+    const byKey = new Map(rows.map((r) => [r.key, r]));
+    const prof = byKey.get(SKEY.profile);
+    if (prof && typeof prof.value === 'object' && prof.value !== null) {
+      const p = prof.value as Partial<Record<'company' | 'brand' | 'ccy' | 'tz' | 'fiscal' | 'week', string>>;
+      if (p.company) setCompany(p.company);
+      if (p.brand) setBrand(p.brand);
+      if (p.ccy) setCcy(p.ccy);
+      if (p.tz) setTz(p.tz);
+      if (p.fiscal) setFiscal(p.fiscal);
+      if (p.week) setWeek(p.week);
+    }
+    const br = byKey.get(SKEY.broker);
+    if (br && typeof br.value === 'string') setBroker(br.value || null);
+    const hk = byKey.get(SKEY.hooks);
+    if (hk && Array.isArray(hk.value)) {
+      setHooks((hk.value as Hook[]).map((h) => ({ ...h, health: h.health ?? '— (never probed)', lat: h.lat ?? '—' })));
+    }
+    const mt = byKey.get(SKEY.maint);
+    if (mt && typeof mt.value === 'boolean') setMaint(mt.value);
+    const core = byKey.get(SKEY.coreSecret);
+    setKey(core ? null : null); // plaintext never arrives; rendering uses last4
+    const issued = byKey.get(SKEY.issued);
+    if (issued && Array.isArray(issued.value)) {
+      setExtraKeys(issued.value as { name: string; last4: string }[]);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const res = await apiFetch<{ entries: SettingEntry[] }>(SETTINGS_API);
+      setSettingsRows(res.entries);
+      applyEntries(res.entries);
+      setSetLive(true);
+    } catch {
+      setSetLive(false);
+      setKey(genKey()); // offline demo key — clearly labeled when displayed
+    }
+  };
+
+  useEffect(() => { void loadSettings(); }, []);
+
+  const coreSecretRow = settingsRows.find((r) => r.key === SKEY.coreSecret);
+  const snapMeta = settingsRows.find((r) => r.key === SKEY.snap);
+  const restoreMeta = settingsRows.find((r) => r.key === SKEY.restore);
+
+  /** Upsert helper shared by all handlers wiring PUT /api/settings/[key]. */
+  const putKey = async (key: string, value: unknown): Promise<SettingEntry | null> => {
+    try {
+      const row = await apiFetch<SettingEntry>(encodeKey(key), { method: 'PUT', body: JSON.stringify({ value }) });
+      setSettingsRows((rows) => [row, ...rows.filter((x) => x.key !== row.key)]);
+      setLastSavedAt(new Date().toISOString());
+      return row;
+    } catch (e) {
+      push(false, `Settings write failed — ${key}`, errMsg(e));
+      return null;
+    }
+  };
+
+  const save = async () => {
+    if (setLive) {
+      setSetBusy(true);
+      try {
+        const row = await apiFetch<SettingEntry>(encodeKey(SKEY.profile), {
+          method: 'PUT',
+          body: JSON.stringify({ value: { company, brand, ccy, tz, fiscal, week } }),
+        });
+        setSettingsRows((rows) => [row, ...rows.filter((x) => x.key !== row.key)]);
+        setLastSavedAt(row.updatedAt);
+        push(true, 'Parameters persisted — server', `general.profile saved to settings_kv · updated by ${row.updatedBy}.`);
+      } catch (e) {
+        push(false, 'Save failed', errMsg(e));
+      } finally {
+        setSetBusy(false);
+      }
+      return;
+    }
     const n = tx + 1;
     setTx(n);
     push(true, 'Parameters staged (local)', `TX-${n} · local state only — not persisted.`);
+  };
+
+  const saveBrokerEndpoint = async () => {
+    setEpTouched(true);
+    const v = epVal.trim();
+    if (!/^mqtt:\/\/.+:\d+$/.test(v)) return;
+    setEpOpen(false);
+    setEpTouched(false);
+    setBroker(v);
+    if (setLive) {
+      const row = await putKey(SKEY.broker, v);
+      if (row) push(true, 'Endpoint persisted — server', `${v} · saved to settings_kv. Ingest is NOT rerouted (no live broker).`);
+      return;
+    }
+    push(true, 'Endpoints saved (local)', `${v} · ingest NOT rerouted (no live broker) · not persisted.`);
   };
 
   const exportBundle = () => {
@@ -157,79 +277,150 @@ export function SettingsHub() {
     push(true, 'Sequence updated', `${cfg.ent} → ${cfg.prev(cfgVal.trim())}.`);
   };
 
-  const snapshot = () => {
-    setSnaps((s) => [{ ts: utcDay(), mode: 'Ad-hoc Snapshot (this session)', vol: '— (sealing)', sum: 'Sealing…', ret: 'Manual Flag • S3 Standard', live: true }, ...s]);
-    push(true, 'Snapshot started', 'Ad-hoc snapshot sealing → s3 vault · manifest on verify.');
+  const snapshot = async () => {
+    const ts = utcDay();
+    setSnaps((s) => [{ ts, mode: 'Ad-hoc Snapshot (this session — metadata only)', vol: '0 rows', sum: 'simulated', ret: 'Metadata record — no backup exists', live: true }, ...s]);
+    if (setLive) {
+      const row = await putKey(SKEY.snap, { ts, mode: 'simulated', rowsTouched: 0, note: 'Ad-hoc snapshot is simulated — no backup pipeline exists.' });
+      if (row) push(true, 'Snapshot metadata persisted', 'simulated · 0 rows touched · recorded in settings_kv (not a database backup).');
+      return;
+    }
+    push(true, 'Snapshot simulated (local)', 'simulated · 0 rows touched · local state only — not persisted.');
   };
 
   const restoreSim = (ts: string) => {
     setRestoring(ts);
     setRestored('');
-    setTimeout(() => {
+    setTimeout(async () => {
       setRestoring(null);
       setRestored(ts);
-      push(true, 'Restore simulated', `${ts} · RTO 11 min · 0 rows touched · no-op verified.`);
+      if (setLive) {
+        const row = await putKey(SKEY.restore, { fromTs: ts, mode: 'simulated', rowsTouched: 0, restoredAt: new Date().toISOString() });
+        if (row) push(true, 'Restore simulated', `${ts} · simulated · 0 rows touched · metadata persisted (settings_kv).`);
+        return;
+      }
+      push(true, 'Restore simulated', `${ts} · simulated · 0 rows touched · no-op verified (local — not persisted).`);
     }, 1500);
   };
 
   const tarball = (s: Snap) => {
-    download(`snapshot-${s.ts.slice(0, 10)}-manifest.json`, JSON.stringify({ snapshot: s.ts, mode: s.mode, volume: s.vol, checksum: s.sum, retention: s.ret, vault: 's3://apex-backup-us-east-prod-wal/' }, null, 2));
-    push(true, 'Fetch staged', `${s.vol} volume · presigned vault link (15 min) · manifest downloaded.`);
+    download(`snapshot-${s.ts.slice(0, 10)}-manifest.json`, JSON.stringify({ snapshot: s.ts, mode: s.mode, volume: s.vol, checksum: s.sum, retention: s.ret, simulated: true, note: 'Demo manifest — no vault or backup data exists (planned).' }, null, 2));
+    push(true, 'Manifest downloaded (demo)', `${s.vol} · demo manifest — no vault exists (planned).`);
   };
 
   const testConn = () => {
     setConnTest('probing…');
     setTimeout(() => {
-      setConnTest('no link · 0 msgs/min · broker not connected (local demo)');
-      push(true, 'SCADA link not connected', `${broker} · no SCADA link (local demo).`);
+      setConnTest('not connected (local demo) · 0 msgs/min — broker never probed');
+      push(true, 'SCADA link not connected', `${broker ?? 'no broker configured (local demo)'} · no SCADA link exists.`);
     }, 1200);
   };
 
-  const registerHook = () => {
+  const registerHook = async () => {
     setHkTouched(true);
     if (!/^https:\/\/.+\..+/.test(hk.url.trim()) || !hk.topics.trim()) return;
-    setHooks((h) => [...h, { url: hk.url.trim(), name: 'Custom dispatcher', topics: hk.topics.trim(), auth: hk.auth, health: '200 OK', lat: '—' }]);
+    const row: Hook = { url: hk.url.trim(), name: 'Custom dispatcher', topics: hk.topics.trim(), auth: hk.auth, health: '— (never probed)', lat: '—' };
+    const next = [...hooks, row];
+    setHooks(next);
     setHkOpen(false);
     setHk({ url: '', topics: '', auth: 'HMAC-SHA256 Sig' });
     setHkTouched(false);
-    push(true, 'Webhook staged (local)', `${hk.url.trim()} · handshake not performed (no webhook delivery).`);
+    if (setLive) {
+      const saved = await putKey(SKEY.hooks, next.map((h) => ({ url: h.url, name: h.name, topics: h.topics, auth: h.auth })));
+      if (saved) push(true, 'Webhook persisted — server', `${row.url} · registry saved (settings_kv) · handshake never performed (no delivery).`);
+      return;
+    }
+    push(true, 'Webhook staged (local)', `${row.url} · handshake not performed (no webhook delivery) · not persisted.`);
   };
 
-  const saveHookEdit = () => {
+  const saveHookEdit = async () => {
     if (editHook === null || !editTopics.trim()) return;
-    setHooks((h) => h.map((x, i) => (i === editHook ? { ...x, topics: editTopics.trim() } : x)));
+    const next = hooks.map((x, i) => (i === editHook ? { ...x, topics: editTopics.trim() } : x));
+    setHooks(next);
     setEditHook(null);
-    push(true, 'Webhook updated', 'Subscribed topics re-saved · dispatcher reloaded.');
+    if (setLive) {
+      const saved = await putKey(SKEY.hooks, next.map((h) => ({ url: h.url, name: h.name, topics: h.topics, auth: h.auth })));
+      if (saved) push(true, 'Webhook updated — server', 'Subscribed topics persisted (settings_kv) · no delivery performed.');
+      return;
+    }
+    push(true, 'Webhook updated (local)', 'Subscribed topics staged · not persisted.');
   };
 
   const reveal = () => {
-    setPinTouched(true);
-    if (pin.trim() !== '2468' || !key) return;
-    setRevealed(true);
-    setPinOpen(false);
-    setPin('');
-    setPinTouched(false);
-    push(true, 'Key revealed once', 'Re-masks automatically when closed · access logged.');
+    // PIN prompt removed (GAP-21/F26): only plaintext known to this session can
+    // be shown — a fresh rotate, or the local offline demo key. After reload
+    // only the hash exists on the server.
+    if (shownOnce) {
+      setRevealed(true);
+      push(true, 'Plaintext shown', 'This is the in-session rotate/demo value · server stores only a hash.');
+    } else {
+      setRevealed(false);
+      push(false, 'Nothing to reveal', 'Hash-only on server — rotate to see a new plaintext exactly once.');
+    }
   };
 
-  const rotate = () => {
+  const rotate = async () => {
+    if (setLive) {
+      setSetBusy(true);
+      try {
+        const res = await apiFetch<{ key: string; last4: string; secret: string; updatedAt: string }>(
+          `${encodeKey(SKEY.coreSecret)}/rotate`, { method: 'POST', body: JSON.stringify({}) },
+        );
+        setSettingsRows((rows) => [toSecretEntry(res), ...rows.filter((x) => x.key !== res.key)]);
+        setShownOnce(res.secret);
+        setRevealed(true);
+        push(true, 'Key rotated — server', `Hash stored · last4 ${res.last4} · plaintext shown once, then never retrievable.`);
+      } catch (e) {
+        push(false, 'Rotate failed', errMsg(e));
+      } finally {
+        setSetBusy(false);
+      }
+      return;
+    }
     const nk = genKey();
     setKey(nk);
     setRevealed(true);
     setShownOnce(nk);
-    push(true, 'Key rotated', `New credential active · last4 ${nk.slice(-4)} · old key revoked.`);
+    push(true, 'Key rotated (local)', `local demo key — not stored server-side · last4 ${nk.slice(-4)}.`);
   };
 
-  const issue = () => {
+  const toSecretEntry = (res: { key: string; last4: string; updatedAt: string }): SettingEntry => ({
+    key: res.key, kind: 'secret', value: undefined, last4: res.last4, hasSecret: true, updatedAt: res.updatedAt, updatedBy: 'you',
+  });
+
+  const issue = async () => {
     setIssueTouched(true);
     if (!issueName.trim()) return;
+    const name = issueName.trim();
+    if (setLive) {
+      setSetBusy(true);
+      try {
+        const scopedKey = `security.issued.${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 48)}`;
+        const res = await apiFetch<{ key: string; last4: string; secret: string; updatedAt: string }>(
+          `${encodeKey(scopedKey)}/rotate`, { method: 'POST', body: JSON.stringify({}) },
+        );
+        const next = [...extraKeys.filter((k) => k.name !== name), { name, last4: res.last4 }];
+        await putKey(SKEY.issued, next);
+        setExtraKeys(next);
+        setIssueOpen(false);
+        setIssueName('');
+        setIssueTouched(false);
+        setShownOnce(res.secret);
+        push(true, 'Credential issued — server', `last4 ${res.last4} · hash-only stored · plaintext shown once.`);
+      } catch (e) {
+        push(false, 'Issue failed', errMsg(e));
+      } finally {
+        setSetBusy(false);
+      }
+      return;
+    }
     const nk = genKey();
-    setExtraKeys((k) => [...k, { name: issueName.trim(), last4: nk.slice(-4) }]);
+    setExtraKeys((k) => [...k, { name, last4: nk.slice(-4) }]);
     setIssueOpen(false);
     setIssueName('');
     setIssueTouched(false);
     setShownOnce(nk);
-    push(true, 'Credential issued', `${nk.slice(0, 18)}… · copy now — shown once.`);
+    push(true, 'Credential issued (local)', `local demo key — not stored server-side · copy now — shown once.`);
   };
 
   const masked = key ? `apx_live_sec_••••${key.slice(-4)}` : 'apx_live_sec_••••····';
@@ -245,12 +436,28 @@ export function SettingsHub() {
       <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-labelledby="set-h">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="apex-id text-muted">ENGINE v4.18-p3 • ENV: PROD (US-EAST-1)</p>
+            <p className="apex-id text-muted">ENGINE v4.18-p3 • demo workspace settings (KV-backed when live)</p>
             <h1 id="set-h" className="text-2xl font-semibold tracking-tight">Settings &amp; System Configuration</h1>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0 items-center">
-            <Badge variant={maint ? 'warn' : 'pass'}>{maint ? 'Maint Mode: OFFLINE (ARMED)' : 'Maint Mode: ONLINE'}</Badge>
-            <ConfirmDialog title={maint ? 'Disarm maintenance mode?' : 'Arm maintenance mode?'} description={maint ? 'Returns the tenant to full online serving.' : 'Arms offline window — dispatchers drain first; in-flight WOs are never killed.'} confirmLabel={maint ? 'Disarm' : 'Arm'} onConfirm={() => { setMaint((m) => !m); push(true, maint ? 'Maint mode disarmed' : 'Maint mode armed', maint ? 'Tenant fully online.' : 'Offline window armed · dispatchers draining.'); }}>
+            {setLive === null ? (
+              <Badge variant="hold">KV: connecting…</Badge>
+            ) : setLive ? (
+              <Badge variant="pass">KV: live · server-fed</Badge>
+            ) : (
+              <Badge variant="hold">KV: demo offline — local state</Badge>
+            )}
+            <Badge variant={maint ? 'warn' : 'pass'}>{maint ? 'Maint Mode: ARMED' : 'Maint Mode: DISARMED'}{setLive ? ' · metadata' : ' · local only'}</Badge>
+            <ConfirmDialog title={maint ? 'Disarm maintenance mode?' : 'Arm maintenance mode?'} description={setLive ? 'Flag is stored server-side as metadata (ops.maint_mode) — enforcement is NOT wired (planned).' : 'Local demo flag only — not enforced server-side.'} confirmLabel={maint ? 'Disarm' : 'Arm'} onConfirm={async () => {
+              const next = !maint;
+              setMaint(next);
+              if (setLive) {
+                const row = await putKey(SKEY.maint, next);
+                if (row) push(true, next ? 'Maint mode armed — server' : 'Maint mode disarmed — server', `ops.maint_mode=${next} persisted (metadata; enforcement planned).`);
+                return;
+              }
+              push(true, next ? 'Maint mode armed' : 'Maint mode disarmed', 'local only — not enforced server-side.');
+            }}>
               <Button variant="secondary"><Wrench size={16} /> {maint ? 'Disarm' : 'Arm'}</Button>
             </ConfirmDialog>
             <Dialog open={expOpen} onOpenChange={setExpOpen}>
@@ -273,10 +480,14 @@ export function SettingsHub() {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button onClick={save}><CheckCircle2 size={16} /> Save System Parameters</Button>
+            <Button onClick={() => void save()} disabled={setBusy}><CheckCircle2 size={16} /> {setBusy ? 'Saving…' : 'Save System Parameters'}</Button>
           </div>
         </div>
-        <p className="text-xs text-muted -mt-2">Parameters are local demo state — not persisted · TX-{tx} (local)</p>
+        <p className="text-xs text-muted -mt-2">
+          {setLive
+            ? <>Server-backed KV via /api/settings{lastSavedAt ? ` · last write ${lastSavedAt.replace('T', ' ').slice(0, 16)} UTC` : ''}</>
+            : <>Parameters are local demo state — not persisted · TX-{tx} (local)</>}
+        </p>
 
         <div className="flex flex-wrap gap-2" role="group" aria-label="Settings sections">
           {TABS.map((t) => (
@@ -421,14 +632,14 @@ export function SettingsHub() {
               </div>
               <p className="text-[13px]">Work Order History: <strong>4,892</strong> <span className="text-muted">· 18-Month Time Series</span></p>
               <div className="flex flex-wrap gap-2">
-                <ConfirmDialog title="Reload clean baseline seed?" description="Re-provisions Phase-3 baseline · session drafts are discarded, ledger history kept." confirmLabel="Reload Baseline" onConfirm={() => push(true, 'Baseline reloaded', 'Phase-3 seed · 148 users · 412 assets · 1,840 SKUs · 4,892 WOs.')}>
-                  <Button variant="secondary"><RefreshCw size={15} /> Reload Clean Baseline Seed</Button>
+                <ConfirmDialog title="Staging demo — reload is not performed" description="No baseline reload runs in this build; numbers below are static copy." confirmLabel="Understood" onConfirm={() => push(true, 'Baseline reload skipped (local)', 'local demo — no seed reload performed.')}>
+                  <Button variant="secondary"><RefreshCw size={15} /> Reload Clean Baseline Seed (demo)</Button>
                 </ConfirmDialog>
-                <ConfirmDialog title="Purge test transactions older than 30 days?" description="Staging-only purge · audited ledger rows are immutable and excluded." confirmLabel="Purge Staging" onConfirm={() => push(true, 'Staging purged', '312 test rows purged · ledger untouched · vacuum scheduled.')}>
-                  <Button variant="secondary"><Trash2 size={15} /> Purge Test Transactions (&gt;30 Days)</Button>
+                <ConfirmDialog title="Staging demo — purge is not performed" description="No purge actually runs in this build." confirmLabel="Understood" onConfirm={() => push(true, 'Purge skipped (local)', 'local demo — 0 rows purged · nothing scheduled.')}>
+                  <Button variant="secondary"><Trash2 size={15} /> Purge Test Transactions (&gt;30 Days) (demo)</Button>
                 </ConfirmDialog>
-                <Button variant="secondary" onClick={() => { setBatches((b) => b + 1); push(true, 'Telemetry batch queued', `1hr synthetic batch #${batches + 1} · vibration/temp/ultrasonic · 85,200 msgs.`); }}>
-                  <Radio size={15} /> Generate Synthetic Sensor Telemetry (1hr Batch){batches > 0 ? ` (${batches})` : ''}
+                <Button variant="secondary" onClick={() => { setBatches((b) => b + 1); push(true, 'Telemetry generation skipped (local)', `local demo — no synthetic batch #${batches + 1} queued (no telemetry writer).`); }}>
+                  <Radio size={15} /> Generate Synthetic Sensor Telemetry (1hr Batch) (demo)
                 </Button>
               </div>
             </div>
@@ -445,7 +656,7 @@ export function SettingsHub() {
               </div>
               <p className="text-xs text-muted -mt-1">Planned design (no backup job running): hourly differential write-ahead-logs and encrypted cold storage images would target SOC2 Type II standard.</p>
               <p className="text-[13px]">Backup Schedule Status: <strong>Not running · (planned: Hourly Diff + Daily Full)</strong></p>
-              <p className="text-[13px]">Storage S3 Vault: <span className="apex-id">s3://apex-backup-us-east-prod-wal/</span></p>
+              <p className="text-[13px]">Storage S3 Vault: <span className="apex-id">s3://apex-backup-us-east-prod-wal/</span> <span className="text-muted">(planned — no vault exists)</span></p>
               <p className="text-[13px]">Latest Verified Snapshot: <strong>none (demo schedule below)</strong></p>
               <div className="overflow-x-auto rounded-lg border border-border-subtle">
                 <table className="w-full text-[13px] min-w-[820px]">
@@ -460,8 +671,8 @@ export function SettingsHub() {
                         <td className="p-2 apex-id">{s.ts} {s.live && <Badge variant="info">NEW</Badge>}</td>
                         <td>{s.mode}</td>
                         <td className="apex-id">{s.vol}</td>
-                        <td>{s.sum === 'Verified' ? <Badge variant="pass">Verified</Badge> : <Badge variant="warn">Sealing…</Badge>}</td>
-                        <td className="text-xs">{s.ret}</td>
+                        <td>{s.sum === 'simulated' ? <Badge variant="hold">SIMULATED</Badge> : s.sum === 'Verified' ? <><Badge variant="pass">demo row</Badge></> : <Badge variant="warn">Sealing…</Badge>}</td>
+                        <td className="text-xs">{s.ret}{s.ret.includes('S3') && !s.ret.includes('planned') ? ' (planned — no vault)' : ''}</td>
                         <td>
                           <div className="flex gap-2">
                             <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => tarball(s)}>Download TAR.GZ</button>
@@ -486,13 +697,13 @@ export function SettingsHub() {
               <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-1.5 text-[13px]">
                 <h3 className="text-sm font-semibold flex items-center gap-2"><Radio size={15} /> SCADA / IoT Gateway</h3>
                 <p className="text-xs text-muted">Telemetry ingest pipeline for chiller, pump, and electrical vibration sensor arrays.</p>
-                <p>Broker Address: <strong className="apex-id">{broker}</strong></p>
+                <p>Broker Address: <strong className="apex-id">{broker ?? 'not configured'}</strong>{setLive && <span className="text-xs text-muted"> (settings_kv)</span>}</p>
                 <p>Supported Protocols: <strong>MQTT / BACnet IP / OPC-UA</strong></p>
                 <p>Active Ingest Rate: <strong>Not connected (no live ingest)</strong></p>
                 <p>Monitored Fields: <strong>Vibration, Temp, Ultrasonic Gas</strong></p>
                 {connTest && <p className="font-semibold text-pass" role="status">Probe: {connTest}</p>}
                 <div className="flex gap-2 mt-1">
-                  <Button variant="secondary" onClick={() => { setEpVal(broker); setEpOpen(true); setEpTouched(false); }}>Configure Endpoints</Button>
+                  <Button variant="secondary" onClick={() => { setEpVal(broker ?? ''); setEpOpen(true); setEpTouched(false); }}>Configure Endpoints</Button>
                   <Button variant="secondary" onClick={testConn}>Test Connection</Button>
                 </div>
               </div>
@@ -600,16 +811,22 @@ export function SettingsHub() {
                   <Badge variant="pass">ACTIVE • Expires in 182d</Badge>
                   <Badge variant="warn">ROTATED — prev secret exposed in mockup (C21)</Badge>
                 </div>
-                <p className="apex-id text-sm break-all">{revealed && key ? key : masked}</p>
+                <p className="apex-id text-sm break-all">
+                  {revealed
+                    ? shownOnce || key
+                    : coreSecretRow
+                      ? <Badge variant="info">stored hash-only · last4 {coreSecretRow.last4}</Badge>
+                      : masked}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {revealed ? (
-                    <Button variant="secondary" onClick={() => { setRevealed(false); setShownOnce(''); push(true, 'Key re-masked', 'Display cleared · rotation ledger updated.'); }}>
+                    <Button variant="secondary" onClick={() => { setRevealed(false); setShownOnce(''); push(true, 'Key re-masked', 'Display cleared · display state only (server still hash-only).'); }}>
                       <EyeOff size={15} /> Mask Key
                     </Button>
                   ) : (
-                    <Button variant="secondary" onClick={() => setPinOpen(true)}><Eye size={15} /> Reveal</Button>
+                    <Button variant="secondary" onClick={reveal}><Eye size={15} /> Reveal</Button>
                   )}
-                  <Button variant="secondary" onClick={rotate}><RefreshCw size={15} /> Rotate</Button>
+                  <Button variant="secondary" onClick={() => void rotate()} disabled={setBusy}><RefreshCw size={15} /> Rotate</Button>
                 </div>
               </div>
               {extraKeys.map((k) => (
@@ -624,7 +841,7 @@ export function SettingsHub() {
               )}
               <div className="rounded border border-border-subtle bg-card p-3 text-[13px] flex flex-wrap items-center gap-2">
                 <ShieldCheck size={16} className="text-pass" />
-                <span><strong>mTLS: not enforced (planned)</strong> · SCADA gateways + field tablets would present client certs · broker {broker}</span>
+                <span><strong>mTLS: not enforced (planned)</strong> · SCADA gateways + field tablets would present client certs · broker {broker ?? 'not configured'}</span>
               </div>
             </div>
           </div>
@@ -659,7 +876,7 @@ export function SettingsHub() {
           {epTouched && !/^mqtt:\/\/.+:\d+$/.test(epVal.trim()) && <p className="text-[11px] font-semibold text-fail">Format mqtt://host:port required.</p>}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setEpOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setEpTouched(true); if (!/^mqtt:\/\/.+:\d+$/.test(epVal.trim())) return; setBroker(epVal.trim()); setEpOpen(false); setEpTouched(false); push(true, 'Endpoints saved (local)', `${epVal.trim()} · ingest NOT rerouted (no live broker).`); }}>Save Endpoints</Button>
+            <Button onClick={() => void saveBrokerEndpoint()}>Save Endpoints</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -699,14 +916,20 @@ export function SettingsHub() {
 
       <Dialog open={pinOpen} onOpenChange={setPinOpen}>
         <DialogContent aria-labelledby="pin-h">
-          <DialogTitle id="pin-h">Reveal API Key — approver PIN required</DialogTitle>
-          <DialogDescription>Single reveal · re-masked on close · access logged.</DialogDescription>
-          <label className="text-xs font-semibold" htmlFor="pin-v">Approver PIN — M. Vance (demo: 2468)</label>
-          <Input id="pin-v" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value)} invalid={pinTouched && pin.trim() !== '2468'} />
-          {pinTouched && pin.trim() !== '2468' && <p className="text-[11px] font-semibold text-fail">Approver PIN 2468 required.</p>}
+          <DialogTitle id="pin-h">Secret is hash-only</DialogTitle>
+          <DialogDescription asChild>
+            <div className="text-[13px] flex flex-col gap-2">
+              <p>The server stores only <span className="apex-id">sha256(secret) + last4</span> — full plaintext can never be recovered after first display.</p>
+              {shownOnce ? (
+                <p className="rounded border border-pass bg-pass-bg p-2 apex-id text-xs break-all" role="status">In-session plaintext: {shownOnce}</p>
+              ) : (
+                <p className="text-muted">No in-session plaintext — rotate to see a new one once.</p>
+              )}
+            </div>
+          </DialogDescription>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setPinOpen(false)}>Cancel</Button>
-            <Button onClick={reveal}>Reveal Once</Button>
+            <Button variant="secondary" onClick={() => setPinOpen(false)}>Close</Button>
+            <Button onClick={() => { setPinOpen(false); void rotate(); }} disabled={setBusy}>Rotate &amp; Show Once</Button>
           </div>
         </DialogContent>
       </Dialog>
