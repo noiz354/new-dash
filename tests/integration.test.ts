@@ -10,7 +10,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { createDb, type Db } from '../db/client';
-import { auditEvents } from '../db/schema';
+import { auditEvents, users } from '../db/schema';
 import { seedAll, SEED_PASSWORD, SEED_TOTP_SECRET } from '../db/seed';
 import { workOrderEvents } from '../db/schema';
 import { login, logout, verifyMfa } from '../lib/services/auth-service';
@@ -32,6 +32,8 @@ import { createRequisition, decidePurchase, getPurchase, listPurchases, postGood
 import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '../lib/services/pm-service';
 import { addEvidence, listWoEvidence } from '../lib/services/task-service';
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
+import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
+import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
 import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -1219,4 +1221,87 @@ test('evidence (GAP-13/F6): addEvidence persists row + listWoEvidence tenant-sco
 
   const ledger = await listAuditEvents(db, admin, { entityType: 'evidence' });
   assert.ok(ledger.rows.some((e) => e.action === 'EVIDENCE_UPLOAD' && e.entityId === ev.id), 'EVIDENCE_UPLOAD audited');
+});
+
+/**
+ * Decoy-org session WITHOUT the login flow — the suite already spends the
+ * per-email login rate budget (8/10min) on t.user@apexgl.io, so tenant
+ * isolation here mints a session directly (same verifySession path).
+ */
+let gap14DecoyCache: { ctx: AuthContext; token: string } | null = null;
+async function gap14Decoy(): Promise<{ ctx: AuthContext; token: string }> {
+  if (gap14DecoyCache) return gap14DecoyCache;
+  const rows = await db.select({ id: users.id, organizationId: users.organizationId })
+    .from(users).where(eq(users.email, 't.user@apexgl.io')).limit(1);
+  assert.ok(rows[0], 'decoy user seeded');
+  const token = await createSession(db, rows[0].id, rows[0].organizationId, 'gap14-probe');
+  const ctx = await verifySession(db, token);
+  assert.ok(ctx, 'decoy session verifies');
+  gap14DecoyCache = { ctx, token };
+  return gap14DecoyCache;
+}
+
+test('vendors (GAP-14/F14): create → 409 slug replay → list tenant-scoped', async () => {  const v = await createVendor(db, admin, { name: 'Carrier Rental Systems', tier: 'TIER-2', duns: '00-555-0199', scope: 'Temporary chillers', contact: 'Jane Doe' }, { idempotencyKey: 'gap14-vendor-1' });
+  assert.equal(v.slug, 'carrier-rental-systems', 'slug derives from name');
+  assert.equal(v.msaStatus, 'NO MSA', 'no term on file');
+  assert.equal(v.scope, 'Temporary chillers');
+
+  await expectDomainError(() => createVendor(db, admin, { name: 'Carrier Rental Systems' }), 409, 'VENDOR_SLUG_EXISTS');
+  await expectDomainError(() => createVendor(db, admin, { name: 'Bad Tier Co', tier: 'TIER-9' }), 400, 'VALIDATION_ERROR');
+
+  // Idempotent replay returns the same row, no duplicate.
+  const replay = await createVendor(db, admin, { name: 'Carrier Rental Systems', tier: 'TIER-2', duns: '00-555-0199', scope: 'Temporary chillers', contact: 'Jane Doe' }, { idempotencyKey: 'gap14-vendor-1' });
+  assert.equal(replay.slug, v.slug, 'idempotent replay returns same vendor');
+
+  const rows = await listVendors(db, admin);
+  assert.ok(rows.some((r) => r.slug === v.slug), 'new vendor listed');
+  assert.ok(rows.some((r) => r.slug === CANON.vendorSlug), 'seeded canon vendor listed');
+
+  const { ctx: decoy } = await gap14Decoy();
+  assert.ok(!(await listVendors(db, decoy)).some((r) => r.slug === v.slug), 'decoy tenant sees nothing');
+  await expectDomainError(() => getVendor(db, decoy, v.slug), 404, 'VENDOR_NOT_FOUND');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'vendor' });
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_CREATE' && e.entityId === v.slug), 'VENDOR_CREATE audited');
+});
+
+test('vendors (GAP-14/F14): amend + renew advance expiry + commend audited + 404', async () => {
+  const v = await amendVendor(db, admin, 'carrier-rental-systems', { scope: 'Temporary chillers + pumps', contact: 'Jane Doe · AM' }, { idempotencyKey: 'gap14-amend-1' });
+  assert.equal(v.scope, 'Temporary chillers + pumps');
+  await expectDomainError(() => amendVendor(db, admin, 'carrier-rental-systems', {}), 400, 'VALIDATION_ERROR');
+
+  const renewed = await renewVendor(db, admin, CANON.vendorSlug, { termMonths: 12 }, { idempotencyKey: 'gap14-renew-1' });
+  assert.equal(renewed.msaStatus, 'ACTIVE', 'canon vendor stays in-term');
+  assert.ok(renewed.msaExpiresOn! > '2026-09-16', 'expiry is a future date');
+  await expectDomainError(() => renewVendor(db, admin, CANON.vendorSlug, { termMonths: 7 }), 400, 'VALIDATION_ERROR');
+
+  const cmd = await commendVendor(db, admin, CANON.vendorSlug, { note: 'Night response under 2h — zero extension.' });
+  assert.equal(cmd.slug, CANON.vendorSlug, 'commendation recorded');
+  await expectDomainError(() => commendVendor(db, admin, CANON.vendorSlug, { note: 'short' }), 400, 'VALIDATION_ERROR');
+  await expectDomainError(() => getVendor(db, admin, 'no-such-vendor'), 404, 'VENDOR_NOT_FOUND');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'vendor' });
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_AMEND'), 'VENDOR_AMEND audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_RENEW'), 'VENDOR_RENEW audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_COMMEND'), 'VENDOR_COMMEND audited');
+});
+
+test('vendors (GAP-14/F14): related POs resolve by vendorSlug', async () => {
+  const pos = await listVendorPos(db, admin, CANON.vendorSlug);
+  assert.ok(pos.some((p) => p.number === CANON.purchaseOrder), 'canon PO linked to canon vendor');
+  const empty = await listVendorPos(db, admin, 'carrier-rental-systems');
+  assert.equal(empty.length, 0, 'new vendor has no POs yet');
+});
+
+test('telemetry (GAP-14/F8): ingest → listRecent by assetCode feeds BIM refresh', async () => {
+  const r = await ingestSensorReading(db, admin, { assetCode: CANON.assetSeal, sensorType: 'TEMPERATURE', value: 84.1, unit: '°C' });
+  assert.equal(r.status, 'WARNING', '84.1°C trips the 75°C warning threshold');
+  await ingestSensorReading(db, admin, { assetCode: CANON.assetSeal, sensorType: 'PRESSURE_PSI', value: 118, unit: 'PSI' });
+
+  const rows = await listRecentSensorReadings(db, admin, CANON.assetSeal, 20);
+  assert.ok(rows.some((x) => x.sensorType === 'TEMPERATURE' && x.value === '84.1'), 'temperature reading listed');
+  assert.ok(rows.some((x) => x.sensorType === 'PRESSURE_PSI'), 'pressure reading listed');
+
+  const { ctx: decoy } = await gap14Decoy();
+  assert.equal((await listRecentSensorReadings(db, decoy, CANON.assetSeal, 20)).length, 0, 'decoy sees no readings');
 });

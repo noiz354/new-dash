@@ -162,10 +162,11 @@ export async function seedAll(db: Db): Promise<void> {
   // ------------------------------------------------------------ vendors --
   const msaTrane = new Date(Date.now() + 312 * 86_400_000).toISOString().slice(0, 10); // canon: 312 days left
   await db.insert(vendors).values([
-    { organizationId: ORG, slug: CANON.vendorSlug, name: CANON.vendorName, tier: 'TIER-1', msaNumber: CANON.msa, msaExpiresOn: msaTrane, onTimePct: 97 },
-    { organizationId: ORG, slug: 'abb-grid-power-automation', name: 'ABB Grid & Power Automation', tier: 'TIER-2', msaNumber: 'MSA-2023-ABB-04', msaExpiresOn: '2026-04-30', onTimePct: 91 },
-    { organizationId: ORG, slug: 'siemens-building-technologies', name: 'Siemens Building Technologies', tier: 'TIER-1', msaNumber: 'MSA-2025-SBT-11', msaExpiresOn: '2027-01-31', onTimePct: 99 },
-    { organizationId: ORG, slug: 'johnson-controls-tyco-fire', name: 'Johnson Controls / Tyco Fire', tier: 'TIER-2', msaNumber: 'MSA-2023-JCI-07', msaExpiresOn: '2026-06-30', onTimePct: 94 },
+    { organizationId: ORG, slug: CANON.vendorSlug, name: CANON.vendorName, tier: 'TIER-1', msaNumber: CANON.msa, msaExpiresOn: msaTrane, onTimePct: 97, scope: 'Centrifugal Chillers & R-134a Overhaul', contact: 'Robert Langdon · Sr. Tech Lead', phone: '+62-21-5082-4402', duns: '00-132-9481' },
+    { organizationId: ORG, slug: 'abb-grid-power-automation', name: 'ABB Grid & Power Automation', tier: 'TIER-2', msaNumber: 'MSA-2023-ABB-04', msaExpiresOn: '2026-04-30', onTimePct: 91, scope: '13.8kV Switchgear, Transformers, SCADA', contact: 'Elena Voronova · SCADA Lead (liaison)', phone: '+62-21-5082-2000' },
+    { organizationId: ORG, slug: 'siemens-building-technologies', name: 'Siemens Building Technologies', tier: 'TIER-1', msaNumber: 'MSA-2025-SBT-11', msaExpiresOn: '2027-01-31', onTimePct: 99, scope: 'Desigo CC BMS & Cleanroom Actuators', contact: 'Marcus Gallagher', phone: '+62-21-2754-3000' },
+    { organizationId: ORG, slug: 'johnson-controls-tyco-fire', name: 'Johnson Controls / Tyco Fire', tier: 'TIER-2', msaNumber: 'MSA-2023-JCI-07', msaExpiresOn: '2026-06-30', onTimePct: 94, scope: 'FM-200 Clean Agent & VESDA Aspirating', contact: 'Sarah Al-Mansoor (internal liaison)', phone: '+62-21-2995-5800' },
+    { organizationId: ORG, slug: 'grainger-industrial-supply', name: 'Grainger Industrial Supply', tier: 'TIER-3', msaNumber: 'MSA-CATALOG-BLANKET', msaExpiresOn: null, onTimePct: 94, scope: 'MRO Hardware, Fasteners & Consumables', contact: 'B2B Corporate Account Desk', phone: '+62-21-5082-1111' },
     { organizationId: ORG, slug: 'grainger-industrial-supply', name: 'Grainger Industrial Supply', tier: 'TIER-3', msaNumber: null, msaExpiresOn: null, onTimePct: 96 },
   ]).onConflictDoNothing();
 

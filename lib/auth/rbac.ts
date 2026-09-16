@@ -14,7 +14,7 @@ export const PERMISSIONS = [
   'finding.read', 'finding.create', 'finding.dismiss',
   'inventory.read', 'inventory.mutate',
   'po.read', 'po.approve',
-  'vendors.read',
+  'vendors.read', 'vendors.manage',
   'reports.read',
   'audit.read',
   'org.read', 'org.manage',
@@ -33,11 +33,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
   'Facility Director': [
     ...READ_ALL,
     'wo.create', 'wo.transition', 'sr.create', 'sr.transition',
-    'finding.create', 'finding.dismiss', 'inventory.mutate', 'po.approve', 'org.manage',
+    'finding.create', 'finding.dismiss', 'inventory.mutate', 'po.approve', 'vendors.manage', 'org.manage',
   ],
   'Engineering Lead': [
     ...READ_ALL,
-    'wo.create', 'wo.transition', 'sr.create', 'sr.transition', 'finding.create', 'finding.dismiss', 'inventory.mutate',
+    'wo.create', 'wo.transition', 'sr.create', 'sr.transition', 'finding.create', 'finding.dismiss', 'inventory.mutate', 'vendors.manage',
   ],
   'Senior Field Tech': [
     'wo.read', 'wo.transition', 'sr.read', 'sr.create',

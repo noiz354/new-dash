@@ -306,6 +306,10 @@ export const vendors = pgTable(
     msaNumber: text('msa_number'),
     msaExpiresOn: date('msa_expires_on'),
     onTimePct: integer('on_time_pct'), // basis: 0..100 integer percent
+    scope: text('scope'), // service scope / line of business (GAP-14)
+    contact: text('contact'), // display contact person / desk
+    phone: text('phone'), // dispatch line (display only — no telephony)
+    duns: text('duns'), // D&B format ##-###-#### (format-checked only)
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.organizationId, t.slug] })],

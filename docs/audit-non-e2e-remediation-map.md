@@ -88,6 +88,12 @@ handler→service (tak ada fetch). Canon kini: const NODES. Persist: NOT
 PERSISTED. Tests: NONE. **Decision: MUST INTEGRATE** (poll ingest asli atau
 relabel). Target: END-TO-END. Reason: label "live" di atas literal =
 misinformation; backend sudah ada. P2/M/MODULE.
+**[CLOSED GAP-14 2026-09-16]:** END-TO-END — Refresh Reading kini GET
+`/api/telemetry/ingest?assetCode=` + map 5 tipe sensor ke node + updated =
+recordedAt nyata; kosong → honest empty ("no live readings — showing design
+reference values"); 4 test (136/136) + runtime MCP: ingest TEMPERATURE 77.5 →
+WARNING → refresh → drawer "77.5 C · Live reading · recordedAt server" +
+"1 live node via Refresh".
 
 **F9 — Ledger demo fallback.** Current: PARTIAL (live saat server UP + badge
 jujur; MOV_SEED hanya saat down). Gap: fallback quarter-fiction tapi
@@ -138,6 +144,13 @@ KNOWN_VENDORS. Persist: NOT PERSISTED. Tests: NONE. **Decision: MUST
 INTEGRATE** (service+routes dari schema yang ADA; M) — atau product putuskan
 DEFER. Target: END-TO-END. Reason: schema+seed sudah ada = separuh jalan;
 klaim DUNS/SHA menyesatkan. P2/M/MODULE.
+**[CLOSED GAP-14 2026-09-16]:** END-TO-END — `vendor-service` baru
+(list/get/relatedPOs/create/amend/renew/commend + audit VENDOR_* + idempoten
+scope vendor.*) + migrasi 0004 (scope/contact/phone/duns nullable) + RBAC
+`vendors.manage` + routes GET/POST/PATCH + VendorList/Detail/dialogs live
+(+ demo fallback ber-badge, DUNS format-only jujur, PDF honest-excerpt,
+dispatch → POST /api/work-orders nyata); 4 test (136/136) + runtime MCP:
+onboard via UI 5→6 + dispatch WO-2026-0911 nyata.
 
 **F15 — Facilities hub.** Current: FRONTEND-ONLY + klaim infra fiktif
 ("Spatial Sync Realtime · HEALTHY", "BIM MATCHED"). Gap: BACKEND MISSING +
@@ -206,6 +219,12 @@ NOT WIRED (aggregates nyata nol caller). Break: `runQuery` terminal. Canon:
 consts lokal. Persist: NOT PERSISTED. Tests: NONE. **Decision: MUST
 INTEGRATE** (KPI←aggregates = QUICK CLOSE; builder-SQL vs tabel nyata =
 follow-up). Target: END-TO-END. Reason: angka BI tanpa sumber. P2/M/MODULE.
+**[CLOSED GAP-14 2026-09-16]:** END-TO-END — KPI cards live GET
+`/api/reports/aggregates` on-mount + Refresh (badge Live/Demo, gagal →
+tanpa angka); katalog di bawah berlabel design reference / metadata only;
+runtime MCP: "OPEN 9 · assets 5 · $9019.00 · SR 5", konsisten dengan API
+(aggregates total 9 = /api/work-orders rows 9 incl. WO-2026-0911 dispatch
+baru; nav badge "14" stale — observasi follow-up SideNav).
 
 **F22 — Telemetry ingest/metrics.** Current: BACKEND-ONLY (+RUM E2E). Gap: no
 product consumer; cold-preseed baseline tersaji sebagai measured (minor).
