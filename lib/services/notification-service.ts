@@ -2,8 +2,10 @@
  * Notification & Escalation Outbox Service (Phase 1 A.11 & Phase 2 B.3).
  * Formats critical dispatch alerts and queues vendor escalation notifications.
  */
+import { and, asc, eq, notInArray, isNotNull } from 'drizzle-orm';
 import type { Db } from '../../db/client';
-import { auditEvents } from '../../db/schema';
+import { auditEvents, workOrders } from '../../db/schema';
+import { WO_TERMINAL } from '../domain/work-orders';
 import type { AuthContext } from '../auth/session';
 import { log } from '../log';
 
@@ -15,6 +17,67 @@ export interface VendorEscalationInput {
   slaMinutesRemaining: number;
   contactEmail?: string;
   contactPhone?: string;
+}
+
+export interface SlaNotificationItem {
+  id: string;
+  type: 'sla_breach_threat' | 'p1_critical' | 'stock_alert';
+  severity: 'P1' | 'P2' | 'P3';
+  title: string;
+  subtitle: string;
+  minutesRemaining: number | null;
+  woNumber?: string;
+  createdAt: string;
+}
+
+/**
+ * Shared SLA-at-risk computation (dipakai GET /api/notifications & SSE stream).
+ * Extracted untuk FP-14/TASK-26 agar snapshot poll dan list identik.
+ */
+export async function computeSlaNotifications(
+  db: Db,
+  orgId: string,
+): Promise<SlaNotificationItem[]> {
+  const now = new Date();
+  const activeWos = await db
+    .select({
+      number: workOrders.number,
+      title: workOrders.title,
+      priority: workOrders.priority,
+      status: workOrders.status,
+      slaDueAt: workOrders.slaDueAt,
+      location: workOrders.location,
+      assignedTo: workOrders.assignedTo,
+    })
+    .from(workOrders)
+    .where(
+      and(
+        eq(workOrders.organizationId, orgId),
+        notInArray(workOrders.status, [...WO_TERMINAL]),
+        isNotNull(workOrders.slaDueAt),
+      ),
+    )
+    .orderBy(asc(workOrders.slaDueAt))
+    .limit(20);
+
+  const items: SlaNotificationItem[] = [];
+  for (const wo of activeWos) {
+    if (!wo.slaDueAt) continue;
+    const minutesRemaining = Math.round((wo.slaDueAt.getTime() - now.getTime()) / (60 * 1000));
+    if (minutesRemaining <= 240) {
+      items.push({
+        id: `NOTIF-${wo.number}`,
+        type: 'sla_breach_threat',
+        severity: (wo.priority as 'P1' | 'P2' | 'P3') ?? 'P2',
+        title: `${wo.number} · SLA At Risk (${minutesRemaining > 0 ? `${minutesRemaining}m remaining` : `${Math.abs(minutesRemaining)}m overdue`})`,
+        subtitle: `${wo.title} · Location: ${wo.location} · Assigned: ${wo.assignedTo || 'Unassigned'}`,
+        minutesRemaining,
+        woNumber: wo.number,
+        createdAt: now.toISOString(),
+      });
+    }
+  }
+  return items;
 }
 
 export async function sendVendorEscalation(
@@ -37,9 +100,8 @@ export async function sendVendorEscalation(
   // Write append-only record to audit trail
   await db.insert(auditEvents).values({
     organizationId: ctx.orgId,
-    actorId: ctx.userId,
-    actorName: ctx.userName,
-    actorRole: ctx.role,
+    actorUserId: ctx.userId,
+    actorName: ctx.name,
     action: 'VENDOR_ESCALATE_ALERT',
     entityType: 'vendor',
     entityId: input.vendorSlug,
@@ -51,6 +113,22 @@ export async function sendVendorEscalation(
       reason: input.reason,
     },
   });
+
+  // TASK-27 — SLA-P1 eskalasi memicu push ke OPT-IN recipients (precondition:
+  // reason mengindikasikan breach P1 / SLA imminent; teknisi yang meng-escalate
+  // menerima notifikasi yang sama agar konsisten dengan deep link).
+  if (input.reason?.includes('P1') || input.slaMinutesRemaining <= 30) {
+    try {
+      const { sendP1PushToUser } = await import('@/lib/push/push-service');
+      await sendP1PushToUser(ctx.orgId, ctx.userId, {
+        title: `[P1] ${input.vendorName} — ${input.workOrderNumber}`,
+        body: `SLA breach: ${input.reason}. ${input.slaMinutesRemaining}m remaining. Tanggung jawab: ${input.vendorName}.`,
+        url: `/work-orders/${input.workOrderNumber}`,
+      });
+    } catch (err) {
+      console.warn('[escalate] P1 push fanout failed (non-blocking):', (err as Error)?.message);
+    }
+  }
 
   return { status: 'queued', messageId };
 }

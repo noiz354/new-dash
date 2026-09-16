@@ -72,7 +72,7 @@ export function SideNav({ active }: { active: string }) {
           <div className="px-2 py-1 rounded-lg bg-[#DCE9FF]/10 flex items-center justify-between">
             <span className="apex-id text-[#85F8C4] flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-[#85F8C4] animate-pulse" />
-              Live Sync Active
+              Sync: SSE only
             </span>
             <span className="apex-id text-[#BEC6E0]">v4.18-p3</span>
           </div>
@@ -116,9 +116,9 @@ export function SideNav({ active }: { active: string }) {
         <div className="p-2 rounded-lg bg-[#DCE9FF]/10 flex items-center justify-between">
           <div className="flex flex-col">
             <span className="apex-label-caps text-[#BEC6E0]">Telemetry Bus</span>
-            <span className="apex-id text-[#85F8C4]">Broker: 10.14.0.8</span>
+            <span className="apex-id text-[#BEC6E0]">Broker: not configured</span>
           </div>
-          <span className="apex-id px-1.5 py-0.5 rounded bg-[#00563A] text-[#5BCF9E] font-semibold">HEALTHY</span>
+          <span className="apex-id px-1.5 py-0.5 rounded bg-[#3A4356] text-[#BEC6E0] font-semibold">STANDBY</span>
         </div>
       </div>
     </aside>

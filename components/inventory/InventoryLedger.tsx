@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
+import { useWindow } from '@/lib/ui/useWindow';
+import { ApiError, apiFetch } from '@/lib/api/client';
 
 interface Sku {
   id: string; cat: string; name: string; spec: string; bin: string; hub: string;
@@ -16,6 +19,8 @@ interface Sku {
   status: string; level: 'critical' | 'rop' | 'optimal';
 }
 
+/** Display-only catalog metadata (category/spec/hub). Stock quantities NEVER
+ *  come from here when live — they are merged from GET /api/parts per SKU. */
 const SEED: Sku[] = [
   { id: CANON.sealSku, cat: 'HVAC Mechanical', name: 'Silicon Carbide Shaft Seal 2.5"', spec: 'Trane EarthWise CVHE Kit • OEM #4920-11', bin: CANON.sealBin, hub: 'Central Crib - Bldg B', on: 2, reserved: 1, avail: 1, min: 4, status: 'CRITICAL (1/4)', level: 'critical' },
   { id: 'PART-LUB-09', cat: 'Lubricants & Fluids', name: 'Synthetic POE Refrigerant Lubricant ISO 68', spec: '5 Gal Pail • Mobil EAL Arctic Series', bin: 'CRIB-CHEM / Rack 02', hub: 'Central Crib - Bldg B', on: 6, reserved: 2, avail: 4, min: 5, status: 'BELOW ROP (4/5)', level: 'rop' },
@@ -26,23 +31,23 @@ const SEED: Sku[] = [
 ];
 
 const CATS = ['All Categories', 'HVAC Mechanical', 'Electrical & Switchgear', 'Lubricants & Fluids', 'Filters & Consumables'] as const;
-const CAT_COUNT: Record<string, string> = { 'All Categories': '4,218', 'HVAC Mechanical': '842', 'Electrical & Switchgear': '612', 'Lubricants & Fluids': '248', 'Filters & Consumables': '1,150' };
+const CAT_COUNT_DEMO: Record<string, string> = { 'All Categories': '4,218', 'HVAC Mechanical': '842', 'Electrical & Switchgear': '612', 'Lubricants & Fluids': '248', 'Filters & Consumables': '1,150' };
 const HUBS = ['All Warehouses (Consolidated)', 'Central Crib - Bldg B', 'Substation Locker 4B', 'Cleanroom Cage C-04'] as const;
 const LEVELS = ['All Stock Levels', 'Critical Low Stock (< Safety)', 'Below Reorder Point (ROP)', 'Optimal / Adequate'] as const;
 
 type MovKind = 'IN' | 'OUT' | 'ADJ' | 'TRF';
 interface Mov { kind: MovKind; delta: string; doc: string; ts: string; part: string; detail: string }
 
+/** Demo fallback feed — shown ONLY when the server movement feed is unreachable. */
 const MOV_SEED: Mov[] = [
   { kind: 'OUT', delta: '−1 ea', doc: CANON.workOrderSeal, ts: 'Today 14:32 UTC', part: `${CANON.sealSku} (Mechanical Shaft Seal)`, detail: `AST-HVAC-004 · ${CANON.sealBin} · dispatched to M. Kowalski (Lead Tech) · auth:mvance` },
   { kind: 'IN', delta: '+2 ea', doc: `${CANON.purchaseOrder} · GRN Rec`, ts: 'Today 11:15 UTC', part: `${CANON.sealSku} (Mechanical Shaft Seal Kit)`, detail: 'Trane Supply Co · dock bay-02 · barcode verified' },
   { kind: 'OUT', delta: '−2 pails', doc: `${CANON.pmPlan} · Quarterly PM`, ts: 'Yest 16:40 UTC', part: 'PART-LUB-09 (Synthetic POE ISO 68)', detail: 'CRIB-CHEM · recipient HVAC Shift Team A · ref:PM-Q1' },
   { kind: 'TRF', delta: '+5 ea [TRF]', doc: 'TRF-2026-0044', ts: 'May 18 09:12 UTC', part: 'PART-VALV-GT2 (Bronze Gate Valve)', detail: 'North Depot → Central · Internal Courier #02 · waybill #772' },
-  { kind: 'ADJ', delta: '−2 pcs [ADJ]', doc: 'ADJ-2026-0019', ts: 'May 17 18:00 UTC', part: 'PART-FUSE-600V (Class J Fuse 30A)', detail: 'Terminal pin defect · scrap write-off VP Operations · cc:QA-SCRAP · sha256:d8a2..f041' },
+  { kind: 'ADJ', delta: '−2 pcs [ADJ]', doc: 'ADJ-2026-0019', ts: 'May 17 18:00 UTC', part: 'PART-FUSE-600V (Class J Fuse 30A)', detail: 'Terminal pin defect · scrap write-off VP Operations · cc:QA-SCRAP' },
 ];
 
 const MOV_TABS = ['All', 'Receipts', 'WO Out', 'Adjust', 'Transfers'] as const;
-const MOV_TOTAL: Record<string, number> = { All: 1840, Receipts: 1240, 'WO Out': 560, Adjust: 0, Transfers: 40 };
 
 const REASONS = [
   'Transfer to Sub-Warehouse (Field Stage)',
@@ -56,29 +61,39 @@ const DESTS = ['Substation Locker 4B (Bldg B - L1)', 'Mobile Van 03 - Field Serv
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 900;
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+interface PartLive {
+  sku: string; name: string; unitPriceCents: number; bin: string;
+  onHand: number; reserved: number; available: number; minStock: number;
 }
 
-const utcNow = () => `${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+interface DisplaySku extends Sku { cataloged: boolean }
+
+const CODE_RE = /^\d{6}$/;
+
+function deriveStatus(avail: number, min: number): { status: string; level: 'critical' | 'rop' | 'optimal' } {
+  if (avail <= 0) return { status: 'OUT OF STOCK', level: 'critical' };
+  if (avail < min) return { status: `CRITICAL (${avail}/${min})`, level: 'critical' };
+  if (avail < min * 2) return { status: `BELOW ROP (${avail}/${min})`, level: 'rop' };
+  return { status: 'OPTIMAL', level: 'optimal' };
+}
+
+const fmtTs = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : `${d.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+};
 
 /**
- * Inventory & Spare Parts Ledger — archive port (unit 11, no prototype).
- * Rewires: seal bin → CRIB-B/Bay 01 (C8); +100-filter GRN → +2 seal kits
- * (PO-2026-0298 line cluster); SUB-LCK-4B VERIFIED for filters (C8 amend);
- * PART-BRG-6205 confirmed (C9 CLOSED — pair 6204/6205 complete, never merge).
+ * Inventory & Spare Parts Ledger — GAP-3: server-backed.
+ * Quantities come from GET /api/parts; mutations go through
+ * POST /api/parts/movements with server-verified step-up TOTP
+ * (no client-side PIN). Seed data is display metadata + offline fallback only.
  */
 export function InventoryLedger() {
-  const [rows, setRows] = useState<Sku[]>(SEED);
-  const [movs, setMovs] = useState<Mov[]>(MOV_SEED);
+  const [liveQty, setLiveQty] = useState<Record<string, PartLive>>({});
+  const [live, setLive] = useState<boolean | null>(null);
+  const [canMutate, setCanMutate] = useState(false);
+  const [movServer, setMovServer] = useState<Mov[]>([]);
+  const [movLive, setMovLive] = useState(false);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string>('All Categories');
   const [hub, setHub] = useState<string>('All Warehouses (Consolidated)');
@@ -90,16 +105,20 @@ export function InventoryLedger() {
   const [recvPo, setRecvPo] = useState('');
   const [recvSku, setRecvSku] = useState<string>(CANON.sealSku);
   const [recvQty, setRecvQty] = useState('2');
+  const [recvCode, setRecvCode] = useState('');
   const [recvTouched, setRecvTouched] = useState(false);
+  const [posting, setPosting] = useState(false);
   // Mutation desk
   const [focus, setFocus] = useState<string>(CANON.sealSku);
   const [reason, setReason] = useState<string>(REASONS[0]);
   const [dest, setDest] = useState<string>(DESTS[0]);
   const [qty, setQty] = useState('1');
   const [woRef, setWoRef] = useState<string>(CANON.workOrderSeal);
-  const [pin, setPin] = useState('');
+  const [code, setCode] = useState('');
   const [mutTouched, setMutTouched] = useState(false);
-  const [seq, setSeq] = useState({ TRF: 45, ADJ: 20 });
+  // Per-row issue step-up
+  const [issuing, setIssuing] = useState<string | null>(null);
+  const [issueCode, setIssueCode] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -119,7 +138,58 @@ export function InventoryLedger() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 8000);
   };
 
-  const filtered = rows.filter((r) => {
+  const errMsg = (e: unknown) => (e instanceof ApiError ? `${e.message} (${e.code})` : 'Unexpected error — nothing was posted.');
+
+  const refresh = async () => {
+    try {
+      const parts = await apiFetch<{ rows: PartLive[]; can: { mutate: boolean } }>('/api/parts');
+      const map: Record<string, PartLive> = {};
+      for (const p of parts.rows) map[p.sku] = p;
+      setLiveQty(map);
+      setLive(true);
+      setCanMutate(parts.can.mutate);
+    } catch {
+      setLive(false);
+    }
+    try {
+      const feed = await apiFetch<{ movements: Mov[] }>('/api/parts/movements?limit=50');
+      setMovServer(feed.movements);
+      setMovLive(true);
+    } catch {
+      setMovLive(false);
+    }
+  };
+
+  useEffect(() => { void refresh(); }, []);
+
+  // Merge live quantities onto the display catalog. Seed rows absent from the
+  // server catalog are flagged demo-only; server rows outside the seed catalog
+  // are appended as live rows with honest generic metadata.
+  const display: DisplaySku[] = (() => {
+    const merged = SEED.map((s) => {
+      const p = liveQty[s.id];
+      if (!p || live !== true) return { ...s, cataloged: live !== true ? true : false };
+      const avail = p.available;
+      const { status, level } = deriveStatus(avail, p.minStock);
+      return { ...s, name: p.name, bin: p.bin, on: p.onHand, reserved: p.reserved, avail, min: p.minStock, status, level, cataloged: true };
+    });
+    if (live === true) {
+      for (const p of Object.values(liveQty)) {
+        if (SEED.some((s) => s.id === p.sku)) continue;
+        const { status, level } = deriveStatus(p.available, p.minStock);
+        merged.push({
+          id: p.sku, cat: 'Unclassified', name: p.name, spec: 'System catalog row (no display metadata)',
+          bin: p.bin, hub: 'System catalog', on: p.onHand, reserved: p.reserved, avail: p.available,
+          min: p.minStock, status, level, cataloged: true,
+        });
+      }
+    }
+    return merged;
+  })();
+
+  const catalogedIds = display.filter((r) => r.cataloged).map((r) => r.id);
+
+  const filtered = display.filter((r) => {
     if (cat !== 'All Categories' && r.cat !== cat) return false;
     if (hub !== 'All Warehouses (Consolidated)' && r.hub !== hub) return false;
     if (level === 'Critical Low Stock (< Safety)' && r.level !== 'critical') return false;
@@ -129,18 +199,49 @@ export function InventoryLedger() {
     return !needle || `${r.id} ${r.name} ${r.spec} ${r.bin}`.toLowerCase().includes(needle);
   });
 
-  const movFiltered = movs.filter((m) =>
+  const feed: Mov[] = movLive ? movServer : MOV_SEED;
+  const movFiltered = feed.filter((m) =>
     mtab === 'All' || (mtab === 'Receipts' && m.kind === 'IN') || (mtab === 'WO Out' && m.kind === 'OUT') ||
     (mtab === 'Adjust' && m.kind === 'ADJ') || (mtab === 'Transfers' && m.kind === 'TRF')
   );
+  const tabCount = (t: string) => t === 'All'
+    ? feed.length
+    : feed.filter((m) => (t === 'Receipts' && m.kind === 'IN') || (t === 'WO Out' && m.kind === 'OUT') ||
+      (t === 'Adjust' && m.kind === 'ADJ') || (t === 'Transfers' && m.kind === 'TRF')).length;
+
+  // TASK-21/FP-21: windowing movement ledger — aktif hanya saat >60 item
+  const movWin = useWindow(movFiltered, { rowHeight: 76, threshold: 60, initialHeight: 480 });
+
+  const kpis = live === true ? (() => {
+    const vals = Object.values(liveQty);
+    const valuation = vals.reduce((s, p) => s + (p.onHand * p.unitPriceCents) / 100, 0);
+    const low = vals.filter((p) => p.available < p.minStock).length;
+    return [
+      { l: 'Catalog Valuation (loaded)', v: `$${valuation.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, s: `FIFO · ${vals.length} SKUs loaded from server` },
+      { l: 'Stock Availability Health', v: low === 0 ? '100%' : `${(((vals.length - low) / Math.max(vals.length, 1)) * 100).toFixed(1)}%`, s: `${low} SKUs below minimum (loaded page)` },
+      { l: 'Low Stock & Reorder Triggers', v: `${low} SKUs`, s: 'Below minimum on loaded page' },
+      { l: 'Monthly Stock Movement', v: `${feed.length}`, s: 'Server audit feed (last 50 events)' },
+    ];
+  })() : [
+    { l: 'Catalog Valuation', v: '$1,428,650.00', s: 'FIFO · 4,218 SKUs · +4.8% this quarter (demo)' },
+    { l: 'Stock Availability Health', v: '94.2%', s: 'Operational · 38 critical WO-reserved (demo)' },
+    { l: 'Low Stock & Reorder Triggers', v: '7 PO drafts', s: 'Auto-queued · 2 expedited in-transit (demo)' },
+    { l: 'Monthly Stock Movement', v: '1,840', s: '+1,240 in · −560 out · 40 trf · 3.8x velocity (demo)' },
+  ];
+
+  const catCount = (c: string) => {
+    if (live !== true) return CAT_COUNT_DEMO[c];
+    if (c === 'All Categories') return String(display.length);
+    return String(display.filter((r) => r.cat === c).length);
+  };
 
   const exportCsv = () => {
     const head = 'sku,category,name,bin,hub,on_hand,reserved,available,min_rop,status';
     const body = filtered.map((r) =>
       [r.id, `"${r.cat}"`, `"${r.name}"`, `"${r.bin}"`, `"${r.hub}"`, r.on, r.reserved ?? '', r.avail ?? '', r.min, `"${r.status}"`].join(',')
     );
-    download('spare-parts-ledger.csv', [head, ...body].join('\n'));
-    push(true, 'Ledger exported', `${filtered.length} seeded SKUs → spare-parts-ledger.csv (catalog 4,218).`);
+    downloadText('spare-parts-ledger.csv', [head, ...body].join('\n'));
+    push(true, 'Ledger exported', `${filtered.length} loaded rows → spare-parts-ledger.csv${live === true ? ' (live server data)' : ' (demo data — server unreachable)'}.`);
   };
 
   const reorder = (id: string, kind: 'PR' | 'PO') => {
@@ -149,48 +250,104 @@ export function InventoryLedger() {
     push(true, kind === 'PR' ? 'PR drafted' : 'Quick PO drafted', `${ref} · ${id} → purchasing queue.`);
   };
 
-  const issue = (id: string) => {
-    setRows((rs) => rs.map((r) => {
-      if (r.id !== id || r.avail === null || r.avail < 1) return r;
-      push(true, 'Issued to WO', `${id} · 1 pc → ${CANON.workOrderSeal}.`);
-      return { ...r, reserved: (r.reserved ?? 0) + 1, avail: r.avail - 1 };
-    }));
-  };
+  const postStock = (body: Record<string, unknown>) =>
+    apiFetch<PartLive>('/api/parts/movements', { method: 'POST', body });
 
-  const receive = () => {
+  const receive = async () => {
     setRecvTouched(true);
+    if (live !== true) {
+      push(false, 'Receipt unavailable', 'Server unreachable — receipts are disabled in demo mode.');
+      return;
+    }
     const n = parseInt(recvQty, 10);
-    if (!/^PO-\d{4}-\d{4}$/.test(recvPo.trim()) || !Number.isFinite(n) || n < 1) return;
-    setRows((rs) => rs.map((r) => (r.id === recvSku ? { ...r, on: r.on + n, avail: (r.avail ?? 0) + n } : r)));
-    setMovs((ms) => [{ kind: 'IN', delta: `+${n} ea`, doc: `${recvPo.trim()} · GRN Rec`, ts: utcNow(), part: recvSku, detail: 'Dock Bay 02 · barcode verified · posted by Central Crib' }, ...ms]);
-    setRecvOpen(false);
-    setRecvPo('');
-    setRecvTouched(false);
-    push(true, 'Stock received', `${recvSku} +${n} · ${recvPo.trim()} · ledger +1.`);
+    if (!/^PO-\d{4}-\d{4}$/.test(recvPo.trim()) || !Number.isFinite(n) || n < 1 || !CODE_RE.test(recvCode.trim())) return;
+    setPosting(true);
+    try {
+      const updated = await postStock({
+        sku: recvSku, type: 'RECEIVE', qty: n,
+        refNumber: recvPo.trim(), reason: 'PO goods receipt · Dock Bay 02',
+        stepUpCode: recvCode.trim(),
+      });
+      await refresh();
+      setRecvOpen(false);
+      setRecvPo('');
+      setRecvCode('');
+      setRecvTouched(false);
+      push(true, 'Stock received', `${recvSku} +${n} · ${recvPo.trim()} · server on-hand now ${updated.onHand}.`);
+    } catch (e) {
+      push(false, 'Receipt rejected', errMsg(e));
+    } finally {
+      setPosting(false);
+    }
   };
 
-  const focusRow = rows.find((r) => r.id === focus) ?? rows[0];
+  const focusRow = display.find((r) => r.id === focus) ?? display[0];
+  const focusLive = liveQty[focus];
   const qn = parseInt(qty, 10);
   const mutOk =
+    live === true && canMutate && !!focusLive &&
     Number.isFinite(qn) && qn >= 1 && (focusRow.avail ?? 0) >= qn &&
-    pin.trim() === '2468' && (reason !== REASONS[3] || /^WO-2026-\d{4}$/.test(woRef.trim()));
+    CODE_RE.test(code.trim()) && (reason !== REASONS[3] || /^WO-2026-\d{4}$/.test(woRef.trim()));
 
-  const postMutation = () => {
+  const postMutation = async () => {
     setMutTouched(true);
-    if (!mutOk) return;
-    const kind: MovKind = reason === REASONS[1] || reason === REASONS[2] ? 'ADJ' : reason === REASONS[3] ? 'OUT' : 'TRF';
-    const doc = kind === 'TRF' ? `TRF-2026-${String(seq.TRF).padStart(4, '0')}` : kind === 'ADJ' ? `ADJ-2026-${String(seq.ADJ).padStart(4, '0')}` : woRef.trim();
-    setMovs((ms) => [{
-      kind, delta: `−${qn} ea`, doc, ts: utcNow(),
-      part: `${focus} (${focusRow.name})`, detail: `${reason} · Central Crib → ${dest} · approver M. Vance (PIN verified)`,
-    }, ...ms]);
-    setRows((rs) => rs.map((r) => (r.id === focus ? { ...r, on: r.on - qn, avail: (r.avail ?? 0) - qn } : r)));
-    if (kind === 'TRF') setSeq((s) => ({ ...s, TRF: s.TRF + 1 }));
-    if (kind === 'ADJ') setSeq((s) => ({ ...s, ADJ: s.ADJ + 1 }));
-    setQty('1');
-    setPin('');
-    setMutTouched(false);
-    push(true, 'Mutation posted', `${doc} · ${focus} −${qn} · ledger +1 · audit-chained.`);
+    if (!mutOk || !focusLive) return;
+    const isAdjust = reason === REASONS[2];
+    const body: Record<string, unknown> = isAdjust
+      ? {
+        sku: focus, type: 'ADJUST', qty: Math.max(0, focusLive.onHand - qn),
+        refNumber: woRef.trim() || null, reason: `${reason} · Central Crib → ${dest}`,
+        stepUpCode: code.trim(),
+      }
+      : {
+        sku: focus, type: 'ISSUE', qty: qn,
+        // refNumber stays doc-number-like (≤50 chars); the full directive lives in reason.
+        refNumber: reason === REASONS[3] ? woRef.trim() : null,
+        reason: `${reason} · Central Crib → ${dest}`,
+        stepUpCode: code.trim(),
+      };
+    setPosting(true);
+    try {
+      const updated = await postStock(body);
+      await refresh();
+      setQty('1');
+      setCode('');
+      setMutTouched(false);
+      push(true, 'Mutation posted', `${focus} −${qn} · ${String(body.refNumber ?? focus)} · server on-hand now ${updated.onHand}.`);
+    } catch (e) {
+      push(false, 'Mutation rejected', errMsg(e));
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  const issue = async (id: string) => {
+    if (live !== true) {
+      push(false, 'Issue unavailable', 'Server unreachable — issues are disabled in demo mode.');
+      return;
+    }
+    if (issuing !== id) {
+      setIssuing(id);
+      setIssueCode('');
+      return;
+    }
+    if (!CODE_RE.test(issueCode.trim())) return;
+    setPosting(true);
+    try {
+      const updated = await postStock({
+        sku: id, type: 'ISSUE', qty: 1,
+        refNumber: CANON.workOrderSeal, reason: `Issue to ${CANON.workOrderSeal}`,
+        stepUpCode: issueCode.trim(),
+      });
+      await refresh();
+      setIssuing(null);
+      setIssueCode('');
+      push(true, 'Issued to WO', `${id} · 1 pc → ${CANON.workOrderSeal} · server on-hand now ${updated.onHand}.`);
+    } catch (e) {
+      push(false, 'Issue rejected', errMsg(e));
+    } finally {
+      setPosting(false);
+    }
   };
 
   return (
@@ -207,8 +364,15 @@ export function InventoryLedger() {
             <p className="apex-id text-muted">Spare Parts &amp; Consumables Ledger · SKU-REG v4.2 · Hub: Central Crib (Bldg B)</p>
             <h1 id="inv-h" className="text-2xl font-semibold tracking-tight">Inventory &amp; Spare Parts Ledger</h1>
           </div>
-          <div className="flex flex-wrap gap-2 shrink-0">
-            <Button variant="secondary" onClick={exportCsv}><Download size={16} /> Export (CSV/XLS)</Button>
+          <div className="flex flex-wrap gap-2 shrink-0 items-center">
+            {live === null ? (
+              <Badge variant="warn">Connecting…</Badge>
+            ) : live ? (
+              <Badge variant="pass">Live · server-fed</Badge>
+            ) : (
+              <Badge variant="fail">Demo offline — server unreachable</Badge>
+            )}
+            <Button variant="secondary" onClick={exportCsv}><Download size={16} /> Export CSV (loaded rows)</Button>
             <Button variant="secondary" onClick={() => window.print()}><Printer size={16} /> Print QR / Barcode</Button>
             <Dialog open={recvOpen} onOpenChange={setRecvOpen}>
               <DialogTrigger asChild>
@@ -216,7 +380,7 @@ export function InventoryLedger() {
               </DialogTrigger>
               <DialogContent aria-labelledby="recv-h">
                 <DialogTitle id="recv-h">Receive Stock</DialogTitle>
-                <DialogDescription>Posts a receipt + increments on-hand. Dock Bay 02 · barcode verified.</DialogDescription>
+                <DialogDescription>Posts a receipt to the server + increments on-hand. Dock Bay 02 · requires approver code.</DialogDescription>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex flex-col gap-0.5">
                     <label className="text-xs font-semibold" htmlFor="recv-po">PO ref (PO-YYYY-NNNN)</label>
@@ -229,14 +393,18 @@ export function InventoryLedger() {
                 </div>
                 <label className="text-xs font-semibold" htmlFor="recv-sku">SKU</label>
                 <select id="recv-sku" value={recvSku} onChange={(e) => setRecvSku(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card apex-id">
-                  {rows.map((r) => <option key={r.id} value={r.id}>{r.id}</option>)}
+                  {catalogedIds.map((id) => <option key={id} value={id}>{id}</option>)}
                 </select>
-                {recvTouched && (!/^PO-\d{4}-\d{4}$/.test(recvPo.trim()) || !(parseInt(recvQty, 10) >= 1)) && (
-                  <p className="text-[11px] font-semibold text-fail">Valid PO ref + qty ≥ 1 are required.</p>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-xs font-semibold" htmlFor="recv-code">Approver code (authenticator app, 6 digits)</label>
+                  <Input id="recv-code" type="password" inputMode="numeric" autoComplete="off" value={recvCode} onChange={(e) => setRecvCode(e.target.value)} invalid={recvTouched && !CODE_RE.test(recvCode.trim())} placeholder="••••••" />
+                </div>
+                {recvTouched && (!/^PO-\d{4}-\d{4}$/.test(recvPo.trim()) || !(parseInt(recvQty, 10) >= 1) || !CODE_RE.test(recvCode.trim())) && (
+                  <p className="text-[11px] font-semibold text-fail">Valid PO ref + qty ≥ 1 + 6-digit approver code are required.</p>
                 )}
                 <div className="flex justify-end gap-2">
                   <Button variant="secondary" onClick={() => setRecvOpen(false)}>Cancel</Button>
-                  <Button onClick={receive}>Post Receipt</Button>
+                  <Button onClick={() => void receive()} disabled={posting}>{posting ? 'Posting…' : 'Post Receipt'}</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -244,12 +412,7 @@ export function InventoryLedger() {
         </div>
 
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          {[
-            { l: 'Catalog Valuation', v: '$1,428,650.00', s: 'FIFO · 4,218 SKUs · +4.8% this quarter' },
-            { l: 'Stock Availability Health', v: '94.2%', s: 'Operational · 38 critical WO-reserved' },
-            { l: 'Low Stock & Reorder Triggers', v: '7 PO drafts', s: 'Auto-queued · 2 expedited in-transit' },
-            { l: 'Monthly Stock Movement', v: '1,840', s: '+1,240 in · −560 out · 40 trf · 3.8x velocity' },
-          ].map((k) => (
+          {kpis.map((k) => (
             <div key={k.l} className="rounded-lg border border-border-subtle bg-surface p-3 flex flex-col gap-0.5">
               <span className="apex-label-caps text-muted">{k.l}</span>
               <span className="text-xl font-semibold tabular-nums">{k.v}</span>
@@ -278,7 +441,7 @@ export function InventoryLedger() {
               aria-pressed={cat === c}
               className={cn('h-8 px-3 rounded text-xs font-semibold border', cat === c ? 'bg-cobalt-deep text-white border-cobalt-deep' : 'bg-card border-border-subtle')}
             >
-              {c} · {CAT_COUNT[c]}
+              {c} · {catCount(c)}
             </button>
           ))}
         </div>
@@ -304,6 +467,7 @@ export function InventoryLedger() {
                     <p><span className="apex-id font-bold text-cobalt">{r.id}</span> <span className="text-[10px] font-bold text-muted">{r.cat.split(' ')[0].toUpperCase()}</span></p>
                     <p className="font-medium">{r.name}</p>
                     <p className="text-xs text-muted">{r.spec}</p>
+                    {!r.cataloged && <p className="text-[11px] font-semibold text-warn">Not in system catalog — demo row, mutations disabled.</p>}
                   </td>
                   <td><p className="apex-id text-xs">{r.bin}</p><p className="text-xs text-muted">{r.hub}</p></td>
                   <td className="apex-id font-bold">{r.on}</td>
@@ -314,16 +478,26 @@ export function InventoryLedger() {
                     <Badge variant={r.level === 'critical' ? 'fail' : r.level === 'rop' ? 'warn' : 'pass'}>{r.status}</Badge>
                   </td>
                   <td>
-                    {note[r.id] ? (
+                    {!r.cataloged ? (
+                      <span className="text-xs text-muted">—</span>
+                    ) : note[r.id] ? (
                       <span className="text-xs font-semibold text-pass">{note[r.id]}</span>
+                    ) : r.id === 'PART-FLTR-401' ? (
+                      <span className="flex flex-col gap-1">
+                        <button type="button" className="text-cobalt font-semibold hover:underline text-xs text-left" onClick={() => void issue(r.id)}>Issue to WO</button>
+                        {issuing === r.id && (
+                          <span className="flex items-center gap-1">
+                            <Input aria-label={`Approver code to issue ${r.id}`} type="password" inputMode="numeric" autoComplete="off" value={issueCode} onChange={(e) => setIssueCode(e.target.value)} placeholder="••••••" className="h-7 w-20 text-xs" />
+                            <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => void issue(r.id)} disabled={posting}>Confirm</button>
+                          </span>
+                        )}
+                      </span>
                     ) : r.id === CANON.sealSku || r.level === 'critical' ? (
                       <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => reorder(r.id, 'PR')}>+ PR Request</button>
                     ) : r.level === 'rop' && r.id === 'PART-LUB-09' ? (
                       <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => reorder(r.id, 'PO')}>+ Quick PO</button>
                     ) : r.level === 'rop' ? (
                       <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => reorder(r.id, 'PR')}>+ PR Request</button>
-                    ) : r.id === 'PART-FLTR-401' ? (
-                      <button type="button" className="text-cobalt font-semibold hover:underline text-xs" onClick={() => issue(r.id)}>Issue to WO</button>
                     ) : (
                       <span className="text-xs text-muted">—</span>
                     )}
@@ -331,18 +505,18 @@ export function InventoryLedger() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="p-6 text-center text-muted">No seeded SKUs in this view — clear filters.</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-muted">No SKUs in this view — clear filters.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-muted" role="status">Showing {filtered.length} of {rows.length} seeded SKUs (catalog 4,218).</p>
+        <p className="text-xs text-muted" role="status">Showing {filtered.length} of {display.length} SKUs{live === true ? ' (live server quantities)' : ' (demo quantities — server unreachable)'}.</p>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Movement Ledger <span className="text-xs font-normal text-muted">Live Audit Bus · UTC</span></h2>
-              <Badge variant="pass">SYNCED · sha256:d8a2..f041</Badge>
+              <h2 className="text-base font-semibold">Movement Ledger <span className="text-xs font-normal text-muted">{movLive ? 'Server audit feed · UTC' : 'Demo feed · UTC'}</span></h2>
+              {movLive ? <Badge variant="pass">Live · server-fed</Badge> : <Badge variant="warn">Demo offline</Badge>}
             </div>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Movement filter">
               {MOV_TABS.map((t) => (
@@ -353,12 +527,17 @@ export function InventoryLedger() {
                   aria-pressed={mtab === t}
                   className={cn('h-8 px-3 rounded text-xs font-semibold border', mtab === t ? 'bg-cobalt-deep text-white border-cobalt-deep' : 'bg-card border-border-subtle')}
                 >
-                  {t} ({t === 'All' ? MOV_TOTAL.All + movs.length - MOV_SEED.length : MOV_TOTAL[t]})
+                  {t} ({tabCount(t)})
                 </button>
               ))}
             </div>
-            <ol className="flex flex-col gap-2">
-              {movFiltered.map((m, i) => (
+            <ol
+              ref={movWin.containerRef as React.RefObject<HTMLOListElement>}
+              onScroll={movWin.onScroll}
+              className="flex flex-col gap-2 overflow-y-auto max-h-[560px]"
+            >
+              {movWin.topPad > 0 && <li style={{ height: movWin.topPad }} aria-hidden="true" />}
+              {movWin.items.map((m, i) => (
                 <li key={`${m.doc}-${i}`} className="rounded-lg border border-border-subtle bg-card p-3 flex flex-col gap-1 text-[13px]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={cn('apex-id font-bold', m.kind === 'IN' || m.kind === 'TRF' ? 'text-pass' : m.kind === 'ADJ' ? 'text-warn' : 'text-fail')}>{m.delta}</span>
@@ -371,23 +550,26 @@ export function InventoryLedger() {
                     ) : (
                       <span className="apex-id font-bold">{m.doc}</span>
                     )}
-                    <span className="apex-id text-muted ml-auto">{m.ts}</span>
+                    <span className="apex-id text-muted ml-auto">{movLive ? fmtTs(m.ts) : m.ts}</span>
                   </div>
                   <p className="font-semibold">{m.part}</p>
                   <p className="text-muted text-xs">{m.detail}</p>
                 </li>
               ))}
+              {movWin.bottomPad > 0 && <li style={{ height: movWin.bottomPad }} aria-hidden="true" />}
               {movFiltered.length === 0 && <li className="text-sm text-muted p-2">No movements in this bucket yet.</li>}
             </ol>
           </div>
 
           <div className="rounded-lg border-2 border-cobalt-deep bg-surface p-4 flex flex-col gap-3">
             <h2 className="text-base font-semibold">Transfer &amp; Mutation Desk</h2>
+            {live !== true && <p className="text-[13px] font-semibold text-warn" role="status">Server unreachable — mutations are disabled in demo mode.</p>}
+            {live === true && !canMutate && <p className="text-[13px] font-semibold text-warn" role="status">Your role cannot approve stock mutations.</p>}
             <div className="grid grid-cols-2 gap-2 text-[13px]">
               <div className="flex flex-col gap-0.5">
                 <label className="text-xs font-semibold" htmlFor="mut-sku">Active Focus SKU</label>
                 <select id="mut-sku" value={focus} onChange={(e) => setFocus(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card apex-id">
-                  {rows.map((r) => <option key={r.id} value={r.id}>{r.id}</option>)}
+                  {catalogedIds.map((id) => <option key={id} value={id}>{id}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-0.5">
@@ -411,8 +593,8 @@ export function InventoryLedger() {
                 <Input id="mut-wo" value={woRef} onChange={(e) => setWoRef(e.target.value.toUpperCase())} invalid={mutTouched && reason === REASONS[3] && !/^WO-2026-\d{4}$/.test(woRef.trim())} className="apex-id" />
               </div>
               <div className="flex flex-col gap-0.5">
-                <label className="text-xs font-semibold" htmlFor="mut-pin">Approver PIN — M. Vance (demo: 2468)</label>
-                <Input id="mut-pin" type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value)} invalid={mutTouched && pin.trim() !== '2468'} />
+                <label className="text-xs font-semibold" htmlFor="mut-pin">Approver code (authenticator app, 6 digits)</label>
+                <Input id="mut-pin" type="password" inputMode="numeric" autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)} invalid={mutTouched && !CODE_RE.test(code.trim())} placeholder="••••••" />
               </div>
             </div>
             <p className="text-[13px]" role="status">
@@ -422,11 +604,11 @@ export function InventoryLedger() {
               </strong>
             </p>
             {mutTouched && !mutOk && (
-              <p className="text-[11px] font-semibold text-fail">Qty ≤ available, approver PIN 2468{reason === REASONS[3] ? ', and a WO-2026-NNNN ref' : ''} are required.</p>
+              <p className="text-[11px] font-semibold text-fail">Qty ≤ available, a 6-digit approver code{reason === REASONS[3] ? ', and a WO-2026-NNNN ref' : ''} are required{live !== true ? ' (and a live server connection)' : ''}.</p>
             )}
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => { setQty('1'); setPin(''); setMutTouched(false); }}>Cancel</Button>
-              <Button onClick={postMutation}>Confirm &amp; Post Mutation</Button>
+              <Button variant="secondary" onClick={() => { setQty('1'); setCode(''); setMutTouched(false); }}>Cancel</Button>
+              <Button onClick={() => void postMutation()} disabled={posting || !canMutate}>{posting ? 'Posting…' : 'Confirm & Post Mutation'}</Button>
             </div>
           </div>
         </div>

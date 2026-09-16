@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
 
 interface Room { id: string; name: string; counts: string; seeded: boolean }
 
@@ -36,17 +37,7 @@ const SEL_ROOMS = ['Room #B-201: Generator Vault', 'Room #B-204: Centrifugal Chi
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1000;
 
-function download(filename: string, text: string, type = 'application/geo+json') {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string, type = 'application/geo+json') => downloadText(filename, text, type);
 
 /**
  * Facility Locations & Spatial Topology Hub — archive port (unit 10).
@@ -111,13 +102,13 @@ export function FacilityHub() {
     if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(c) || c <= 0) return;
     setPolyOpen(false);
     setPolyTouched(false);
-    push(true, 'Polygon updated', `Room #B-204 · ${a} m² · clearance ${c}m · BIM overlay re-synced.`);
+    push(true, 'Polygon updated', `Room #B-204 · ${a} m² · clearance ${c}m · BIM overlay re-synced (local).`);
   };
 
   const dispatchAudit = () => {
     const n = audits + 1;
     setAudits(n);
-    push(true, 'Room audit dispatched', `AUD-2026-0${140 + n} · Room #B-204 · TMPL-HVAC-CHL-02 · crew paged.`);
+    push(true, 'Room audit logged', `AUD-2026-0${140 + n} · Room #B-204 · TMPL-HVAC-CHL-02 · crew notify logged (no pager) · local simulation.`);
   };
 
   const addRoom = () => {
@@ -167,7 +158,7 @@ export function FacilityHub() {
       <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-labelledby="fac-h">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="apex-id text-muted">Spatial Sync: Realtime · Broker 10.14.0.8 · <span className="text-pass font-bold">HEALTHY</span></p>
+            <p className="apex-id text-muted">Spatial sync: local demo · no broker</p>
             <h1 id="fac-h" className="text-2xl font-semibold tracking-tight">Facility Locations &amp; Spatial Topology Hub</h1>
             <p className="text-[13px] text-muted">Multi-tier geospatial asset hierarchy, BIM node coordination, and live mechanical room occupancy.</p>
           </div>
@@ -263,7 +254,7 @@ export function FacilityHub() {
             )}
             <div className="flex items-center justify-between gap-2 pt-1">
               <p className="text-xs text-muted">GIS calibrated {calibrated}</p>
-              <Button variant="secondary" onClick={() => { setCalibrated('14 Sep 2026 14:05 WIB'); push(true, 'GIS recalibrated', '12 Sites · 34 Bldgs · 1,420 Rooms · drift 0.00m.'); }}>
+              <Button variant="secondary" onClick={() => { setCalibrated('14 Sep 2026 14:05 WIB'); push(true, 'GIS recalibrated', '12 Sites · 34 Bldgs · 1,420 Rooms · drift 0.00m (local simulation).'); }}>
                 <RefreshCw size={14} /> Recalibrate GIS
               </Button>
             </div>

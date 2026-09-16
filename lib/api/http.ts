@@ -16,6 +16,7 @@ import { getSessionContext, type AuthContext } from '../auth/context';
 import { can, type Permission } from '../auth/rbac';
 import { DomainError } from '../domain/errors';
 import { recordRequestMetric } from '../telemetry/metrics';
+import { checkEtagMatch, computeEtag } from './etag';
 
 export { DomainError };
 
@@ -25,6 +26,8 @@ export interface RouteMeta {
   /** Omit for public routes (login/mfa/health). */
   permission?: Permission;
   public?: boolean;
+  /** GET saja: hitung ETag dari envelope; jawab 304 bila If-None-Match cocok (FP-09). */
+  etag?: boolean;
 }
 
 export interface RouteResult<T> {
@@ -37,10 +40,19 @@ export interface RouteResult<T> {
 
 export type RouteHandler<T> = (ctx: AuthContext | null, requestId: string) => Promise<RouteResult<T>>;
 
+/**
+ * CSRF guard (FP-04): Fetch Metadata + Origin-vs-Host.
+ * - `Sec-Fetch-Site: cross-site` pada mutasi cookie-auth tidak pernah sah → tolak.
+ * - Mutasi tanpa header (client non-browser spt curl) diizinkan — kebijakan sadar,
+ *   konsisten dengan perilaku sebelumnya (SameSite=Lax tetap memblokir kirim cookie cross-site).
+ * (Lib double-submit lib/auth/csrf.ts yang tidak pernah ter-wire dihapus pada TASK-08.)
+ */
 function csrfFailure(req: NextRequest): boolean {
   if (req.method === 'GET' || req.method === 'HEAD') return false;
+  const site = req.headers.get('sec-fetch-site');
+  if (site === 'cross-site') return true;
   const origin = req.headers.get('origin');
-  if (!origin) return false; // non-browser clients; SameSite=Lax already blocks cross-site cookies
+  if (!origin) return false;
   const host = req.headers.get('host');
   try {
     return new URL(origin).host !== host;
@@ -62,20 +74,25 @@ export async function withRoute<T>(
   const started = Date.now();
   const path = new URL(req.url).pathname;
 
-  const finish = (status: number, body: unknown, extra: Record<string, unknown> = {}) => {
+  const finish = (status: number, body: unknown, extra: Record<string, unknown> = {}, etag?: string) => {
     const durationMs = Date.now() - started;
     recordRequestMetric({ route: path, method: meta.method, status, durationMs });
     log(status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info', 'api_request', {
       traceId, spanId, requestId, op: meta.op, method: meta.method, path, status,
       durationMs, ...extra,
     });
-    return NextResponse.json(body, {
-      status,
-      headers: {
-        'x-request-id': requestId,
-        'traceparent': formatTraceparent(traceId, spanId),
-      },
-    });
+    const headers: Record<string, string> = {
+      'x-request-id': requestId,
+      'traceparent': formatTraceparent(traceId, spanId),
+      // FP-08: durasi server terlihat di DevTools client.
+      'Server-Timing': `app;dur=${durationMs}`,
+    };
+    if (etag) {
+      headers['ETag'] = etag;
+      headers['Cache-Control'] = 'private, no-cache, must-revalidate';
+    }
+    if (status === 304) return new NextResponse(null, { status, headers });
+    return NextResponse.json(body, { status, headers });
   };
 
   try {
@@ -103,7 +120,15 @@ export async function withRoute<T>(
     }
 
     const result = await handler(ctx, requestId);
-    const response = finish(result.status ?? 200, { ok: true, data: result.data }, ctx ? { userId: ctx.userId, orgId: ctx.orgId } : {});
+    const envelope = { ok: true, data: result.data };
+    let etag: string | undefined;
+    if (meta.etag && meta.method === 'GET') {
+      etag = computeEtag(envelope);
+      if (checkEtagMatch(req, etag)) {
+        return finish(304, undefined, ctx ? { userId: ctx.userId, orgId: ctx.orgId } : {}, etag);
+      }
+    }
+    const response = finish(result.status ?? 200, envelope, ctx ? { userId: ctx.userId, orgId: ctx.orgId } : {}, etag);
     if (result.setCookie) {
       response.cookies.set(result.setCookie.name, result.setCookie.value, result.setCookie.options as never);
     }

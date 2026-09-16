@@ -14,7 +14,7 @@ const CreateSrSchema = z.object({
 
 /** GET /api/service-requests — tenant-scoped triage queue + capabilities. */
 export async function GET(req: NextRequest) {
-  return withRoute({ op: 'sr.list', method: 'GET', permission: 'sr.read' }, req, async (ctx) => {
+  return withRoute({ op: 'sr.list', method: 'GET', permission: 'sr.read', etag: true }, req, async (ctx) => {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || undefined;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;

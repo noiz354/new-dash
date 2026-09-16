@@ -78,6 +78,42 @@
 - [x] Tambah reusable print templates untuk Work Permit, Badge/QR, dan domain print artifacts di luar PO print.
 - [x] Pertimbangkan dev-only UI state gallery route dari `ui_state_variants_patterns` bila dibutuhkan untuk QA komponen.
 
+## Truth Map FE↔BE — backlog integrasi (detail: `docs/audit-fe-be-truth-map.md`, spec: `docs/audit-mocked-deadend-unintegrated-spec.md`)
+
+- [ ] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1)
+- [x] P0: wire `PATCH /api/organization/users/[id]` + reset-MFA ke OrgHub (GAP-2 CLOSED 2026-09-16: org-service baru — list/create/update/resetMfa + self-guard 403 + revoke sesi + audit USER_*; roster live dari GET; 69/69 test; runtime MCP: provision→deactivate→reactivate + reset-MFA + self-403, 0 console error)
+- [x] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (GAP-1 CLOSED 2026-09-16: route via inspection-service, perm finding.create/read, severity adapter, idempotensi; 67/67 test; runtime MCP terverifikasi)
+- [x] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (GAP-3 CLOSED 2026-09-16: step-up TOTP wajib di POST movements — verifyStepUpCode + 403 STEP_UP_UNAVAILABLE/INVALID + stepUpAt di audit; rows live GET /api/parts + feed GET movements dari audit PART_*; PIN 2468 dihapus total; non-katalog disabled; 72/72 test; runtime MCP: receive+mutasi persist, kode salah → STEP_UP_INVALID, reload OK, 0 JS error)
+- [ ] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5)
+- [ ] P1: agregat server untuk KPI inventory atau label scope jujur (ganti konstanta 4,218/1,840/`MOV_TOTAL`) (G6)
+- [ ] P2: bersihkan klaim Live/WS-PUSH/SYNCED-hash, EVT-fallback, seed-tanpa-badge, perm `assets.read`→tulis, rute transfers/adjustments/runs, export-scope label (G7–G12)
+
+## Audit Full-App — temuan baru di luar truth map lama (detail: `docs/audit-full-app-truth-map.md`)
+
+- [x] BROKEN baru: wire `finding.convert` ke FindingDesk convert + dismiss ke endpoint nyata (GAP-4 CLOSED 2026-09-16: `dismissFinding()` + POST dismiss + perm finding.dismiss; desk live-status + convert/dismiss/PM via API nyata; 74/74 test; runtime MCP terverifikasi)
+- [x] BROKEN baru: wire `GET/POST /api/auth/sessions` ke ProfileSessions (GAP-5 CLOSED 2026-09-16: GET tandai current via hash cookie sendiri + POST mode others/all + revokeOtherUserSessions + audit REVOKE_OTHERS; SESSIONS const + copy SCIM-mock dihapus; 77/77 test; runtime MCP: 2 sesi live → revoke-others → 1 sesi + toast count nyata, 0 console error)
+- [ ] BACKEND-ONLY → putuskan expose atau kunci: inspections CRUD + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing UI, signup form
+- [ ] FRONTEND-ONLY → wire atau label jujur: reports hub, PM hub, shifts plan, facilities hub, vendors flows, settings hub, jobs page (SEED), print templates (WO/PO/badge/permit: nyatakan sumber CANON)
+- [ ] DEAD-END: buat rute `/inventory/transfers`, `/inventory/adjustments`, `/field/runs` atau cabut referensinya (TO-8891/ADJ/INS-… menggantung)
+- [ ] OrgHub provision: daftar roster masih SEED meski POST nyata → refetch setelah provision (PARTIAL → END-TO-END)
+
+## Audit non-E2E 32 fitur — remediation order (detail: `docs/audit-non-e2e-remediation-map.md`)
+
+> 2026-09-16, read-only, 32 fitur terverifikasi (bukan 37 — lihat §22). Eksekusi GAP-06→GAP-17 satu-per-satu, spec-driven, commit+push per gap.
+
+- [x] GAP-06 P0: billing HMAC fail-closed + dedup + Stripe call/hapus stub (F24 CLOSED 2026-09-16: verifyWebhookSignature raw-body — secret hilang 503, header hilang 401, salah 400, tanpa swallow; dedup via withIdempotency scope stripe.webhook + tx; checkout Stripe Checkout API asli via fetch tanpa dep baru, tanpa key/price → 503 jujur tanpa URL palsu/tanpa TRIALING upsert; route webhook req.text(); 4 test baru; npm test 81/81; runtime curl dev: webhook→BILLING_NOT_CONFIGURED fail-closed, checkout unauth→401)
+- [x] GAP-07 P0: impersonate — audit event nyata atau cabut klaim "audit-chained" (F29 CLOSED 2026-09-16: teater dihapus total di ProfileSessions+OrgHub → tombol disabled + copy jujur; guard-test 7 frasa fiksi hilang; "audit-chained" tersisa TEPAT 2 yang memang server-audited; npm test 99/99; runtime MCP /profile+/organization 0 error)
+- [x] GAP-08 P1: copy cluster jujur + EVT-fallback wajib-auditId + perluas grep-test (F31/F32 CLOSED 2026-09-16: ~40 edit string jujur di SideNav/NotificationsHub/ReportsHub/FacilityHub/PmHub/dialogs/SettingsHub/OrgHub; "WS-PUSH"→"SSE"; dialog fail-closed tanpa auditId; guard-test GAP-08 file-scoped absence+presence; npm test 121/121; tsc bersih; runtime MCP: /notifications SSE intact + /settings copy jujur, 0 console error; temuan: 500 passkeys/login = drift dev-DB pre-existing, bukan GAP-08)
+- [x] GAP-09 P1: purchasing wire list/detail/GRN → po-service (F13 CLOSED 2026-09-16: decidePurchase APPROVE/REJECT + guard terminal 409 + audit PO_APPROVE/PO_REJECT + idempoten; POST decision perm po.approve; GET ?number= 404 jujur; GRN wajib stepUpCode→stepUpAt + nomor GRN-YYYY-NNNN via nextNumber + guard 404/422/403; createRequisition guard LINE_ITEMS_REQUIRED; dialogs/list/detail live + SEED fallback demo ber-badge + form GRN + match honest-placeholder; 8 test service-level, npm test 124/124, tsc bersih; runtime MCP: PR-2026-0316 create→approve via UI, GRN-2026-0001 VERIFIED via UI+TOTP, PO-2026-0298→RECEIVED, stok PART-SEAL-8821 2→4 live, reload persists, console 1 issue dev-only CSP-eval pre-existing; insiden .data/pg wedge → fresh db:setup; temuan: /inventory/[sku] detail masih statis — follow-up gap tersendiri)
+- [x] GAP-10 P1: PM hub wire list+generate nyata (F19 CLOSED 2026-09-16: sequence PM-YYYY-NNNN via nextNumber + createPmRule transaksional (Math.random dihapus); route toggle ACTIVE/PAUSED baru; PmHub live GET/POST/generate/toggle + SEED fallback demo-badge + queue dari rules overdue/due≤14d + batch idempoten + KPI server + copy telemetry/Modbus jujur (NOT CONNECTED/LOCAL DEMO); 2 test service-level, npm test 126/126, tsc bersih; runtime MCP: create PM-2026-0001 via UI → generate WO-2026-0910 → pause→resume via UI, 0 console error; dev DB re-setup fresh untuk baris sequence PM)
+- [x] GAP-11 P1: force-dispatch route→service+audit, lalu field queue←inspections (F20/F16 CLOSED 2026-09-16: forceDispatchInspection transaksional + audit INSPECTION_FORCE_DISPATCH + idempoten + 409 ALREADY_COMPLETED + progress preserved; POST→createInspection nomor canon; GET tanpa fallback CANON; route progress baru + INSPECTION_PROGRESS diaudit; AuditQueue+hub live + demo fallback + sync-count nyata; RunChecklist submit→COMPLETED server + PIN 2468/modal/toast-fiksi/autosave-timer dihapus; 3 test service-level, npm test 129/129, tsc exit 0; runtime MCP: queue 2 baris live, INS-2026-1093 create→dispatch via API + audit-trail diff, run canon submit→COMPLETED + reload persists, 404/409 jujur, console bersih)
+- [x] GAP-12 P1: 4 quick-close paralel — WO tasks + inventory KPI + provision-refetch + outbox-flush (F5/F10/F3/F17 CLOSED 2026-09-16: seed 7 wo_tasks canon + WoChecklist live ganti ol statis + advance POST + error 422 jujur + 1 test; ReportsHub runQuery→aggregates nyata + latensi + banner-gagal-jujur; OrgHub provision refetch + RFID re-attach; FieldShell online flushOutbox silent; 2 bug envelope apiFetch tertangkap runtime → fix; npm test 130/130, tsc exit 0; runtime MCP: WO 05→DONE/unlock 06/Start 06, aggregates 29ms live, roster 6→7 + RFID-1212, console 0 error)
+- [x] GAP-13 P1: evidence GET ter-otentikasi + viewer; rotate-key endpoint nyata (F6/F30 CLOSED 2026-09-16: download route auth + traversal-guard + 410/500 jujur + WoChecklist viewer thumbnail/download di 2 branch page; tabel api_keys hash-only + issue show-once + revoke + audit; UI ProfileSessions live; 2 test; npm test 132/132, tsc bersih; runtime MCP: AK-2026-0001 issue→revoke→list-kosong, upload 201→download 200 byte-identik, cross-WO 404, unauth 401, viewer 2 files termuat, console 0 error)
+- [x] GAP-14 P2: reports + vendors + BIM wire ke backend yang sudah ada (F21/F14/F8 CLOSED 2026-09-16: vendor-service + migrasi 0004 + RBAC vendors.manage + routes GET/POST/PATCH + VendorList/Detail/dialogs live + demo fallback + DUNS format-only + dispatch→WO nyata; ReportsHub KPI live aggregates on-mount + Refresh + katalog design-reference; AssetBim refresh→ingest + honest empty; 4 test, npm test 136/136, tsc exit 0; runtime MCP: onboard 5→6 via UI + dispatch WO-2026-0911 + KPI konsisten API (9 total) + ingest 77.5→WARNING→refresh live + recordedAt server; console hanya 400 artefak probe negatif)
+- [x] GAP-15 P2/P3: export label "CSV (loaded rows)" + badge "Fase 2" di kartu runs (F11/F18 CLOSED 2026-09-16: 1 baris label ledger; badge Phase 2 gate `a.id !== CANON.inspection`; situs export lain terverifikasi jujur tak diubah; 2 guard-test, npm test 138/138, tsc exit 0; runtime MCP: tombol live di /inventory + badge tampil pada kartu LIVE non-kanon INS-2026-1093; console 0 error)
+- [ ] GAP-16: NEED PRODUCT DECISION — signup-UI? transfer-routes? jobs-satu-dunia? digest-cron? facilities-KV? settings-KV? handover-backend? (F2/F12/F23/F25/F15/F26/F27)
+- [ ] GAP-17: KEEP batch no-op — SSO, clone-policy, print, ledger-fallback, telemetry-infra, import-defer (F1/F4/F7/F9/F22/F28)
+
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
 ## Fase A — Tutup Kanon ✅ Selesai (2026-09-13)
@@ -221,6 +257,17 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Urutan pengerjaan = urutan nomor di bawah (slice Phase 1 dulu, lalu Phase 2–4). Setiap slice WAJIB memenuhi DoD di bagian bawah.
 > Master prompt siap-tempel untuk agent berikutnya: `docs/MASTER_PROMPT_CLAUDE_CODE.md`.
 
+### 0. URUTAN EKSEKUSI — BY IMPACT (disepakati 2026-09-16; backlog kanonis = file ini)
+
+> Aturan: tiap item aktif diverifikasi runtime via Chrome CDP :9227 (screenshot + console + network + runtime state) dengan verdict PASS/PARTIAL/FAIL/BLOCKED. TASK-27+ terkunci sampai runtime verification Wave 3–4 selesai.
+> Status implementasi file-level (cek 2026-09-16 — BUKAN verdict runtime): TASK-01..03, 05..21, 23..26 ada file + wiring; TASK-04, 22, 27, 28, 29, 30, FONT belum.
+
+1. [ ] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah
+2. [ ] Test debts: Slice 5 (seed checklist canon + UI checklist DB) → tests Slice 6/7/8/10 → A.14 Playwright E2E (harness untuk semua uji browser/CDP)
+3. [ ] TASK-27 web push (opt-in P1) → TASK-28 passkeys (role-terbatas) → TASK-29 worker CSV (gated bukti RUM longtask) → TASK-30 save-as picker → TASK-FONT (butuh aset woff2) → TASK-22 CSP enforce (butuh ≥1 siklus report bersih)
+4. [ ] A.16 aktivasi CI (dependensi maintainer) · D.4 load test (dilarang klaim throughput sebelum terukur) · Debt E.1–E.8 oportunistik per slice
+5. [ ] Triase arsip satu-per-satu per batch tema (±50–80/sesi): exp-check ~540 checkbox + ui-audit ~457 TODO → verdict DONE/USANG/PROMOTE per item
+
 ### A. Phase 1 sisa — Make Core Journey Reliable (slice 4 → 10)
 
 **Slice 4 — Inventory & Parts (mutasi stok nyata pertama; Critical Path #3 bagian "parts issue")**
@@ -320,6 +367,71 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [ ] E.6 Hapus `web/` (arsip prototipe HTML standalone) + `stitch_facility_maintenance_platform_ui/` **hanya atas persetujuan user** (folder beku AGENTS.md) — kandidat setelah Phase 2
 - [ ] E.7 Secrets: `SEED_TOTP_SECRET`/`SEED_USER_PASSWORD` via env di deployment nyata; `.env.example` sudah menyiapkan; jangan commit `.env`
 - [ ] E.8 i18n label status (WO_LABELS/SR_LABELS English) vs UI dwibahasa — putuskan saat Phase 3 landing page
+
+## Runtime Verification Wave 3–4 (via Chrome CDP :9227) 📋 Spec siap, eksekusi belum mulai
+
+> Spec lengkap: `docs/runtime-verification-wave-3-4.md`. Satu task satu verdict (PASS/PARTIAL/FAIL/BLOCKED). Jangan mulai TASK-27+ sebelum selesai.
+
+- [x] TASK-19 Barcode → PARTIAL (laporan: `docs/runtime-verification-task19.md`; A+E PASS, B/C/D/F BLOCKED BY ENVIRONMENT — Win64 Chrome tak punya BarcodeDetector)
+- [x] TASK-20 Audit truthfulness → PASS (laporan: `docs/runtime-verification-task20.md`; verify-root fabrikasi dihapus, bug `asc` diperbaiki, copy/KPI/metadata jujur, test 61/61)
+- [x] TASK-21 Windowing → PASS (laporan: `docs/runtime-verification-task21.md`; 65 data → 25 li via MCP, spacer math eksak, scroll keyboard End/Home disjoint, filter jujur, test 65/65)
+- [x] TASK-23 PWA Manifest → PASS (laporan: `docs/runtime-verification-task23.md`; link manifest + JSON valid + 4/4 ikon 200 + installabilityErrors [])
+- [x] TASK-24 Service Worker → PASS (laporan: `docs/runtime-verification-task24.md`; bug fallback SHELL-vs-PAGES di-fix + terverifikasi end-to-end, logout purge, nuansa: React #418 pre-existing backlog)
+- [x] TASK-25 Background Sync + Badging → FAIL (laporan: `docs/runtime-verification-task25.md`; outbox klien nyata, TAPI server fabrikasi: POST 201-tanpa-persist + GET hardcode; auto-flush unproven → backlog)
+- [x] TASK-26 SSE Alerts → PASS (laporan: `docs/runtime-verification-task26.md`; stream/snapshot/heartbeat/header + fallback jujur + recovery live→fallback→live)
+- [x] Final matrix + bug list + final decision Wave 3–4 → 19 PARTIAL, 20/21/23/24/26 PASS, 25 FAIL (lihat laporan per task + PROGRESS.md)
+
+## Backlog Step 2 — Batch 1 Operasi (triase PROMOTE, detail: `docs/triase-batch-1-operasi.md`)
+
+> Hasil: DONE 29, PROMOTE 44, USANG 0 dari 73 item `docs/exp-check/part-operasi.md` vs HEAD 4121970.
+
+- [ ] WO: evidence viewer LOTO (WO-2/ME-5), requisition prefill (WO-3, U), tech assist (WO-5), autosave STALE (WO-9), drag pipeline (WO-10), labor validation (WO-11)
+- [ ] SR: asset drawer (SR-3), batch bar (SR-4, U), dispatch taxonomy (SR-5), export log (SR-6, U), convert confirm P1+LOTO (SR-7), breach (SR-8), convert validation (SR-9), optimistic STALE (SR-10), reject/dup modal (SR-11), chat retry (SR-12, U)
+- [ ] PM: history-link target (PM-1, U), checklist detail (PM-3), row drawer (PM-4), export CSV (PM-6), STALE engine badge (PM-9), simulate marker (PM-10), ready-first sort (PM-11)
+- [ ] Inspections: unified drawer (FI-3), templates content+create (FI-4/5), fast-link a11y (FI-8), publish validation (FI-10), reorder keyboard (FI-11), IoT offline widget (FI-12)
+- [ ] Findings: conversion result page (FC-1), evidence lightbox (FC-3a), unresolved recount (FC-5), batch convert (FC-6), export CSV (FC-7), convert-fail toast (FC-11), OSHA derivation (FC-12), BOM shortage (FC-10)
+- [ ] Mobile: site picker (ME-7), FAIL validation rule (ME-8), Modbus fail fallback (ME-10), pinch-zoom decision (ME-12)
+- [ ] Dependensi kanon belum diputus: WO 0894/8802, LOTO #4092/#M-44, INS-412 65/50, PART-SEAL-8821, jam Shift A, GPS Kalimantan
+
+## Backlog Step 2 — Batch 2 Aset & Resource (triase PROMOTE, detail: `docs/triase-batch-2-aset.md`)
+
+> Hasil: DONE 50, PROMOTE 45, (U) 11, USANG 0 dari 106 item `docs/exp-check/part-aset.md` vs HEAD 360d525.
+
+- [ ] Asset Registry: flow + konfirmasi Decommission, flow + modal Transfer Loc, modal Register New Asset + POST, Batch QR Print massal/satuan, export async job, sinkronisasi filter/pagination ke query params (`?q=`, kalibrasi `Page 1 of 308`)
+- [ ] Asset Detail: sub-tab IoT Diagnostics / PM Schedules (12) / Compliance & Docs, Dossier PDF 360°, export full ledger 421 + hash, guardrail Issue-to-WO saat SKU DEFICIT, modal Quick Dispatch + Log Inspection, modal Add SKU to BOM, flow +PR Request baris kritis, flow +Quick PO, warehouse scope toggle, pill filter timeline, badge telemetri STALE/reconnect
+- [ ] Facilities: kontrak JSON `GET /api/v1/locations/:id` + `?locationId=` (ganti fragment HTMX), prefill Dispatch Room Audit / Log Defect via `?locationId=`, tampilan hasil `TMPL-HVAC-CHL-02`, persist polygon/rekalibrasi, Print Badge QR ruangan, link `WO-2026-0881`, pesan gagal hx-get + Retry + tile STALE + MODEL MISMATCH, unifikasi label hitungan (8 AST vs 4 Linked vs Showing 4 of 8)
+- [ ] Inventory: POST mutasi idempoten (`Idempotency-Key`, kini lokal), verifikasi PIN approver nyata (kini hardcoded `2468`), approval khusus saat available → 0, rute detail transfer/adjustment, prefill Draft PO (`?sku=`), link PM-PLN-0104
+- [ ] Purchasing: POST nyata authorize/GRN (kini simulasi fase), modal + validasi Create PR/PO, backend Flag Discrepancy / Reject / RFQ, guard mismatch qty + envelope tak cukup (server-side), rute detail GRN-9941, job export CSV/Audit + print batch
+- [ ] Vendors: flow + modal Onboard vendor/MSA + approval, flow + modal Initiate Amendment, modal Dispatch prefill `?vendorId=`, countdown renewal single-source (312d vs 288d), aksi Commendation, dossier + export compliance, footer Sync Oracle ERP gagal + Retry, viewer MSA PDF gagal + unduh langsung
+- [ ] (U) kedalaman belum terverifikasi — verifikasi saat implementasi: prefill WO/PM dari drawer registry, tombol copy tag + fallback, referensi gantung WO/PO/TO/ADJ, link simbol CHILLER #04, klik node tree spasial, polling feed inventory + badge hash, Print QR rak-bin, Expiry Ledger inline vs halaman, empty state direktori, `tel:` Direct Ring
+- [ ] Dependensi kanon belum diputus: WO seal ganda, OEM Trane vs Daikin, skor 68/88/88,4, harga PART-SEAL-8821, bin CRIB-B vs SUB-LCK-4B, MSA 312d vs 288d, label WO-0894 vs WO-2026-0894
+
+## Backlog Step 2 — Batch 3 Governance (triase PROMOTE, detail: `docs/triase-batch-3-governance.md`)
+
+> Hasil: DONE 42, PROMOTE 45, (U) 4, USANG 0 dari 91 item `docs/exp-check/part-governance.md` vs HEAD 361ff8f.
+
+- [ ] Dashboard: modal Quick Create WO + POST, aksi baris inline optimistis (Dispatch/Reassign/Auto-Assign/Expedite), banner Telemetry Degraded + Retry (wiring dashboard), filter rail via query params + reset, tab chart + skeleton/shimmer + Retry
+- [ ] Reports: drawer filter dimensi (tune), riwayat job EXP-*/RPT-*, generate/export async (Compiling→Ready, FAILED+Retry), badge replika SYNCED→LAG/STALE, validasi query builder + preview 0 records, filter kosong + Reset, toast export per baris
+- [ ] Audit Trail: ekspor log terjadwal berkala
+- [ ] Notifications: modal Reassign Tech, flow transfer antar-crib, markAllRead optimistic + rollback, toggle kanal/preferensi, banner WS putus ganti label jujur (label `WS-PUSH: 12ms` fiksi — lihat F-COPY), countdown auto-eskalasi + STALE, tab/search/severity via query params + empty message, kartu tetap unread bila gagal
+- [ ] Organization: auth prod SSO Okta SAML + MFA FIDO2, modal Edit Assignment, sync SCIM per user + retry + webhook log, PUT rules server + rollback (Deploy kini simulated), validasi modal Provision, banner sesi impersonasi
+- [ ] Settings: dialog konfirmasi destruktif (Reset/Purge/Rotate/Maint), drawer editor konfigurasi, deep-link `?tab=`, konfirmasi Maint Mode ON + audit, save banner TX + Retry, tab lazy-fetch + skeleton, empty webhook/snapshot/kunci
+- [ ] UI States: `TableSkeleton`, standar hover-reveal + focus ring + kanban drag, kontrak prod Force Ping + flush, Retry idempoten + Copy Log, skeleton→baris + STALE, guard submit + LOTO
+- [ ] Logo: varian logo-white/mark/favicon/PWA icon, keputusan tipografi wordmark, alt/fallback inisial AO, skeleton 36×36
+- [ ] (U) kedalaman belum terverifikasi — verifikasi saat implementasi (4 item): persistensi cron Schedule Dispatch; revoke perilaku profil user; empty state roster Displayed; viewer hasil restore + RPO/RTO/diff; feedback job seed/backup; adopsi FormField + guard
+- [ ] Dependensi kanon belum diputus: WO-2024 vs WO-2026, tenant APX-NUSA-01 vs APX-GL-9021, 6 vs 8 roles, Shift A, PR vs PO, Quiet Hours, zona, kontak, screen.png salah sorot, artefak mobile shell purchasing/vendors, ID contoh ui-patterns, presisi logo
+
+## Backlog Step 2 — Batch 4 ui-audit (triase PROMOTE, detail: `docs/triase-batch-4-ui-audit.md`)
+
+> Hasil: 23+ref DONE / 15+1ref PROMOTE / 4 (U) / 1 USANG atas ~41 kapabilitas
+> distinct (458 sebutan TODO dari 40 file `docs/ui-audit/`).
+
+- [ ] Rute hilang: `inventory/transfers/[id]`, `inventory/adjustments/[id]`, halaman `field/runs*`
+- [ ] Backend belum ada: vendors (+MSA +summary), assets/registry (+telemetri/BOM), settings/system, locations/facilities, live-queue/steps/time-entries, dispatch-queue/batch, notifications read-all/preferences, webhook vendor (billing.webhook hanya Stripe inbound), wo-draft, purchase authorize flow (terpisah dari `po.create`)
+- [x] Wire-up UI → endpoint nyata yang SUDAH ADA: `inventory.mutate` (GAP-3 CLOSED: receive/mutasi/issue → POST movements + step-up; rows + feed live), `po.receive` (GRN kini pesan lokal — GAP-6), `reports.aggregates` (GAP-9), `inventory.*`/parts (GAP-3 CLOSED)
+- [ ] Temuan TASK-25 tetap: persist findings (ref, tak diduplikasi); PIN supervisor nyata (kini `2468`)
+- [ ] (U): wiring UI reports/inventory, pemicu auto-flush reconnect, impersonate enforcement (ref batch 3)
+- [ ] USANG: usulan endpoint `verify-root` (dihapus by design; pakai `verify-chain`); konvensi path `/api/v1/*` (API = `/api/*`)
 
 ### Definition of Done per slice (WAJIB semua)
 

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CANON } from '@/lib/canon';
+import { ApiError as ApiClientError, apiFetch } from '@/lib/api/client';
 import type { WoAction, WoStatus } from '@/lib/domain/work-orders';
 import { isTerminal } from '@/lib/domain/work-orders';
 
@@ -38,23 +39,20 @@ function useTransition(number: string) {
     setError(null);
     setDone(null);
     try {
-      const res = await fetch(`/api/work-orders/${number}/transitions`, {
+      const data = await apiFetch<{ statusLabel?: string }>(`/api/work-orders/${number}/transitions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
-        body: JSON.stringify({ action, reason: reason ?? null }),
+        body: { action, reason: reason ?? null },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Request failed' };
-        setError(err);
-        if (err.code === 'WO_STALE_STATE' || err.code === 'WO_INVALID_TRANSITION') router.refresh();
-        return false;
-      }
-      setDone(body.data.statusLabel ?? action);
+      setDone(data.statusLabel ?? action);
       router.refresh();
       return true;
-    } catch {
-      setError({ code: 'NETWORK', message: 'Network error — nothing was changed. Retry.' });
+    } catch (err) {
+      if (err instanceof ApiClientError) {
+        setError({ code: err.code, message: err.message });
+        if (err.code === 'WO_STALE_STATE' || err.code === 'WO_INVALID_TRANSITION') router.refresh();
+      } else {
+        setError({ code: 'NETWORK', message: 'Network error — nothing was changed. Retry.' });
+      }
       return false;
     } finally {
       setBusy(false);
@@ -223,7 +221,8 @@ export function SignoffDialog({ number, status, enabled }: TransitionProps) {
 }
 
 /** WOD-12 export — still a simulated background job (no worker yet; slice #2+). */
-export function ExportDialog() {
+export function ExportDialog({ number }: { number?: string }) {
+  const woNumber = number ?? CANON.workOrderSeal;
   const [pct, setPct] = useState(0);
   const [running, setRunning] = useState(false);
   const start = () => {
@@ -246,7 +245,7 @@ export function ExportDialog() {
       <DialogTrigger asChild><Button variant="secondary">Export WO Log (simulated)</Button></DialogTrigger>
       <DialogContent>
         <DialogTitle>Export WO Log</DialogTitle>
-        <DialogDescription>{CANON.workOrderSeal} · CSV + evidence manifest — simulated background job (real exports ship with the worker slice)</DialogDescription>
+        <DialogDescription>{woNumber} · CSV + evidence manifest — simulated background job (real exports ship with the worker slice)</DialogDescription>
         <div className="h-2 rounded-full bg-surface-subtle overflow-hidden">
           <div className="h-full bg-cobalt-deep transition-all" style={{ width: `${pct}%` }} />
         </div>

@@ -13,7 +13,7 @@ import { sql } from 'drizzle-orm';
 import type { Db } from './client';
 import {
   assets, findings, inspections, organizations, parts, purchaseOrders,
-  sequences, serviceRequests, users, vendors, workOrderEvents, workOrders,
+  sequences, serviceRequests, users, vendors, workOrderEvents, workOrders, woTasks,
 } from './schema';
 import { CANON } from '../lib/canon';
 import { hashPassword } from '../lib/auth/password';
@@ -40,8 +40,12 @@ export async function seedAll(db: Db): Promise<void> {
     { organizationId: ORG, entity: 'WO', year, nextVal: 910 },  // manual WO opens at 0910 (canon)
     { organizationId: ORG, entity: 'SR', year, nextVal: 895 },
     { organizationId: ORG, entity: 'PO', year, nextVal: 316 },
+    { organizationId: ORG, entity: 'PR', year, nextVal: 316 },
     { organizationId: ORG, entity: 'INS', year, nextVal: 1093 },
     { organizationId: ORG, entity: 'FND', year, nextVal: 189 },
+    { organizationId: ORG, entity: 'GRN', year, nextVal: 1 },
+    { organizationId: ORG, entity: 'PM', year, nextVal: 1 },
+    { organizationId: ORG, entity: 'AK', year, nextVal: 1 },
   ]).onConflictDoNothing();
 
   // -------------------------------------------------------------- users --
@@ -126,6 +130,18 @@ export async function seedAll(db: Db): Promise<void> {
     ]);
   }
 
+  // Seed the DB-driven execution checklist for the canon seal WO (GAP-12/F5).
+  // Mirrors the dossier narrative: steps 01–04 DONE, 05 IN PROGRESS, 06 PENDING, 07 LOCKED.
+  await db.insert(woTasks).values([
+    { organizationId: ORG, id: 'WOSEAL-T01', workOrderNumber: CANON.workOrderSeal, stepOrder: 1, title: 'LOTO Padlock #4092 applied & zero-energy verified', instruction: 'SOP-MECH-LOTO-04 · photo of applied padlock required', status: 'DONE', requiresPhoto: true, verifiedBy: 'Marcus Kowalski', verifiedAt: new Date(now - 5 * hour) },
+    { organizationId: ORG, id: 'WOSEAL-T02', workOrderNumber: CANON.workOrderSeal, stepOrder: 2, title: 'Refrigerant R-134a recovered to holding cylinder', instruction: 'Recover to holding cylinder per EPA 608', status: 'DONE', requiresPhoto: false, verifiedBy: 'Marcus Kowalski', verifiedAt: new Date(now - 4 * hour) },
+    { organizationId: ORG, id: 'WOSEAL-T03', workOrderNumber: CANON.workOrderSeal, stepOrder: 3, title: 'Old mechanical seal disassembled & shaft inspected', instruction: 'Inspect shaft for scoring before install', status: 'DONE', requiresPhoto: false, verifiedBy: 'Marcus Kowalski', verifiedAt: new Date(now - 3 * hour) },
+    { organizationId: ORG, id: 'WOSEAL-T04', workOrderNumber: CANON.workOrderSeal, stepOrder: 4, title: 'New silicon-carbide seal installed & torqued (85 Nm)', instruction: 'Torque 85 Nm · photo of installed seal required', status: 'DONE', requiresPhoto: true, verifiedBy: 'Elena Voronova', verifiedAt: new Date(now - 2 * hour) },
+    { organizationId: ORG, id: 'WOSEAL-T05', workOrderNumber: CANON.workOrderSeal, stepOrder: 5, title: 'Nitrogen pressure test (150 PSI hold for 30m)', instruction: 'Hold 150 PSI for 30 minutes, log reading', status: 'IN_PROGRESS', requiresPhoto: false, verifiedBy: null, verifiedAt: null },
+    { organizationId: ORG, id: 'WOSEAL-T06', workOrderNumber: CANON.workOrderSeal, stepOrder: 6, title: 'Evacuation < 500 microns & refrigerant recharge', instruction: 'Evacuate below 500 microns before recharge', status: 'PENDING', requiresPhoto: false, verifiedBy: null, verifiedAt: null },
+    { organizationId: ORG, id: 'WOSEAL-T07', workOrderNumber: CANON.workOrderSeal, stepOrder: 7, title: 'Post-repair vibration & temperature baseline run', instruction: 'Record baseline vibration + temperature', status: 'LOCKED', requiresPhoto: false, verifiedBy: null, verifiedAt: null },
+  ]).onConflictDoNothing();
+
   // ---------------------------------------------------- service requests --
   await db.insert(serviceRequests).values([
     { organizationId: ORG, number: CANON.serviceRequest, title: 'Refrigerant smell near Chiller #04 flange', requesterName: CANON.requestor, priority: 'P1', status: 'CONVERTED', assetCode: CANON.assetSeal, slaDueAt: new Date(now - 3 * hour), convertedWoNumber: CANON.workOrderSeal },
@@ -146,10 +162,11 @@ export async function seedAll(db: Db): Promise<void> {
   // ------------------------------------------------------------ vendors --
   const msaTrane = new Date(Date.now() + 312 * 86_400_000).toISOString().slice(0, 10); // canon: 312 days left
   await db.insert(vendors).values([
-    { organizationId: ORG, slug: CANON.vendorSlug, name: CANON.vendorName, tier: 'TIER-1', msaNumber: CANON.msa, msaExpiresOn: msaTrane, onTimePct: 97 },
-    { organizationId: ORG, slug: 'abb-grid-power-automation', name: 'ABB Grid & Power Automation', tier: 'TIER-2', msaNumber: 'MSA-2023-ABB-04', msaExpiresOn: '2026-04-30', onTimePct: 91 },
-    { organizationId: ORG, slug: 'siemens-building-technologies', name: 'Siemens Building Technologies', tier: 'TIER-1', msaNumber: 'MSA-2025-SBT-11', msaExpiresOn: '2027-01-31', onTimePct: 99 },
-    { organizationId: ORG, slug: 'johnson-controls-tyco-fire', name: 'Johnson Controls / Tyco Fire', tier: 'TIER-2', msaNumber: 'MSA-2023-JCI-07', msaExpiresOn: '2026-06-30', onTimePct: 94 },
+    { organizationId: ORG, slug: CANON.vendorSlug, name: CANON.vendorName, tier: 'TIER-1', msaNumber: CANON.msa, msaExpiresOn: msaTrane, onTimePct: 97, scope: 'Centrifugal Chillers & R-134a Overhaul', contact: 'Robert Langdon · Sr. Tech Lead', phone: '+62-21-5082-4402', duns: '00-132-9481' },
+    { organizationId: ORG, slug: 'abb-grid-power-automation', name: 'ABB Grid & Power Automation', tier: 'TIER-2', msaNumber: 'MSA-2023-ABB-04', msaExpiresOn: '2026-04-30', onTimePct: 91, scope: '13.8kV Switchgear, Transformers, SCADA', contact: 'Elena Voronova · SCADA Lead (liaison)', phone: '+62-21-5082-2000' },
+    { organizationId: ORG, slug: 'siemens-building-technologies', name: 'Siemens Building Technologies', tier: 'TIER-1', msaNumber: 'MSA-2025-SBT-11', msaExpiresOn: '2027-01-31', onTimePct: 99, scope: 'Desigo CC BMS & Cleanroom Actuators', contact: 'Marcus Gallagher', phone: '+62-21-2754-3000' },
+    { organizationId: ORG, slug: 'johnson-controls-tyco-fire', name: 'Johnson Controls / Tyco Fire', tier: 'TIER-2', msaNumber: 'MSA-2023-JCI-07', msaExpiresOn: '2026-06-30', onTimePct: 94, scope: 'FM-200 Clean Agent & VESDA Aspirating', contact: 'Sarah Al-Mansoor (internal liaison)', phone: '+62-21-2995-5800' },
+    { organizationId: ORG, slug: 'grainger-industrial-supply', name: 'Grainger Industrial Supply', tier: 'TIER-3', msaNumber: 'MSA-CATALOG-BLANKET', msaExpiresOn: null, onTimePct: 94, scope: 'MRO Hardware, Fasteners & Consumables', contact: 'B2B Corporate Account Desk', phone: '+62-21-5082-1111' },
     { organizationId: ORG, slug: 'grainger-industrial-supply', name: 'Grainger Industrial Supply', tier: 'TIER-3', msaNumber: null, msaExpiresOn: null, onTimePct: 96 },
   ]).onConflictDoNothing();
 

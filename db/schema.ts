@@ -306,6 +306,10 @@ export const vendors = pgTable(
     msaNumber: text('msa_number'),
     msaExpiresOn: date('msa_expires_on'),
     onTimePct: integer('on_time_pct'), // basis: 0..100 integer percent
+    scope: text('scope'), // service scope / line of business (GAP-14)
+    contact: text('contact'), // display contact person / desk
+    phone: text('phone'), // dispatch line (display only — no telephony)
+    duns: text('duns'), // D&B format ##-###-#### (format-checked only)
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.organizationId, t.slug] })],
@@ -485,6 +489,78 @@ export const rateLimits = pgTable(
     count: integer('count').notNull().default(1),
     resetAt: timestamp('reset_at', { withTimezone: true }).notNull(),
   },
+);
+
+// ---------------------------------------------------------------- push / webauthn --
+
+/** FP-18/TASK-27 — Web Push subscriptions (VAPID). Tenant+user scoped; endpoint unik. */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull(),
+    /** RFC 8291 subscription keys (base64url). */
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('push_sub_endpoint_uq').on(t.endpoint),
+    index('push_sub_user_idx').on(t.userId, t.organizationId),
+  ],
+);
+
+/** FP-19/TASK-28 — WebAuthn passkey credentials (SimpleWebAuthn server stores). */
+export const webauthnCredentials = pgTable(
+  'webauthn_credentials',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** Credential ID (base64url). */
+    credentialId: text('credential_id').notNull(),
+    /** COSE public key (base64url). */
+    publicKey: text('public_key').notNull(),
+    counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+    transports: text('transports'), // comma-separated: 'internal', 'usb', 'nfc'...
+    aaguid: text('aaguid'),
+    friendlyName: text('friendly_name').notNull().default('Passkey'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('webauthn_cred_id_uq').on(t.credentialId),
+    index('webauthn_user_idx').on(t.userId, t.organizationId),
+  ],
+);
+
+/** GAP-13/F30 — programmatic API keys. Only the SHA-256 hash is stored:
+ *  the plaintext secret is shown ONCE at creation and never readable again.
+ *  Bearer enforcement at the API gateway is an explicit follow-up slice —
+ *  this slice delivers the real issue / list / revoke lifecycle. */
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(), // AK-2026-0001…
+    name: text('name').notNull(),
+    /** SHA-256 hex of the plaintext secret (ak_live_…). Never the secret itself. */
+    keyHash: text('key_hash').notNull(),
+    last4: text('last4').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    uniqueIndex('api_keys_hash_uq').on(t.keyHash),
+    index('api_keys_org_idx').on(t.organizationId, t.createdAt),
+  ],
 );
 
 

@@ -7,7 +7,8 @@ import type { Db, Tx } from '../../db/client';
 import { auditEvents, pmRules, workOrderEvents, workOrders } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
 import { DomainError, notFound } from '../domain/errors';
-import { SLA_WINDOW_MS, slaLabel, type WoRow } from '../domain/work-orders';
+import { SLA_WINDOW_MS, slaLabel } from '../domain/work-orders';
+import type { WoRow } from './wo-service';
 import { requestHash, withIdempotency } from './idempotency';
 import { nextNumber } from './sequence';
 
@@ -75,34 +76,38 @@ export async function createPmRule(
 ): Promise<PmRuleRow> {
   const now = new Date();
   const nextDue = new Date(now.getTime() + (input.nextDueDays ?? input.intervalDays) * 24 * 3600 * 1000);
-  const ruleId = input.id || `PM-${input.assetCode.split('-')[1] || 'GEN'}-${Math.floor(100 + Math.random() * 900)}`;
 
-  const [rule] = await db
-    .insert(pmRules)
-    .values({
+  // Canon numbering (GAP-10): PM-YYYY-NNNN from the sequences engine — no Math.random.
+  // Wrapped in a transaction so the sequence bump, rule insert, and audit stay atomic.
+  return db.transaction(async (tx) => {
+    const ruleId = input.id || await nextNumber(tx, ctx.orgId, 'PM', now.getFullYear());
+
+    const [rule] = await tx
+      .insert(pmRules)
+      .values({
+        organizationId: ctx.orgId,
+        id: ruleId,
+        title: input.title.slice(0, 200),
+        assetCode: input.assetCode,
+        intervalDays: input.intervalDays,
+        priority: input.priority ?? 'P2',
+        status: 'ACTIVE',
+        nextDueAt: nextDue,
+      })
+      .returning();
+
+    await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      id: ruleId,
-      title: input.title.slice(0, 200),
-      assetCode: input.assetCode,
-      intervalDays: input.intervalDays,
-      priority: input.priority ?? 'P2',
-      status: 'ACTIVE',
-      nextDueAt: nextDue,
-    })
-    .returning();
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: 'PM_RULE_CREATE',
+      entityType: 'pm_rule',
+      entityId: ruleId,
+      after: { title: rule.title, intervalDays: rule.intervalDays },
+    });
 
-  await db.insert(auditEvents).values({
-    organizationId: ctx.orgId,
-    actorId: ctx.userId,
-    actorName: ctx.userName,
-    actorRole: ctx.role,
-    action: 'PM_RULE_CREATE',
-    entityType: 'pm_rule',
-    entityId: ruleId,
-    after: { title: rule.title, intervalDays: rule.intervalDays },
+    return toPmRuleDto(rule, now);
   });
-
-  return toPmRuleDto(rule, now);
 }
 
 export async function togglePmRule(
@@ -121,9 +126,8 @@ export async function togglePmRule(
 
   await db.insert(auditEvents).values({
     organizationId: ctx.orgId,
-    actorId: ctx.userId,
-    actorName: ctx.userName,
-    actorRole: ctx.role,
+    actorUserId: ctx.userId,
+    actorName: ctx.name,
     action: `PM_RULE_${targetStatus}`,
     entityType: 'pm_rule',
     entityId: id,
@@ -150,7 +154,8 @@ export async function generatePmWorkOrder(
     const rule = rules[0];
 
     if (rule.status === 'PAUSED') {
-      throw new DomainError('RULE_PAUSED', `Cannot generate work order from paused rule ${ruleId}`, 422);
+      throw new DomainError(422, 'RULE_PAUSED',
+          `Cannot generate work order from paused rule ${ruleId}`);
     }
 
     const now = new Date();
@@ -178,7 +183,7 @@ export async function generatePmWorkOrder(
       organizationId: ctx.orgId,
       workOrderNumber: woNumber,
       actorUserId: ctx.userId,
-      actorName: ctx.userName,
+      actorName: ctx.name,
       action: 'CREATE',
       fromStatus: null,
       toStatus: 'SCHEDULED',
@@ -198,9 +203,8 @@ export async function generatePmWorkOrder(
 
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: 'PM_GENERATE_WO',
       entityType: 'pm_rule',
       entityId: ruleId,
@@ -235,5 +239,11 @@ export async function generatePmWorkOrder(
   }
 
   const hash = requestHash({ ruleId });
-  return withIdempotency(db, ctx.orgId, opts.idempotencyKey, hash, async (tx) => exec(tx));
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'pm.generate', hash, async () => {
+      const body = await exec(tx);
+      return { status: 201, body };
+    });
+    return res.body;
+  });
 }

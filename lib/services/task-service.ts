@@ -114,7 +114,8 @@ export async function updateWoTask(db: Db, ctx: AuthContext, input: UpdateTaskIn
         .limit(1);
 
       if (priorIncomplete.length > 0) {
-        throw new DomainError('SEQUENCE_VIOLATION', `Step ${priorIncomplete[0].stepOrder} must be completed before Step ${currentTask.stepOrder}`, 422);
+        throw new DomainError(422, 'SEQUENCE_VIOLATION',
+          `Step ${priorIncomplete[0].stepOrder} must be completed before Step ${currentTask.stepOrder}`);
       }
 
       // Photo gate: if task requires photo, verify evidence exists
@@ -130,7 +131,8 @@ export async function updateWoTask(db: Db, ctx: AuthContext, input: UpdateTaskIn
           .limit(1);
 
         if (ev.length === 0) {
-          throw new DomainError('PHOTO_REQUIRED', `Photo evidence required before completing Step ${currentTask.stepOrder} (${currentTask.title})`, 422);
+          throw new DomainError(422, 'PHOTO_REQUIRED',
+          `Photo evidence required before completing Step ${currentTask.stepOrder} (${currentTask.title})`);
         }
       }
     }
@@ -140,7 +142,7 @@ export async function updateWoTask(db: Db, ctx: AuthContext, input: UpdateTaskIn
       .update(woTasks)
       .set({
         status: input.status,
-        verifiedBy: input.status === 'DONE' ? ctx.userName : null,
+        verifiedBy: input.status === 'DONE' ? ctx.name : null,
         verifiedAt: input.status === 'DONE' ? now : null,
       })
       .where(and(
@@ -165,9 +167,8 @@ export async function updateWoTask(db: Db, ctx: AuthContext, input: UpdateTaskIn
     // Record audit event
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
-      actorId: ctx.userId,
-      actorName: ctx.userName,
-      actorRole: ctx.role,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
       action: 'WO_TASK_UPDATE',
       entityType: 'work_order_task',
       entityId: input.taskId,
@@ -176,7 +177,7 @@ export async function updateWoTask(db: Db, ctx: AuthContext, input: UpdateTaskIn
         status: input.status,
         stepOrder: currentTask.stepOrder,
         woNumber: input.woNumber,
-        verifiedBy: ctx.userName,
+        verifiedBy: ctx.name,
       },
     });
 
@@ -207,7 +208,8 @@ export interface AddEvidenceInput {
 }
 
 export async function addEvidence(db: Db, ctx: AuthContext, input: AddEvidenceInput): Promise<EvidenceRow> {
-  const id = `ev-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const { randomBytes } = await import('node:crypto');
+  const id = `ev-${Date.now()}-${randomBytes(4).toString('hex')}`;
 
   const inserted = await db.insert(evidence).values({
     organizationId: ctx.orgId,
@@ -219,15 +221,14 @@ export async function addEvidence(db: Db, ctx: AuthContext, input: AddEvidenceIn
     mimeType: input.mimeType,
     fileSize: input.fileSize,
     sha256Hash: input.sha256Hash,
-    uploadedBy: ctx.userName,
+    uploadedBy: ctx.name,
   }).returning();
 
   // Audit record
   await db.insert(auditEvents).values({
     organizationId: ctx.orgId,
-    actorId: ctx.userId,
-    actorName: ctx.userName,
-    actorRole: ctx.role,
+    actorUserId: ctx.userId,
+    actorName: ctx.name,
     action: 'EVIDENCE_UPLOAD',
     entityType: 'evidence',
     entityId: id,

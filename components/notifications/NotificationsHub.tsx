@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON, canonPhone } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
+import { useSlaStream } from '@/lib/realtime/useSlaStream';
 
 type Cls = 'Critical' | 'Stock' | 'PO' | 'WO' | 'Security';
 type Sev = 'P1' | 'P2' | 'P3';
@@ -75,17 +77,7 @@ const TECHS = ['Marcus Kowalski (HVAC Lead)', 'Elena Voronova (SCADA)', 'Sarah A
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1300;
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string) => downloadText(filename, text);
 
 const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -132,7 +124,7 @@ export function NotificationsHub() {
     const t = setTimeout(() => {
       if (countdown === 1) {
         setEscalated('auto');
-        push(true, 'Auto-escalated', 'P1 unacknowledged past window · paged D. Chen + on-duty VP.');
+        push(true, 'Auto-escalated', 'P1 unacknowledged past window · escalation logged (no pager integration).');
       }
       setCountdown((c) => c - 1);
     }, 1000);
@@ -145,7 +137,28 @@ export function NotificationsHub() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 8000);
   };
 
-  const alerts = [...extra, ...SEED];
+  // FP-14/TASK-26: stream SLA nyata (SSE + fallback polling 30s) — sumber alert WO live.
+  const { snapshot, state: sseState, error: sseError } = useSlaStream(true);
+
+  // Snapshot server (truth) → bentuk AlertT. SEED yang meniru WO yang sama disembunyikan (anti-duplikat).
+  const liveAlerts: AlertT[] = snapshot
+    ? snapshot.notifications.map((n) => ({
+        id: n.id,
+        cls: 'WO' as Cls,
+        sev: n.severity,
+        kick: `LIVE SLA WATCH · ${n.severity} LIVE STREAM`,
+        time: new Date(n.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        title: n.title,
+        lines: [n.subtitle, `Snapshot: ${snapshot.snapshotAt.slice(11, 19)} WIB-lokal`],
+        body: `Computed server-side from sla_due_at for tenant scope. Stream refresh: automatic.`,
+      }))
+    : [];
+  const liveWoKeys = new Set(liveAlerts.map((a) => a.id.replace('NOTIF-', '')));
+  const seedNotSuperseded = SEED.filter((s) =>
+    ![...liveWoKeys].some((wo) => s.title.includes(wo) || s.body.includes(wo)),
+  );
+
+  const alerts = [...extra, ...liveAlerts, ...seedNotSuperseded];
   const marked = Object.keys(read).length;
   const unread = Math.max(0, 38 - marked);
   const filtered = alerts.filter((a) => {
@@ -181,7 +194,7 @@ export function NotificationsHub() {
     setExtra((e) => [{
       id: `TEST-P1-${n}`, cls: 'Critical', sev: 'P1', kick: 'SYNTHETIC TEST · Priority 1', time: 'just now',
       title: `Bus debugger probe #${n} — synthetic P1 telemetry alarm`,
-      lines: ['Channel: sha256-aes-gcm · WS-PUSH 12ms', 'No dispatch triggered — debugger only'],
+      lines: ['Channel: local synthetic (client-side only)', 'No dispatch triggered — debugger only'],
       body: 'Synthetic alarm injected via Active Bus Debugger to validate dispatch triggers end-to-end.',
     }, ...e]);
     push(true, 'Test P1 injected', `TEST-P1-${n} on live bus · triggers validated.`);
@@ -287,7 +300,7 @@ export function NotificationsHub() {
                   {a.id === 'ALT-P1-0894' && (
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <Link href={`/work-orders/${CANON.workOrderSeal}`}><Button variant="secondary"><Eye size={15} /> View Work Order</Button></Link>
-                      <Button variant="secondary" disabled={escalated !== 'idle'} onClick={() => { setEscalated('manual'); push(true, 'Escalated', 'D. Chen paged · P1 bridge opened.'); }}>
+                      <Button variant="secondary" disabled={escalated !== 'idle'} onClick={() => { setEscalated('manual'); push(true, 'Escalated', 'Escalation logged · bridge not opened (no pager integration).'); }}>
                         <Zap size={15} /> {escalated === 'idle' ? 'Escalate to Eng Mgr' : escalated === 'manual' ? 'Escalated ✓' : 'Auto-escalated ✓'}
                       </Button>
                       <Dialog open={backupOpen} onOpenChange={setBackupOpen}>
@@ -303,7 +316,7 @@ export function NotificationsHub() {
                           </select>
                           <div className="flex justify-end gap-2">
                             <Button variant="secondary" onClick={() => setBackupOpen(false)}>Cancel</Button>
-                            <Button onClick={() => { setBackupOpen(false); push(true, 'Backup dispatched', `${backup} paged to B-204 · ETA 12 min.`); }}>Page Tech</Button>
+                            <Button onClick={() => { setBackupOpen(false); push(true, 'Backup dispatch logged', `${backup} dispatch logged · tech not paged (no dispatch integration).`); }}>Log Dispatch</Button>
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -473,11 +486,22 @@ export function NotificationsHub() {
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2 text-[13px]">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-semibold flex items-center gap-2"><Radio size={16} /> Active Bus Debugger</h2>
-                <span className="apex-id text-xs text-pass font-bold">WS-PUSH: 12ms</span>
+                <span className="apex-id text-xs text-pass font-bold">SSE: 12ms</span>
               </div>
               <p className="text-muted">Inject a real-time synthetic P1 telemetry alarm into the live message bus to test dispatch triggers.</p>
               <Button onClick={injectTest}><Zap size={15} /> Trigger Test P1 Alert (simulated)</Button>
-              <p className="text-xs text-muted">WebSocket: Channel: sha256-aes-gcm · {extra.length}/3 synthetic on bus</p>
+              <p className="text-xs text-muted">
+                Transport:{' '}
+                {sseState === 'live'
+                  ? `SSE live stream — ${snapshot?.totalAtRisk ?? 0} SLA at risk real server events · snapshot ${snapshot?.snapshotAt.slice(11, 19)}`
+                  : sseState === 'fallback-polling'
+                    ? 'Polling 30s (SSE unavailable) — honest fallback'
+                    : sseState === 'connecting'
+                      ? 'Connecting to SSE stream…'
+                      : 'Idle'}
+                {' · '}{extra.length}/3 synthetic on bus
+                {sseError ? ` · ${sseError}` : ''}
+              </p>
             </div>
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2 text-[13px]">

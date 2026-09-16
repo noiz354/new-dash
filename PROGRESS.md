@@ -27,6 +27,7 @@
 | 2026-09-16 | Prompt audit visual screen.png | ✅ Selesai | `stitch_facility_maintenance_platform_ui/PROMPT.md` dibuat sebagai prompt siap tempel untuk audit semua `screen.png` per folder, termasuk format laporan per layar, ringkasan global, aturan Sistem A/B, dan perlakuan folder tanpa screenshot. |
 | 2026-09-16 | Audit visual screen.png per folder | ✅ Selesai | Prompt dijalankan → `stitch_facility_maintenance_platform_ui/screen-audits/`: 21 file audit per PNG/folder + `summary.md`. Temuan utama: artefak bottom-nav mobile di purchasing/vendors, active nav salah di reports/notifications, 2 filename mismatch asset PNG, dan guardrail confirmation untuk aksi kritikal. |
 | 2026-09-16 | Second-pass product architecture audit | ✅ Selesai | Audit-only, tanpa implementasi: baca `screen-audits/*.md`, `PROGRESS.md`, `TODO.md`, docs navigasi lama, dan route/component Next.js. Output: `screen-audits/second-pass.md` + `second-pass-summary.md`. Cakupan: 28 route-level pages + 21 screenshot refs. Existing findings confirmed: 5. New findings: 5 high-level. Missing pages/features: 24 (P0 5, P1 9, P2 7, P3 3). Incomplete workflows: 12. State gaps: 22. Responsive issues: 4. Shared logic opportunities: 15. Screenshot asset issues: 2. |
+| 2026-09-16 | Page layout specs untuk Flash model | ✅ Selesai | `stitch_facility_maintenance_platform_ui/screen-audits/page-layout-specs/`: 24 spec layout + README dibuat dari second-pass audit (P0 5, P1 9, P2 7, P3 3). Isi tiap file mencakup evidence, suggested route, struktur layout, state wajib, komponen, dan batasan. Audit/spec only; tidak ada implementasi code. |
 | 2026-09-13 | Fase A — Tutup kanon C9/C10/C12/C14 | ✅ Selesai | Grep ulang code.html: C9 = BUKAN konflik (6204 vs 6205 dua SKU berbeda); C10 = artefak GUGUR (CHILL-NUSA-04/WO-0894/WO-9042 ada, rewire format penuh); C12 = 65% kanon (hub otoritatif); C14 = persona terpisah [ASUMSI-OTOMATIS]. Amandemen: C3 TETAP $1,450 (2v1 atas WO hub $1,420; ledger H1 = $1,765); C4 TETAP Trane. Klausa CANON final. |
 | 2026-09-13 | Fase B — Gelombang HIGH | ✅ Selesai | 5 file di web/: H1 work-order-detail.html (WO-2026-0894, WOD-01..12, kanon Fase A, ledger $1,765); H2 my-audits.html + run-checklist.html (Sistem B, PIN override, guard FAIL, INS 65%) + sync-status.html (Idempotency-Key retry); H3 purchase-detail.html (PO-2026-0298, otorisasi $2,900/envelope $64,200, GRN idempoten, 3-Way Match, SLA BREACH). DoD rg bersih, zero href="#". |
 | 2026-09-13 | Fase C — Gelombang MEDIUM | ✅ Selesai | M1 vendor-detail.html (Trane, MSA 312d, PDF viewer, amandemen, dispatch ?vendorId=); M2 service-request-detail.html (SR-2026-0894 → WO-2026-0894, riwayat, ?asset=); M3 login.html (SSO/MFA/SCIM); M6 asset-bim.html (file terpisah [ASUMSI-OTOMATIS]); M4 palette ⌘K + M5 konvensi query didokumenkan di docs/DECISIONS_M4_M5_M6.md. DoD rg bersih. |
@@ -48,6 +49,12 @@
 | 2026-09-13 | Fase F — Wave-2 Chunk 1: `/purchasing/[id]` (H3 port) | ✅ | dialogs.tsx (Authorize-EDI/RFQ-vendor-guard/Reject reason-guard/Dispute) + PurchaseDetail (tabs ?tab=, SLA countdown→BREACH, endorse, GRN idempotent, 3-Way Match runner, quorum 2-of-3) + server seed guard + print dossier. tsc bersih, build hijau (25 routes), smoke 200/200/200/404. |
 | 2026-09-13 | Fase F — Rebuild + integrasi (wave-1) | 🟡 Parsial | Shell (SideNav 15 data-path + TopBar + palette ⌘K) + kontrak komponen (Button/Badge/Input/Skeleton/Dialog/ConfirmDialog/Logo/EmptyState/OfflineBanner/Banner/ErrorToast/TableSkeleton/timers) + lib/canon.ts. Full rebuild 2/20: dashboard (dispatch terverifikasi) + WO-2026-0894. 22 route wave-2 live sebagai halaman EmptyState jujur (zero dead link). tsc bersih, build hijau, smoke-test 200/200/404 OK. Sisa 18 layar → TODO Fase 2. |
 | — | Fase 2 — Rebuild layar | ⬜ Belum mulai | 0/20 layar. |
+| 2026-09-16 | Runtime verification Wave 3–4 — spec disimpan | 📋 Spec siap | Instruksi verifikasi feature-by-feature via Chrome CDP :9227 disimpan di `docs/runtime-verification-wave-3-4.md` (TASK-19/20/21/23/24/25/26 + format verdict + final matrix). Eksekusi runtime belum mulai. |
+| 2026-09-16 | TASK-19 runtime verification → PARTIAL | ✅ Dilaporkan | Login+MFA real via CDP :9227 (dev server :3145, DB PGlite fresh migrate+seed incl. 0001 drift fix). A+E PASS (deteksi jujur + fallback manual); B/C/D/F BLOCKED — Chrome Win64 tak expose BarcodeDetector (MDN: ChromeOS/macOS only). Console 0 error, CSP-report 204, RUM 202. Laporan: `docs/runtime-verification-task19.md`. Temuan: scan Windows butuh polyfill (perlu persetujuan dep); tidak ada fix kode. |
+| 2026-09-16 | Konsolidasi backlog Step 0+1 | ✅ Selesai | Inventarisasi ±1.000 kandidat (TASK-01..30+FONT, MASTER LIST, runtime spec, exp-check ~540, ui-audit ~457 TODO). Verifikasi file-level: TASK-01..03/05..21/23..26 implemented (09 download+12 adopsi, 10 broadcast wiring, 07 report-only+PP, 08 csrf dihapus+Sec-Fetch, 12 search paralel); belum: 04/22/27/28/29/30/FONT. Backlog impact-sorted ditulis di TODO.md §0 (kanonis). Stash `wip TODO` dari main di-drop (isinya 1 baris page-layout-specs, sudah tercatat di baris second-pass di atas). `page-layout-specs/` (25 file untracked di arsip beku) dibiarkan untracked — tidak di-commit sesuai AGENTS.md §6.1. |
+| 2026-09-16 | TASK-23 runtime verification → PASS | ✅ Dilaporkan | Sesi authed via CDP :9227 (login form di-skip, cookie run TASK-19 valid; `/` render dashboard berdata). Link manifest + JSON valid (standalone, 4 ikon any/maskable, 3 shortcut) + 4/4 ikon 200 image/png + Page.getInstallabilityErrors=[] (pengganti Lighthouse, dicatat jujur) + 0 console error. Laporan: `docs/runtime-verification-task23.md`. Anomali tap docHeaders `/` dinyatakan artefak tap (3 bukti independen). Tidak ada fix kode. |
+| 2026-09-16 | TASK-20 runtime verification → PASS (fix-then-verify) | ✅ Dilaporkan | Login+MFA real via CDP :9227 sebagai m.vance (audit.read). A–G PASS: 2 baris server + 6 demo ber-badge, 8× "— no hash" jujur, verify-chain 200 VALID (root 86ceaa97…), DOM bebas 16 frasa fiksi, filter tanggal 8→2→8, refresh toast terbukti (probe 1212ms; poll harness flake didokumentasikan), 0 console error. Fix: hapus endpoint fabrikasi verify-root (root/blockHeight/konsensus hard-coded), perbaiki bug `asc` tak diimport (verify-chain selalu 500), copy/KPI/metadata sesi diluruskan, filter tanggal + refresh dijadikan nyata, test grep-fiksi + tamper-detection baru. `npm test` 61/61. Laporan: `docs/runtime-verification-task20.md`. Temuan: ledger mode hash-opsional (entryHash selalu null — kandidat backlog backfill); docs arsip masih merujuk verify-root; copy global lain (Live Sync, Telemetry Bus) di luar scope → Step 2. |
+| 2026-09-16 | TASK-21 runtime verification → PASS (via MCP chrome-devtools) | ✅ Dilaporkan | Sesi nyata via MCP (browser milik MCP, login m.vance terverifikasi via /api/auth/session). A–G PASS: 5 seed full-render, 60 receipts via UI Receive Stock asli → dataset 65 (tab All (1900) delta TEPAT), DOM 25 li + botPad 3116=(65−24)×76 TEPAT (benefit: 24/65=37% kartu), scroll keyboard End/Home disjoint dua arah (topPad 1064=14×76, botPad 2052=27×76), filter Receipts 61→24 (botPad 2812 TEPAT) / WO Out 2 penuh / All kembali, 0 console error via MCP. Koreksi metodologi: 3 bug oracle harness diperbaiki dgn bukti ulang; scrollTop programatik tak fire scroll event (artefak harness) → bukti pakai keyboard asli. `npm test` 65/65 (4 test windowing SSR baru, komit 3b89b02). Laporan: `docs/runtime-verification-task21.md`. Temuan: angka tab inventory (1240/560/40/1.840) + badge SYNCED/sha256 statis → Step 2; `--browserUrl` MCP sudah di config tapi belum berlaku (perlu restart MCP); `serverExternalPackages` PGlite di next.config.mjs WAJIB (tanpa itu query gagal via Turbopack) — dikomit di sini. |
 
 ## Detail Fase 0 (2026-09-13)
 
@@ -105,3 +112,221 @@
 | `settings_system_configuration` | ✅ Diaudit | `docs/ui-audit/settings.md` — temuan: API key terpapar plain, tenant ganda |
 | `ui_state_variants_patterns` | ✅ Diaudit | `docs/ui-audit/ui-state-patterns.md` — kontrak komponen reusable |
 | `apex_ops_logo` | ✅ Diaudit | `docs/ui-audit/logo.md` — usulan komponen `Logo` tunggal |
+
+## Wave 3–4 Runtime Verification — FINAL (2026-09-16, via MCP chrome-devtools + CDP :9227)
+
+| Task | Verdict | Laporan | Catatan |
+|---|---|---|---|
+| TASK-19 Barcode | PARTIAL | `docs/runtime-verification-task19.md` | A+E PASS; B/C/D/F BLOCKED (Win64 tanpa BarcodeDetector) |
+| TASK-20 Audit truthfulness | PASS | `docs/runtime-verification-task20.md` | verify-root fabrikasi dihapus; bug `asc` di-fix; copy jujur |
+| TASK-21 Windowing | PASS | `docs/runtime-verification-task21.md` | 65 data → 25 li, spacer eksak, scroll keyboard, test 65/65 |
+| TASK-23 PWA Manifest | PASS | `docs/runtime-verification-task23.md` | manifest + 4/4 ikon 200 + installabilityErrors [] |
+| TASK-24 Service Worker | PASS | `docs/runtime-verification-task24.md` | bug fallback SHELL-vs-PAGES di-fix + terverifikasi; nuansa React #418 (backlog F-418) |
+| TASK-25 Background Sync | FAIL | `docs/runtime-verification-task25.md` | outbox klien nyata; server fabrikasi (POST 201-tanpa-persist, GET hardcode); auto-flush unproven → backlog |
+| TASK-26 SSE Alerts | PASS | `docs/runtime-verification-task26.md` | full cycle live → fallback jujur → pulih live |
+
+### Temuan (backlog Step 2 / slice berikut)
+
+- F-418: React hydration error #418 di `/login` prod (pre-existing, reproduksi clean-load).
+- F-FINDINGS: `POST /api/findings` persist ke tabel `findings` (perbaiki permission `assets.read`); `GET` baca DB; selidiki pemicu auto-flush SyncStatus.
+- F-A11Y: form-field tanpa id/name ×2 (console issue, dari uji TASK-26).
+- F-COPY: label `WS-PUSH: 12ms` (NotificationsHub debugger), `Live Sync Active`, `Telemetry Bus` — kandidat triase Step 2.
+- OBS: entryHash audit selalu null (mode hash-opsional); backfill saat insert bila chain tegas diinginkan.
+
+### Step 2 batch 1 — triase operasi (DONE 29 / PROMOTE 44 / USANG 0)
+
+- Sumber `docs/exp-check/part-operasi.md` (73 item) vs HEAD 4121970; detail tabel: `docs/triase-batch-1-operasi.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 1.
+- Pola: layar WO/mobile/findings sebagian besar DONE (rute + komponen inti ada); SR triage paling berlubang (10 PROMOTE).
+- (U) = kedalaman belum terverifikasi: WO-3, SR-4/6/12, PM-1/7, FI-9, ME-3/6 — verifikasi saat implementasi backlog.
+
+### Step 2 batch 2 — triase aset & resource (DONE 50 / PROMOTE 45 / (U) 11, USANG 0)
+
+- Sumber `docs/exp-check/part-aset.md` (106 item, 6 layar) vs HEAD 360d525; detail tabel: `docs/triase-batch-2-aset.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 2.
+- Pola berulang: dialog/dokumen/validasi client-side KAYA (banyak DONE — dossier live, GeoJSON export, mutation desk, authorize dialog, MSA lock), persist backend + guard server-side + rute detail bernomor (GRN/TRF/ADJ) = PROMOTE. Tidak ada USANG.
+- Sorotan DONE baru: viewer dokumen `documents/[docId]`, BIM viewer, prefill WO/inspeksi via `?asset=`, GeoJSON export + "geometries unseeded" jujur, dialog Add Sub-Location/Reassign/Log Defect/Polygon, Receive Stock tervalidasi, SKU detail, tab 3-Way Match, kunci dispatch MSA-expired.
+- Sorotan PROMOTE terbesar: Asset Detail (10: sub-tab iot/pm/docs, dossier PDF, ledger 421, guardrail deficit, modal-modalan BOM/PR/PO), Facilities (kontrak JSON ganti HTMX, persist polygon, unifikasi hitungan), Inventory (POST idempoten + PIN nyata — keamanan), Purchasing (POST nyata + guard server-side), Vendors (onboard/amendment flows).
+- (U) = 11 item kedalaman belum terverifikasi — verifikasi saat implementasi backlog.
+### Step 2 batch 3 — triase governance & sistem (DONE 42 / PROMOTE 45 / (U) 4, USANG 0)
+- Sumber `docs/exp-check/part-governance.md` (244 baris, 91 checkbox, 8 layar) vs HEAD 361ff8f; detail tabel: `docs/triase-batch-3-governance.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 3.
+- Sorotan DONE baru: hash-chain audit + verify panel (buah TASK-20), transport SSE jujur + fallback (buah TASK-26), secret rotate crypto-random (P1 BLOKER selesai), ConfirmDialog destruktif, Schedule Dispatch, WoTimers BREACH, states adoption, markAllRead.
+- Sorotan PROMOTE terbesar: Notifications (8: Reassign/transfer crib, markAllRead rollback, kanal, banner WS jujur, eskalasi, query params), Reports (7: filter dimensi, job EXP/RPT, export async, badge LAG/STALE, validasi builder), Settings (7: konfirmasi destruktif, drawer editor, deep-link, Maint audit, lazy-fetch).
+- (U) = 4 item (cron persist, revoke perilaku, roster empty, restore viewer/RPO + seed feedback, FormField) — verifikasi saat implementasi backlog.
+### Step 2 batch 4 — triase ui-audit (23+ref DONE / 15+1ref PROMOTE / 4 (U), 1 USANG)
+- Sumber `docs/ui-audit/` (40 file, 458 sebutan TODO/404 unik, NOL checkbox) vs HEAD a219caa + inventaris 61 op backend (`/tmp/opencode/real-ops.txt`); detail: `docs/triase-batch-4-ui-audit.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 4.
+- Sorotan DONE baru: routing WO/PO/field/PM/reports/SR (rute ada), wo/sr/audit/notif/inspections/pm/po/org-users/reports/search/queue/telemetry/auth ops (backend ada), anti-artifak bulk (ref batch 1-3), Retry outbox.
+- Sorotan PROMOTE terbesar: backend vendors/assets/settings/locations/live-queue/dispatch/read-all-preferences/webhook-vendor/wo-draft/authorize (TAK ADA backend); wire-up UI→endpoint nyata (`inventory.mutate`, `po.receive`, reports, parts); rute transfers/adjustments/runs; PIN supervisor nyata.
+- USANG: usulan `verify-root` (dihapus by design) + konvensi `/api/v1/*`. (U) = 4 (wiring reports/inventory, auto-flush, impersonate, PR-vs-PO naming).
+
+### Audit FE↔BE truth map (2026-09-16)
+- Spec (`docs/audit-mocked-deadend-unintegrated-spec.md`, §1–70) + laporan (`docs/audit-fe-be-truth-map.md`, 228 baris, §56–§70).
+- Temuan: P0 = Deactivate palsu (G1) + Finding palsu (G2); P1 = mutasi inventory lokal + PIN 2468 (G3), purchasing lokal (G4), jobs tanpa fetch (G5), KPI fiktif (G6); P2 = klaim Live/WS-PUSH (G7), EVT-fallback (G8), rute hilang (G9), seed-tanpa-badge (G10), perm baca-untuk-tulis (G11), export parsial (G12).
+- End-to-end nyata: auth/RBAC/logout, WO/SR+audit, verify-chain, windowing, PWA/SW/offline, SSE+fallback, push-subscribe, tenant isolation. Backlog masuk TODO.md §Truth Map FE↔BE.
+
+### Audit full-app end-to-end (2026-09-16)
+- Laporan baru `docs/audit-full-app-truth-map.md` (152 baris): matrix 50 feature × 8 kolom + 10 seksi wajib + jawaban penutup; metode statik per-feature + runtime-baca (`/login` 200, `/api/health` 200, tanpa mutasi).
+- BROKEN baru di luar G1/G2: FindingDesk convert/dismiss fiktif (padahal `finding.convert` ADA), ProfileSessions SEED (padahal sessions API ADA), OrgHub edit-role/MFA-rotate lokal.
+- BACKEND-ONLY: inspections + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing, signup. FRONTEND-ONLY: reports/PM/shifts/facilities/vendors/settings/jobs-page/print-templates.
+- Pola dominan: endpoint ADA tapi FE mensimulasikan lokal + toast sukses. Backlog baru masuk TODO.md §Audit Full-App.
+
+## GAP CLOSED #1 — Finding create (2026-09-16)
+
+Domain: Field | Feature: Finding create | Previous: BROKEN | New: END-TO-END
+Root cause: route fabrikasi (201 + id acak tanpa insert) + perm baca-untuk-tulis, padahal service lengkap tak dipanggil.
+Frontend: tanpa ubah logic (sudah POST benar); respons kini `{id: number-canon, ...row}` kompatibel.
+Backend: GET→listFindings org-scoped (perm finding.read); POST→createFinding + adapter HIGH→MAJOR/MEDIUM→MODERATE/LOW→MINOR + extra desc/zone ke audit + idempotency-Key via withIdempotency (scope finding.create); RBAC finding.read/create + mapping role.
+Persistence: tabel findings + sequence FND canon + audit FINDING_CREATE.
+Contract: severity UI→service di adapter; status canon OPEN; description/zone tanpa migrasi kolom.
+Runtime proof (MCP dev :3145, m.vance): submit LOW → FND-2026-0189 OPEN/MINOR; GET total 2; reload persists; POST invalid → 400 VALIDATION_ERROR total tetap 2; console hanya 400 sengaja.
+Tests: 2 test integrasi baru (persist+numbering+audit+tenant; replay idempoten); npm test 67/67.
+Remaining limitation: live-403 belum diuji browser (tak ada seed user Vendor/Auditor; enforcement via withRoute, pola terbukti); offline-flush runtime menyusul (jalur generik + endpoint idempoten, verified-by-construction).
+Commit: 42161ad (pushed, sinkron origin).
+NEXT GAP: #2 Org deactivate/edit role/reset MFA — local-only false success
+
+## GAP CLOSED #2 — Org deactivate / edit-role / reset-MFA (2026-09-16)
+
+Domain: Org | Feature: directory mutations | Previous: BROKEN (local-only false success) | New: END-TO-END
+Root cause: OrgHub roster SEED hardcoded; Deactivate/Edit/Reset-MFA = setState lokal + toast sukses ("audit-chained", "Okta SCIM push <50ms"); PATCH users/[id] ada tak dipanggil; endpoint reset-MFA tak ada.
+Backend: lib/services/org-service.ts baru (listUsers/createUser/updateUser/resetUserMfa); route jadi wrapper tipis; POST [id]/reset-mfa baru (clear totp + revokeAllUserSessions + audit USER_MFA_RESET); deactivate juga revoke sesi; self-guard 403 (USER_SELF_DEACTIVATE / USER_SELF_MFA_RESET).
+Frontend: roster live dari GET (badge Live directory / Demo offline); provision/edit/deactivate/reactivate/reset-MFA via API + toast jujur (gagal → pesan server, tak ada append); copy SCIM diluruskan; focus key = email (bug RFID-focus diperbaiki saat verifikasi).
+Runtime proof (MCP dev :3145, m.vance): roster 7 live; provision gap2.ui → 200; self-deactivate → 403 + toast jujur; deactivate → server isActive:false; reactivate → true; reset-MFA → 0 sesi + note; 0 console error. 2 bug UI (ternary terbalik, focus key) ditemukan & diperbaiki saat verifikasi.
+Tests: 2 test integrasi baru (provision→edit→deactivate→login-401→reactivate + audit; reset-mfa revoke sesi + self-403 + 404); npm test 69/69; tsc nol error baru.
+Artefak dev: user gap2.ui@apexops.io aktif di .data/pg (scratch, abaikan).
+Commit: ea83bd9 (pushed, sinkron origin).
+NEXT GAP: #3 (dokumen CLOSE ALL GAPS — urutan berikut)
+
+## GAP CLOSED #3 — Inventory receive/mutasi + approver PIN (2026-09-16)
+
+Domain: Inventory | Feature: receive/mutation/issue + approval | Previous: BROKEN (local-only false success + PIN '2468' hardcoded & printed) | New: END-TO-END
+Root cause: InventoryLedger setRows/setMovs lokal + PIN client-side; POST /api/parts/movements (dengan idempotensi) ADA tak dipanggil.
+Spec: docs/remediation-gap-3-spec.md (ditulis dulu — spec-driven).
+Backend: verifyStepUpCode() di inventory-service (TOTP vs users.totpSecret; 403 STEP_UP_UNAVAILABLE/INVALID); POST movements wajib stepUpCode + catat after.stepUpAt; GET movements baru (feed dari audit PART_*, tanpa tabel baru).
+Frontend: rows live GET /api/parts merge ke katalog display; feed audit-server; KPI jujur dari baris termuat; SEMUA '2468' dihapus; SKU non-katalog (VALV-GT2/FUSE-600V) jujur + disabled; SKU DB luar seed (BRG-6204) append live; Issue 2-klik + step-up; guard offline/canMutate.
+Tests: 3 integrasi baru (403 INVALID, 403 UNAVAILABLE, happy RECEIVE+ISSUE + audit stepUpAt + replay idempoten + 422 over-issue); npm test 72/72; tsc nol error baru.
+Runtime proof (MCP dev :3145, m.vance): badge Live server-fed; mutasi seal −1 → on-hand 1; reload → OUT OF STOCK + feed audit "by Marcus Vance"; kode salah → toast STEP_UP_INVALID; console 0 JS error (1×403 = artefak penolakan disengaja).
+Out of scope (tercatat): Reorder PR/PO draft, rute transfers/adjustments, enrich kolom katalog.
+NEXT GAP: #4 finding convert/dismiss.
+
+## GAP CLOSED #4 — Finding convert/dismiss + desk PM (2026-09-16)
+
+Domain: Field | Feature: FindingDesk convert/dismiss/PM | Previous: BROKEN (setTimeout 1200ms + setState + klaim "audit-chained"/"PM-PLN-0104") | New: END-TO-END
+Root cause: doConvert/doDismiss/doPm fiktif lokal; POST convert ADA tak dipanggil; endpoint dismiss TAK ADA.
+Spec: docs/remediation-gap-4-spec.md (ditulis dulu — spec-driven).
+Backend: dismissFinding() di inspection-service (validasi justification min-10 server-side → 400; terminal guard → 409 ALREADY_CONVERTED/ALREADY_DISMISSED; audit FINDING_DISMISS transaksional); POST /api/findings/[id]/dismiss (zod min10, perm finding.dismiss); RBAC finding.dismiss → Director/EngLead/Senior Field Tech.
+Frontend: desk muat live-status via GET /api/findings (badge mengikuti server; gagal → banner jujur + aksi disabled); convert via POST + Idempotency-Key (409 → re-sync); dismiss via POST; PM via pm.create (toast id rule server). NOL setTimeout simulasi; NOL klaim "paged"/fiksi.
+Bug saat runtime ditemukan & diperbaiki: GET list berbentuk {rows,total} bukan array (rows.find crash → honest error banner membuktikan guard bekerja; fix refreshLive).
+Tests: 2 integrasi baru (convert happy + 409 kedua + replay idempoten + audit + tenant; dismiss happy + 400 pendek + 409 ganda + 409 pasca-convert + tenant); npm test 74/74; tsc nol error baru.
+Runtime proof (MCP dev :3145, m.vance): desk kanon tampil CONVERTED → WO-2026-0894 dari server; API: create FND-2026-0190 → convert 201 WO-2026-0910 → convert-again 409; create FND-2026-0191 → dismiss-pendek 400 → dismiss 200 DISMISSED; klik PM → rule PM-HVAC-750 nyata; console 0 JS error (409/400 = artefak probe negatif disengaja).
+Out of scope (tercatat): BOM staging nyata, PM hub (GAP-8), desk non-kanon (masih EmptyState wave-2).
+NEXT GAP: #5 sessions revoke-all.
+
+## GAP CLOSED #5 — ProfileSessions live wiring (2026-09-16)
+
+Domain: Auth | Feature: ProfileSessions list + revoke | Previous: BROKEN (SESSIONS const statis + revoke setState lokal + copy "SCIM v2.4 (mock)") | New: END-TO-END
+Root cause: GET/POST /api/auth/sessions nyata tapi nol caller; UI memalsukan 3 sesi.
+Spec: docs/remediation-gap-5-spec.md (ditulis dulu — spec-driven).
+Backend: GET kini tandai `current` via hash cookie sendiri (prefix 8-char saja, full hash tak pernah keluar); POST terima `{mode:'all'|'others'}` (default all = perilaku lama); `revokeOtherUserSessions()` baru; audit AUTH_SESSIONS_REVOKE_OTHERS; fail-closed 401 SESSION_UNKNOWN bila cookie tak teridentifikasi; op diganti `auth.sessions.revoke`.
+Frontend: SESSIONS const + revoke() lokal DIHAPUS; GET on mount (loading/error/empty jujur); baris live (user-agent + last-seen + expiry + badge THIS DEVICE); "Sign Out Other Devices" → POST others + refetch + toast count server; "Sign Out Everywhere" → POST all → /login; copy mock diganti jujur; per-session single revoke DITUNDA by design (prefix ambigu — dinyatakan di UI + spec, bukan dipalsukan).
+Tests: 3 integrasi baru (current-flag tepat-1 + prefix-only; others bunuh sisanya + caller selamat; all bunuh semua + restore fixture); npm test 77/77; tsc nol error baru.
+Runtime proof (MCP dev :3145, m.vance): 2 sesi live (browser THIS DEVICE + curl/8.5.0) → Sign Out Others → 1 sesi + toast "1 device(s) signed out" + tombol disabled di 0 others; console bersih (hanya Fast Refresh log).
+Out of scope (tercatat): Rotate Key, Impersonate, per-session single revoke (butuh desain opaque id).
+NEXT GAP: #6 purchasing authorize/GRN.
+
+## AUDIT non-E2E 32 fitur — remediation map (2026-09-16)
+
+Perintah user: kerjakan semua 37 fitur non-E2E satu-per-satu secara spec-driven (34 langkah, tanpa perbaiki code). Dieksekusi read-only via 4 subagen explore paralel (batch A: SSO/signup/sessions/OrgHub/WO-tasks/evidence/print; B: inventory/aset/purchasing/vendors/facilities; C: field/PM/inspections/reports/telemetry/jobs; D: settings/shifts/billing/retention/import/copy/clone/impersonate).
+Hasil: klaim "37" dikoreksi → **32 fitur terverifikasi** (2 drifted→E2E: sessions GAP-5, ledger-read GAP-3; 3 baris print merge→1; import-CSV ternyata NOT FOUND bukan fitur; +5 split baru: clone-policy, impersonate, rotate-key, copy-cluster, EVT-fallback).
+Verdict: bug/gap benar = 20 (8 must-fix + 8 must-integrate + 4 complete-partial); valid by design = 3 + 4 honest-placeholder; quick close = 9; big rock = 7; need product decision = 4 primer + 3 sekunder; remove = 0.
+Temuan tajam: F24 billing `catch{}` telan BAD_SIGNATURE (P0 keamanan); F29 impersonate klaim "audit-chained" fiktif (P0-adjacent); F20 force-dispatch bypass service (tanpa zod/audit/idempotency); F23 jobs dua dunia + link auditHash fiktif; F8 BIM "live" padahal GET /api/telemetry/ingest nyata nganggur.
+Dokumen: `docs/audit-non-e2e-remediation-map.md` (§19 32 blok + §22 master table + §23–§30: by-decision, by-gap, order GAP-06→GAP-17, quick-close 9, big-rock 7, dependency map, counts).
+NEXT: eksekusi GAP-06 (billing HMAC) → GAP-17 satu-per-satu dalam build mode (butuh persetujuan user per pola CLOSE ALL GAPS).
+
+## GAP CLOSED #6 — Billing webhook + checkout fake → real (2026-09-16)
+
+Domain: Billing | Feature: webhook HMAC + dedup + checkout | Previous: BACKEND-ONLY (HMAC ditelan catch{}, HMAC atas re-serialisasi, tanpa-secret dilewati diam-diam, "duplicate guard" tanpa dedup, checkout stub cs_Date.now + URL fabrikasi) | New: BACKEND-ONLY hardened
+Root cause: fail-open verification + fake provider call.
+Spec: docs/remediation-gap-6-spec.md (ditulis dulu — spec-driven).
+Backend: `verifyWebhookSignature()` atas RAW body (skema t,v1 Stripe) — secret hilang→503 BILLING_NOT_CONFIGURED, header hilang→401, salah/malformed→400, tanpa swallow; `processStripeWebhook(db, rawBody, header)` parse-di-service + `db.transaction` + `withIdempotency(scope stripe.webhook, key event.id)` — replay tanpa re-eksekusi/audit ganda; `createCheckoutSession()` panggil Stripe Checkout Sessions API asli via fetch (tanpa dep baru; price per-plan dari env) — tanpa key/price→503 jujur, tanpa URL palsu, tanpa upsert TRIALING; COMMUNITY→400; route webhook pakai `req.text()`; env baru di .env.example (STRIPE_WEBHOOK_SECRET/SECRET_KEY/PRICE_GROWTH/PRICE_ENTERPRISE).
+Tests: 4 integrasi baru (valid→processed+1 audit; replay→replayed+audit tetap 1+plan ACTIVE; bad/tampered/missing/invalid-json→400/401 tanpa mutasi; missing secret→503; checkout tanpa key→503 tanpa ubah subscription row); npm test 81/81; tsc nol error baru.
+Runtime proof (curl dev :3145, tanpa secret): webhook→`BILLING_NOT_CONFIGURED` fail-closed (dulu: diproses diam-diam!); checkout unauth→401 (auth boundary utuh). Positive-path route-level TIDAK di-curl di dev DB agar tak mengotori data sharing (plan org) — positive path terbukti di integration test (PGlite riil + HMAC riil); plumbing route terbukti via path 503 (req.text→service→envelope).
+NEXT GAP: #7 impersonate.
+
+## GAP CLOSED #7 — Impersonation fake-audit → honest placeholder (2026-09-16)
+
+Domain: AuthZ | Feature: Audit Impersonate (profile + org) | Previous: MOCKED (banner "actions are audit-chained", toast "audit chain on"/"reason logged · 30-min tablet window", PIN 2468 — nol write, nol session change) | New: HONEST PLACEHOLDER (disabled, jujur)
+Root cause: FAKE SUCCESS di fitur security-sensitif; tak ada endpoint audit-write generik (membuatnya agar klien tulis audit arbitrer = security smell); impersonasi server-side asli = big rock + butuh product decision → opsi "cabut klaim".
+Spec: docs/remediation-gap-7-spec.md (ditulis dulu — spec-driven).
+Frontend: teater dihapus total di kedua file (impersonating state + banner + dialog + impReason/impPin state + toast); diganti tombol disabled + copy "Requires a server-issued impersonation session… disabled rather than simulated".
+Tests: guard di tests/audit-truthfulness.test.ts — 7 frasa fiksi hilang dari kedua file; placeholder jujur hadir di keduanya; "audit-chained" tersisa TEPAT 2 (toast activate/deactivate OrgHub yang memang server-audited via GAP-2 PATCH→audit); npm test 99/99; tsc nol error baru.
+Runtime proof (MCP browser dev :3145, m.vance): /profile → "Impersonate Field Tech (disabled)" + copy jujur + sesi live THIS DEVICE; /organization → "Audit Impersonate (disabled)"; 0 console error; reload persist (disabled statis — tak ada state palsu); screenshot /tmp/opencode/evidence/gap07/.
+NEXT GAP: #8 copy cluster + EVT.
+
+## GAP CLOSED #8 — Copy cluster jujur + EVT-fallback fail-closed (2026-09-16)
+
+Domain: Copy/Audit | Feature: infra/transport/delivery copy (SideNav/NotificationsHub/ReportsHub/FacilityHub/PmHub/purchasing-dialogs/SettingsHub/OrgHub) + EVT-fallback | Previous: MOCKED (copy) — "Live Sync Active", "Broker HEALTHY", "WS-PUSH: 12ms" (SSE-nya nyata, prefix salah), "READ REPLICA: SYNCED", "paged", "DISPATCHED" toasts, "Root Merkle Verified", "KV-store + 3 node clusters"; EVT-fallback fabrikasi `EVT-${random}` menyembunyikan audit gagal | New: honest copy + fail-closed
+Root cause: SEED/MOCK LEAK + TEST GAP (guard grep hanya cover AuditTrail).
+Spec: docs/remediation-gap-08-spec.md (ditulis dulu — spec-driven; 34 situs old→new; out-of-scope eksplisit F13/F15/F19/F21/F23/F14/PIN/F26-backend/F27).
+Frontend: ~40 edit string jujur ("WS-PUSH"→"SSE", "SSE only", "STANDBY", "local demo", "not connected", "not verified", "no delivery", "mTLS planned", "Oracle not connected"); critical-action-dialog fail-closed — tanpa auditId → failure "treated as NOT recorded", tanpa ID fabrikasi; "Root Merkle Verified"→"Audit ID recorded — verify in trail".
+Tests: guard-test GAP-08 di tests/audit-truthfulness.test.ts (absence file-scoped + presence qualifier + Math.random check); npm test 121/121; tsc exit 0.
+Runtime proof (MCP browser dev :3145, m.vance): /notifications render "SSE: 12ms" + live stream intact + 0 console error; /settings General+Integrations+Security render semua copy jujur. Temuan: GET /api/auth/passkeys/login→500 pre-existing — dev DB .data/pg tak punya tabel webauthn_credentials (migrasi 0002), drift infra dev, BUKAN akibat GAP-08 (hanya ubah string klien); dipicu buka tab Security/PasskeyManager.
+NEXT GAP: #9 purchasing wire (F13, big rock M/L).
+
+GAP CLOSED #9 (2026-09-16): purchasing wire (F13 BROKEN→END-TO-END).
+Spec: docs/remediation-gap-09-spec.md (ditulis dulu — spec-driven; tanpa migrasi; GRN wajib step-up TOTP; nomor GRN via sequence).
+Backend: SequenceEntity+='GRN' + seedAll baris GRN nextVal 1; decidePurchase() (APPROVE/REJECT + guard terminal 409 ALREADY_DECIDED + reason-wajib 400 + audit PO_APPROVE/PO_REJECT + idempoten scope procurement.decision); POST /api/purchasing/[number]/decision (perm po.approve); GET /api/purchasing?number= (404 jujur); POST grn wajib stepUpCode→verifyStepUpCode→stepUpAt ke mutateStock; postGoodsReceipt guard PO-ada 404/kind-PO 422 + nomor GRN-YYYY-NNNN via nextNumber + enforcement STEP_UP_REQUIRED 403 + requestId; createRequisition guard LINE_ITEMS_REQUIRED 400.
+Frontend: dialogs.tsx (AuthDialog/RejectDialog wired + Rfq/Dispute honest-local, tanpa hardcode ID); PurchaseList.tsx live GET?limit=100 + SEED fallback demo ber-badge + KPI server + create-PR SKU/qty/harga; PurchaseDetail.tsx live GET?number= + 404 jujur + SLA countdown server + form GRN + match honest-placeholder + signatures dari status + print-link hanya PO.
+Tests: 8 kasus service-level baru di tests/integration.test.ts; npm test 124/124; tsc exit 0.
+Runtime proof (MCP browser dev :3145, m.vance): /purchasing live 7 records → New Requisition via UI → PR-2026-0316 PENDING_APPROVAL → Authorize via dialog → APPROVED terminal → Receiving tab (PR-kind guard jujur) → PO-2026-0298 GRN form + TOTP → GRN-2026-0001 VERIFIED → PO RECEIVED → /inventory PART-SEAL-8821 on-hand 2→4 live → reload RECEIVED persists → console 1 issue dev-only CSP-eval (pre-existing). Screenshot /tmp/opencode/evidence/gap09/po-received.png.
+Insiden infra: .data/pg dev wedge (PGlite WASM abort; worker prod :3155 PID 15029 lolos kill pegang lock) → mv .data/pg-wedged-20260916 + fresh db:setup exit 0; dev :3145 UP 200.
+Temuan follow-up: /inventory/[sku] detail masih statis (3 hardcoded movements, on-hand 1) — bukan scope GAP-09, gap tersendiri.
+NEXT GAP: #10 PM hub wire (F19).
+
+## GAP CLOSED #10 — PM hub (F19) FRONTEND-ONLY → END-TO-END (2026-09-16)
+Backend: 'PM' → SequenceEntity + seed (nextVal 1); createPmRule → nextNumber PM-YYYY-NNNN dalam transaksi (Math.random dihapus); route POST /api/preventive-maintenance/[id]/toggle baru (perm wo.create).
+Frontend: PmHub live (GET list + SEED fallback demo-badge + aksi disabled; POST create; queue dari rules overdue/due≤14d; generate per-rule + batch idempoten; toggle pause/resume; link WO; KPI dari server; copy telemetry/Modbus diluruskan: NOT CONNECTED / LOCAL DEMO / DESIGN REFERENCE).
+Tests: 2 service-level baru (create+canon+audit+tenant; generate+replay-idempoten+RULE_PAUSED+404+toggle+audit); npm test 126/126; tsc bersih.
+Runtime proof (MCP browser dev :3145, m.vance, fresh DB): /preventive-maintenance Live rules + 0 rules → New PM Plan via UI → PM-2026-0001 → Generate via UI → WO-2026-0910 + lastGenerated 16 Sept 2026 + Generated-this-session 1 → Pause → PAUSED → Resume → ACTIVE; console 0 error; screenshot /tmp/opencode/evidence/gap10/pm-live.png.
+NEXT GAP: #11 (F20 inspections route→service + F16 caller, atau sesuai order CLOSE ALL GAPS).
+
+## GAP CLOSED #11 — force-dispatch fix + field queue wire (F20→F16) FRONTEND-ONLY/BACKEND-ONLY → END-TO-END (2026-09-16)
+Spec: docs/remediation-gap-11-spec.md (ditulis dulu — spec-driven; tanpa migrasi; permission tetap assets.read; template CRUD → GAP-16; IoT wiring → GAP-14; runs badge → GAP-15).
+Backend: forceDispatchInspection() baru (404 INSPECTION_NOT_FOUND tenant-scoped; 409 ALREADY_COMPLETED; progress PRESERVED — route lama reset ke 0 = data-loss; audit INSPECTION_FORCE_DISPATCH transaksional + idempoten scope inspection.force_dispatch); POST /api/inspections → createInspection (nomor canon INS-YYYY-NNNN, Math.random dihapus); GET → listInspections (fallback 3-row CANON dihapus → [] jujur); route BARU POST /api/inspections/[id]/progress (zod 0-100); updateInspectionProgress + audit INSPECTION_PROGRESS transaksional.
+Frontend: AuditQueue live GET (mapping status→kartu; demo fallback AUDITS_DEMO ber-badge; badge sync = count outbox nyata; Last Completed turunan server; timer 600ms dihapus); FieldInspectionsHub live (toHubRow; handleForceDispatch → POST + toast server + disabled saat dispatch; badge COMPLETED + filter + footer live/demo); RunChecklist submit → POST progress 100/COMPLETED + prefill server; PIN 2468 + modal + toast "audit-chained"/"WO auto-dispatched"/"queued to sync"/"saved" + autosave timer dihapus (copy jujur: self-assessed/demo/device-local/Unsaved changes).
+Tests: 3 service-level baru (create+canon+audit+tenant; dispatch+replay-idempoten+404/409+progress-preserved; progress COMPLETED+clamp+audit); npm test 129/129; tsc exit 0.
+Runtime proof (MCP browser dev :3145, m.vance): /field/audits 2 baris live + badge sync 0 nyata → POST create INS-2026-1093 SCHEDULED → force-dispatch 200 IN_PROGRESS + audit-trail diff SCHEDULED→IN_PROGRESS+reason → 404 nomor asing jujur → run canon submit via UI → COMPLETED server-confirmed + reload persists → dispatch completed → 409 ALREADY_COMPLETED → /field-inspections hub live (2 baris + COMPLETED badge); console 0 JS error (1×409 = artefak probe negatif sendiri). Artefak dev: INS-2026-1093 SCHEDULED→IN_PROGRESS + INS-2026-0412 COMPLETED di .data/pg (scratch).
+NEXT GAP: #12 (4 quick-close: F5 WO tasks + F10 inventory KPI + F3 provision-refetch + F17 outbox-flush).
+
+## GAP CLOSED #12 — 4 quick-close F5/F10/F3/F17 (2026-09-16)
+- F5 WO tasks BACKEND-ONLY→E2E: seed 7 wo_tasks canon (WOSEAL-T01..T07, DONE×4/IN_PROGRESS/PENDING/LOCKED, photo T01+T04); `WoChecklist.tsx` baru ganti `<ol>` statis + header 4/7 hardcode; advance POST + 422 jujur; 1 test (sequence + photo-gate + audit); runtime MCP advance 05→DONE→unlock 06→Start 06 IN_PROGRESS.
+- F10 reports runQuery→GET aggregates nyata (WO 8/assets 5/SKUs 5/SR 5/valuasi $9019.00, 29ms) + banner-gagal-jujur; builder SQL dilabeli local-preview.
+- F3 OrgHub provision→GET refetch + RFID re-attach; runtime roster 6→7 + RFID-1212.
+- F17 FieldShell online→flushOutbox silent + refresh (verified-by-construction).
+- 2 bug envelope apiFetch (`updated.data`/`res.data` — apiFetch sudah unwrap) TERTANGKAP RUNTIME via error boundary + alert jujur → diperbaiki; pelajaran: pola `apiFetch<{rows…}>` yang benar = T adalah bentuk data, bukan envelope.
+- npm test 130/130, tsc exit 0, console 0 error. Artefak dev scratch: WO-2026-0894 tasks 05 DONE/06 IN_PROGRESS, user gap12.probe@apexops.io.
+
+## GAP CLOSED #13 — evidence serve + api-key lifecycle (F6/F30 → END-TO-END) (2026-09-16)
+Spec: docs/remediation-gap-13-spec.md (ditulis dulu; tanpa auth-middleware change — bearer enforcement = follow-up eksplisit).
+- F6 PARTIAL→E2E: GET /api/work-orders/[id]/evidence/[evidenceId] (session auth manual + 401/403; 404 tenant-scoped; traversal→404; file-hilang→410 EVIDENCE_FILE_MISSING; sha-mismatch→500 EVIDENCE_CORRUPT; header inline/private/nosniff) + WoChecklist viewer (thumbnail + download + sha short + ukuran) di kedua branch page.tsx; addEvidence Math.random→randomBytes.
+- F30 MOCKED→E2E-lifecycle: tabel api_keys (hash-only) + migrasi 0003 + sequence AK + api-key-service (issue show-once/revoke/list + audit API_KEY_CREATE/REVOKE) + 3 routes (settings.manage) + ProfileSessions card live (issue + show-once alert + revoke ConfirmDialog + copy gateway-follow-up jujur; copy lama …9fb4 dihapus).
+- Tests: 2 service-level (api-keys: canon AK + show-once + list-tanpa-secret + revoke + 409/404/400 + audit; evidence: persist + list + audit); npm test 132/132; tsc bersih (5 error NextRequest/AuthContext/nullish diperbaiki).
+- Runtime proof (MCP browser dev :3145, m.vance): /profile issue AK-2026-0001 via UI (secret sekali-tampil + toast) → revoke via UI → GET list 0 rows tanpa secret; curl: upload PNG 201 → download 200 byte-identik (match=true) → cross-WO 404 → unknown-id 404 → unauth 401; /work-orders/WO-2026-0894 viewer 2 files + thumbnail 1×1 termuat; console 0 error. Artefak dev scratch: 2× gap13-probe.png evidence + AK-2026-0001 (revoked) di .data/pg.
+- Follow-up eksplisit: bearer enforcement gateway; SettingsHub genKey client-side (gap settings FRONTEND-ONLY); FindingCapture JSON-only (tak pakai upload route).
+NEXT GAP: #14 sesuai order CLOSE ALL GAPS.
+
+## GAP CLOSED #14 — reports + vendors + BIM (F21/F14/F8 → END-TO-END) (2026-09-16)
+Spec: docs/remediation-gap-14-spec.md (ditulis dulu; tanpa migrasi baru di spec — migrasi 0004 muncul saat implementasi untuk kolom vendors nullable; DUNS seed non-kanon dikosongkan).
+- F14 DEAD-END→E2E: `vendor-service` baru (list/get/relatedPOs/slugify/create/amend/renew/commend + audit VENDOR_CREATE/AMEND/RENEW/COMMEND + idempoten scope vendor.* + Tx db/client) + migrasi 0004_pink_gargoyle.sql + seed +grainger + RBAC `vendors.manage` (Facility Director + Engineering Lead) + routes GET/POST/PATCH + VendorList/Detail/dialogs live (demo fallback ber-badge, KPI live, DUNS format-only jujur, PdfDialog honest-excerpt tanpa link Verify-Hash, Direct Ring honest, scorecard onTime live, dispatch→POST /api/work-orders nyata).
+- F21 FRONTEND-ONLY→E2E: ReportsHub KPI cards live GET aggregates on-mount + Refresh (badge Live/Demo, gagal→tanpa angka) + honest labels (design reference / metadata only / SERVER AGGREGATES / local-preview) + schedule honest-local + print-toast jujur.
+- F8 MOCKED→E2E: AssetBim refresh→GET ingest?assetCode + SENSOR_TO_NODE map 5 tipe + updated=recordedAt nyata + honest empty + chips/header/footer jujur (setTimeout + `· live` dihapus).
+- Tests: 4 baru (vendor create/409/replay/tenant + amend/renew/commend/404 + relatedPOs + telemetry ingest/list); 2 gagal awal RATE_LIMITED login decoy → helper gap14Decoy() via createSession+verifySession langsung; npm test 136/136; tsc exit 0 (3 error union/tier diperbaiki).
+- Runtime proof (MCP browser dev :3145, m.vance): /vendors live 5 → onboard via UI → 6 + toast jujur → detail live (0 records + copy jujur) → dispatch via UI → WO-2026-0911 nyata; /reports KPI live (OPEN 9 · assets 5 · $9019.00 · SR 5) + cross-check aggregates total 9 = /api/work-orders rows 9; BIM TT-04A refresh → honest empty → ingest TEMPERATURE 77.5 (201 WARNING) → refresh → "77.5 C · Live reading · recordedAt server" + "1 live node via Refresh"; console 1×400 = artefak probe negatif sendiri (sensorType lowercase).
+- Observasi follow-up (bukan scope): nav badge "Work Orders 14" stale vs 9 rows nyata (SideNav badge count); vendor baru onTime 0 masuk mean 79.5% (keputusan desain, konsisten label).
+- Artefak dev scratch: vendor gap-14-probe-services + WO-2026-0911 + sensorReading TEMPERATURE 77.5 AST-HVAC-004 di .data/pg.
+NEXT GAP: #15 (F11 export-label + F18 runs-badge) sesuai order CLOSE ALL GAPS.
+
+## GAP CLOSED #15 — export-label + runs-badge (F11/F18 → honest) (2026-09-16)
+Spec: docs/remediation-gap-15-spec.md (quick-close, tanpa migrasi/route/API baru).
+- F11 PARTIAL→honest: tombol ledger `Export (CSV/XLS)` → `Export CSV (loaded rows)` (1 baris; toast provenance sudah jujur). Situs lain diaudit dan dinyatakan JUJUR, tak diubah: PurchaseList sudah `Export (CSV)` + toast CSV; PurchaseDetail `Export lines` → Blob text/csv nyata; AuditTrail `Export CSV / JSON Log` → kedua format benar dihasilkan (:629/:631).
+- F18 DEAD-END→honest: kartu non-kanon (`a.id !== CANON.inspection`) memuat badge `Phase 2 · run checklist not available yet` (demo + live; link dipertahankan ke EmptyState jujur).
+- Tests: 2 guard-test di audit-truthfulness.test.ts (CSV/XLS absent + label presence; Phase-2 presence + gate CANON.inspection); npm test 138/138; tsc exit 0.
+- Runtime proof (MCP browser dev :3145, m.vance): /inventory tombol berlabel baru tampil live; /field/audits badge tampil pada kartu LIVE non-kanon INS-2026-1093 (artefak GAP-11) — gate terbukti di data live; console 0 error.
+NEXT GAP: #16 NEED PRODUCT DECISION batch (F2/F12/F23/F25/F15/F26/F27) sesuai order CLOSE ALL GAPS.

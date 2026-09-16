@@ -21,6 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CANON } from '@/lib/canon';
+import { cn } from '@/lib/utils';
 
 interface SkuDetail {
   sku: string;

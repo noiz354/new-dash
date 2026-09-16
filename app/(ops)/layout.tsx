@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 import { OpsShell } from '@/components/ops/OpsShell';
+import { RumInit } from '@/components/telemetry/RumInit';
+import { SwRegister } from '@/components/pwa/SwRegister';
 import { getSessionContext } from '@/lib/auth/context';
 
 /**
@@ -22,6 +24,8 @@ export default async function OpsLayout({ children }: { children: React.ReactNod
         orgName: ctx.orgName,
       }}
     >
+      <RumInit />
+      <SwRegister />
       {children}
     </OpsShell>
   );

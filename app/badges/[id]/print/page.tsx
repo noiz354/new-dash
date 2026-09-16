@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Printer, ShieldCheck, QrCode } from 'lucide-react';
+import { PrintButton } from '@/components/print/PrintButton';
 import { CANON } from '@/lib/canon';
 
 export function generateStaticParams() {
@@ -105,13 +106,10 @@ export default async function BadgePrintPage({ params }: { params: Promise<{ id:
         <Link href="/profile" className="text-xs font-semibold text-blue-700 flex items-center gap-1 hover:underline">
           <ArrowLeft size={14} /> Back to Profile
         </Link>
-        <button
-          type="button"
-          onClick="window.print()"
-          className="h-8 px-4 rounded bg-black text-white text-xs font-bold flex items-center gap-1.5 shadow"
-        >
-          <Printer size={14} /> Print ID Card (CR80)
-        </button>
+        <PrintButton
+            label="Print ID Card (CR80)"
+            className="h-8 px-4 rounded bg-black text-white text-xs font-bold flex items-center gap-1.5 shadow"
+          />
       </div>
 
       {/* Front & Back Cards Layout (Printable) */}

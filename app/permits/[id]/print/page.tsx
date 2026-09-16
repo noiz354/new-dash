@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Printer, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { PrintButton } from '@/components/print/PrintButton';
 import { Button } from '@/components/ui/button';
 import { CANON } from '@/lib/canon';
 
@@ -34,13 +35,10 @@ export default async function PermitPrintPage({ params }: { params: Promise<{ id
           <Link href="/work-orders" className="text-xs font-semibold text-blue-700 flex items-center gap-1">
             <ArrowLeft size={14} /> Back to Operations
           </Link>
-          <button
-            type="button"
-            onClick="window.print()"
+          <PrintButton
+            label="Print Permit"
             className="h-8 px-3 rounded bg-black text-white text-xs font-bold flex items-center gap-1.5"
-          >
-            <Printer size={14} /> Print Permit
-          </button>
+          />
         </div>
       </header>
 

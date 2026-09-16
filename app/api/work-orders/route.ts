@@ -14,7 +14,7 @@ const CreateWoSchema = z.object({
 
 /** GET /api/work-orders — tenant-scoped list + assignable techs + capabilities. */
 export async function GET(req: NextRequest) {
-  return withRoute({ op: 'wo.list', method: 'GET', permission: 'wo.read' }, req, async (ctx) => {
+  return withRoute({ op: 'wo.list', method: 'GET', permission: 'wo.read', etag: true }, req, async (ctx) => {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || undefined;
     const priority = (searchParams.get('priority') as 'P1' | 'P2' | 'P3') || undefined;

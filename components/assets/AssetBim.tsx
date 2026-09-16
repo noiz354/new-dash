@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, ClipboardList, LoaderCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CANON, wibNow } from '@/lib/canon';
+import { apiFetch } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 
 type Layer = 'mech' | 'elec' | 'tele';
@@ -22,12 +23,19 @@ const DOT = { alarm: '#DC2626', warn: '#D97706', ok: '#059669' } as const;
 const TAG = { alarm: '#FCA5A5', warn: '#FCD34D', ok: '#6EE7B7' } as const;
 const short = (id: string) => `${id} ${NODES[id].value.replace(' ', '')}`;
 
-/** Asset BIM viewer — M6 port (reference: web/asset-bim.html). */
+/** Asset BIM viewer — M6 port (reference: web/asset-bim.html).
+ * GAP-14/F8: Refresh pulls REAL sensor readings from
+ * GET /api/telemetry/ingest?assetCode=… — the old setTimeout + `· live`
+ * label is gone. Hardcoded NODES remain ONLY as labeled design-reference
+ * fallback when no live reading exists for a node. */
 export function AssetBim({ assetId }: { assetId: string }) {
   const [layers, setLayers] = useState<Record<Layer, boolean>>({ mech: true, elec: true, tele: true });
   const [node, setNode] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [updated, setUpdated] = useState('14:41 WIB · live');
+  const [updated, setUpdated] = useState('never — press Refresh Reading');
+  const [liveCount, setLiveCount] = useState(0);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [liveValues, setLiveValues] = useState<Record<string, { value: string; status: string; at: string }>>({});
 
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setNode(null); };
@@ -37,18 +45,43 @@ export function AssetBim({ assetId }: { assetId: string }) {
 
   const toggle = (l: Layer) => setLayers((s) => ({ ...s, [l]: !s[l] }));
 
-  const refresh = () => {
+  const SENSOR_TO_NODE: Record<string, string> = {
+    TEMPERATURE: 'TT-04A',
+    VIBRATION: 'VT-04B',
+    REFRIGERANT_PPM: 'GS-04C',
+    PRESSURE_PSI: 'PT-03A',
+    VOLTAGE_KV: 'EL-DP02',
+  };
+
+  const refresh = async () => {
     if (refreshing) return;
     setRefreshing(true);
-    setTimeout(() => {
+    setLiveError(null);
+    try {
+      const readings = await apiFetch<Array<{ sensorType: string; value: string; unit: string; status: string; recordedAt: string }>>(
+        `/api/telemetry/ingest?assetCode=${encodeURIComponent(assetId)}&limit=20`,
+      );
+      const mapped: Record<string, { value: string; status: string; at: string }> = {};
+      // Latest reading per sensor type wins (endpoint returns newest first).
+      for (const r of readings) {
+        const nodeId = SENSOR_TO_NODE[r.sensorType];
+        if (nodeId && !mapped[nodeId]) {
+          mapped[nodeId] = { value: `${r.value} ${r.unit}`, status: r.status, at: r.recordedAt };
+        }
+      }
+      setLiveValues(mapped);
+      setLiveCount(Object.keys(mapped).length);
+      const n = Object.keys(mapped).length;
+      setUpdated(n > 0 ? `${wibNow()} WIB · ${n} live reading${n === 1 ? '' : 's'}` : 'no live readings — showing design reference values');
+    } catch (e) {
+      setLiveError(e instanceof Error ? e.message : 'Refresh failed — showing design reference values.');
+    } finally {
       setRefreshing(false);
-      setUpdated(`${wibNow()} WIB · live`);
-    }, 600);
+    }
   };
 
   const pick = (id: string) => {
     setNode(id);
-    setUpdated('14:41 WIB · live');
   };
 
   return (
@@ -64,7 +97,7 @@ export function AssetBim({ assetId }: { assetId: string }) {
           </Link>
           <div className="min-w-0">
             <h1 className="text-base font-semibold truncate">BIM · <span className="apex-id text-cobalt-deep">{assetId}</span></h1>
-            <p className="text-xs text-muted truncate">{CANON.assetOem} · CUP BASEMENT L2 · SECTOR WEST · 38 telemetry nodes</p>
+            <p className="text-xs text-muted truncate">{CANON.assetOem} · CUP BASEMENT L2 · SECTOR WEST · schematic reference · {liveCount} live node{liveCount === 1 ? '' : 's'} via Refresh</p>
           </div>
         </nav>
         <div className="flex items-center gap-2 shrink-0">
@@ -149,13 +182,13 @@ export function AssetBim({ assetId }: { assetId: string }) {
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(id); } }}
                     >
                       <circle cx={n.x} cy={n.y} r="10" fill={DOT[n.tone]} stroke="#fff" strokeWidth="2" />
-                      <text x={n.tagX} y={n.tagY} fill={TAG[n.tone]}>{short(id)}</text>
+                      <text x={n.tagX} y={n.tagY} fill={TAG[n.tone]}>{liveValues[id] ? `${id} ${liveValues[id].value.replace(' ', '')}` : short(id)}</text>
                     </g>
                   ))}
                 </g>
               )}
               <text x="24" y="440" fontFamily="JetBrains Mono" fontSize="10" fill="#64748B">
-                38 nodes connected · showing 5 critical-path nodes · Modbus 192.168.4.112:502
+                schematic reference · showing 5 reference nodes · live values via Refresh Reading
               </text>
             </svg>
           </div>
@@ -164,6 +197,7 @@ export function AssetBim({ assetId }: { assetId: string }) {
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-fail-bg text-fail-ink font-semibold"><span className="w-2 h-2 rounded-full bg-fail" />ALARM (2)</span>
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-warn-bg text-warn-ink font-semibold"><span className="w-2 h-2 rounded-full bg-warn" />WARNING (1)</span>
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-pass-bg text-pass-ink font-semibold"><span className="w-2 h-2 rounded-full bg-pass" />NOMINAL (35)</span>
+            <span className="text-[11px] text-muted">reference distribution — live status per node after Refresh</span>
           </div>
         </main>
 
@@ -190,9 +224,10 @@ export function AssetBim({ assetId }: { assetId: string }) {
                   <X size={18} />
                 </button>
               </div>
-              <p className="text-3xl font-bold tabular-nums" role="status">{refreshing ? '…' : NODES[node].value}</p>
+              <p className="text-3xl font-bold tabular-nums" role="status">{refreshing ? '…' : (liveValues[node]?.value ?? NODES[node].value)}</p>
+              <p className="text-[11px] text-muted">{liveValues[node] ? `Live reading · ${liveValues[node].at}` : 'Design reference value — no live reading for this node yet'}</p>
               <ul className="text-sm flex flex-col gap-1">
-                <li className="flex justify-between gap-2"><span className="text-muted">Status</span><strong>{NODES[node].status}</strong></li>
+                <li className="flex justify-between gap-2"><span className="text-muted">Status</span><strong>{liveValues[node]?.status ?? NODES[node].status}</strong></li>
                 <li className="flex justify-between gap-2"><span className="text-muted">Asset</span><span className="apex-id">{assetId}</span></li>
                 <li className="flex justify-between gap-2">
                   <span className="text-muted">Work order</span>
@@ -200,10 +235,11 @@ export function AssetBim({ assetId }: { assetId: string }) {
                 </li>
                 <li className="flex justify-between gap-2"><span className="text-muted">Updated</span><span>{updated}</span></li>
               </ul>
-              <Button onClick={refresh} disabled={refreshing} className="h-10">
+              <Button onClick={() => void refresh()} disabled={refreshing} className="h-10">
                 {refreshing && <LoaderCircle size={16} className="animate-spin" />}
                 Refresh Reading
               </Button>
+              {liveError && <p className="text-[11px] font-semibold text-fail" role="alert">{liveError}</p>}
             </div>
           )}
         </aside>

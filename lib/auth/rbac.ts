@@ -11,9 +11,10 @@ export const PERMISSIONS = [
   'wo.read', 'wo.create', 'wo.transition',
   'sr.read', 'sr.create', 'sr.transition',
   'assets.read',
+  'finding.read', 'finding.create', 'finding.dismiss',
   'inventory.read', 'inventory.mutate',
   'po.read', 'po.approve',
-  'vendors.read',
+  'vendors.read', 'vendors.manage',
   'reports.read',
   'audit.read',
   'org.read', 'org.manage',
@@ -23,7 +24,7 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number];
 
 const READ_ALL: Permission[] = [
-  'wo.read', 'sr.read', 'assets.read', 'inventory.read',
+  'wo.read', 'sr.read', 'assets.read', 'finding.read', 'inventory.read',
   'po.read', 'vendors.read', 'reports.read', 'audit.read', 'org.read',
 ];
 
@@ -32,15 +33,15 @@ export const ROLE_PERMISSIONS: Record<Role, readonly string[]> = {
   'Facility Director': [
     ...READ_ALL,
     'wo.create', 'wo.transition', 'sr.create', 'sr.transition',
-    'inventory.mutate', 'po.approve', 'org.manage',
+    'finding.create', 'finding.dismiss', 'inventory.mutate', 'po.approve', 'vendors.manage', 'org.manage',
   ],
   'Engineering Lead': [
     ...READ_ALL,
-    'wo.create', 'wo.transition', 'sr.create', 'sr.transition', 'inventory.mutate',
+    'wo.create', 'wo.transition', 'sr.create', 'sr.transition', 'finding.create', 'finding.dismiss', 'inventory.mutate', 'vendors.manage',
   ],
   'Senior Field Tech': [
     'wo.read', 'wo.transition', 'sr.read', 'sr.create',
-    'assets.read', 'inventory.read', 'vendors.read',
+    'assets.read', 'finding.read', 'finding.create', 'finding.dismiss', 'inventory.read', 'vendors.read',
   ],
   // Vendor partners: read their assigned work only (row-level scoping is
   // slice #2; today the role can read the org's WOs — documented limitation).

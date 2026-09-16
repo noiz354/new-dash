@@ -1,52 +1,111 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CloudUpload, SignalLow, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import {
+  clearSyncedOutbox,
+  flushOutbox,
+  listOutbox,
+  subscribeOutbox,
+  type OutboxItem,
+} from '@/lib/offline/outbox';
 import { FieldToasts, useFieldToasts } from './toasts';
 
-interface Item { id: 'q1' | 'q2'; title: string; op: string; key: string }
+type State = OutboxItem['status'];
 
-const ITEMS: Item[] = [
-  { id: 'q1', title: 'STEP 02 DRAFT · 18.4 ppm', op: 'PATCH steps/02', key: 'idem-7f2a-0412-02' },
-  { id: 'q2', title: 'VOICE NOTE · 0:12', op: 'POST evidence (audio)', key: 'idem-7f2a-0412-vn' },
-];
-
-type State = 'QUEUED' | 'SENDING…' | 'SYNCED';
-
-/** Sync Status — H2 outbox queue (reference: web/sync-status.html). */
+/**
+ * Sync Status — ANTRIAN OUTBOX NYATA (FP-06/TASK-16), menggantikan simulasi.
+ * Setiap item direplay dengan Idempotency-Key ASLI (dedup server: 409 = SYNCED).
+ * Status tersimpan di IndexedDB — survive restart; sinkron lintas-tab.
+ */
 export function SyncStatus() {
   const { toasts, push } = useFieldToasts();
-  const [states, setStates] = useState<Record<'q1' | 'q2', State>>({ q1: 'QUEUED', q2: 'QUEUED' });
-  const q1tries = useRef(0);
+  const [items, setItems] = useState<OutboxItem[]>([]);
+  const [online, setOnline] = useState(true);
+  const [busyId, setBusyId] = useState<string | 'ALL' | null>(null);
 
-  const pending = (['q1', 'q2'] as const).filter((k) => states[k] !== 'SYNCED').length;
+  const refresh = useCallback(async () => setItems(await listOutbox()), []);
 
-  const retry = (item: Item) => {
-    if (states[item.id] !== 'QUEUED') return;
-    setStates((s) => ({ ...s, [item.id]: 'SENDING…' }));
-    setTimeout(() => {
-      // Standalone parity: first q1 retry fails partially (item survives), next succeeds.
-      if (item.id === 'q1' && q1tries.current === 0) {
-        q1tries.current++;
-        setStates((s) => ({ ...s, q1: 'QUEUED' }));
-        push(false, 'Partial failure', 'q1 kept in queue. Same Idempotency-Key on retry — no duplicate.');
-      } else {
-        setStates((s) => ({ ...s, [item.id]: 'SYNCED' }));
-        push(true, 'Item synced', `${item.id.toUpperCase()} acknowledged with its idempotency key.`);
-      }
-    }, 800);
+  useEffect(() => {
+    setOnline(navigator.onLine);
+    void refresh();
+    const unsub = subscribeOutbox(() => void refresh());
+    const on = () => {
+      setOnline(true);
+      // Auto-flush saat koneksi pulih (fallback untuk Background Sync di wave 4).
+      setBusyId('ALL');
+      void flushOutbox({}).then((res) => {
+        setBusyId(null);
+        if (res.synced > 0 || res.failed > 0) {
+          push(
+            res.failed === 0,
+            'Back online — auto-sync',
+            `${res.synced} item(s) replayed with their original idempotency keys${res.failed ? ` · ${res.failed} rejected (see queue)` : ''}.`,
+          );
+        }
+      });
+    };
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      unsub();
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, [refresh, push]);
+
+  const pendingItems = items.filter((i) => i.status !== 'SYNCED' && i.status !== 'EXPIRED');
+  const syncedItems = items.filter((i) => i.status === 'SYNCED').slice(-5).reverse();
+  const expiredItems = items.filter((i) => i.status === 'EXPIRED');
+  const oldest = pendingItems
+    .map((i) => new Date(i.createdAt).getTime())
+    .sort((a, b) => a - b)[0];
+
+  const retry = async (item: OutboxItem) => {
+    if (busyId || item.status === 'SENDING') return;
+    setBusyId(item.id);
+    const res = await flushOutbox({ onlyIds: [item.id] });
+    setBusyId(null);
+    if (res.synced > 0) {
+      push(true, 'Item synced', `${item.op} acknowledged — same idempotency key, no duplicate.`);
+    } else if (res.failed > 0) {
+      push(false, 'Item rejected', `${item.op} was rejected by the server (see message). Edit & re-capture if needed.`);
+    } else {
+      push(false, 'Still offline', `${item.op} kept in queue. Retry when the link recovers.`);
+    }
   };
 
-  const syncAll = () => {
-    push(true, 'Sync started', 'Retrying all items with their original keys…');
-    ITEMS.filter((i) => states[i.id] === 'QUEUED').forEach((item, i) => {
-      setTimeout(() => retry(item), i * 1200);
-    });
+  const syncAll = async () => {
+    if (busyId) return;
+    setBusyId('ALL');
+    push(true, 'Sync started', 'Replaying queued items with their original idempotency keys…');
+    const res = await flushOutbox({});
+    setBusyId(null);
+    push(
+      res.failed === 0,
+      'Sync finished',
+      `${res.synced} synced${res.failed ? ` · ${res.failed} rejected` : ''}${res.pending ? ` · ${res.pending} still pending (offline)` : ''}.`,
+    );
   };
+
+  const clearSynced = async () => {
+    await clearSyncedOutbox();
+    push(true, 'History cleared', 'Synced items removed from the on-device queue.');
+  };
+
+  const chip = (st: State) =>
+    cn(
+      'text-xs font-bold border px-2 py-0.5 rounded',
+      st === 'SYNCED' && 'text-pass border-pass bg-pass-bg',
+      st === 'QUEUED' && 'text-warn border-warn bg-warn-bg',
+      st === 'SENDING' && 'text-cobalt-deep border-cobalt-deep bg-cobalt-tint animate-pulse',
+      (st === 'FAILED' || st === 'EXPIRED') && 'text-fail border-fail bg-fail-bg',
+    );
 
   return (
     <>
@@ -59,29 +118,41 @@ export function SyncStatus() {
             <h1 className="text-lg font-semibold font-display">Sync Status</h1>
             <p className="text-xs text-muted">{CANON.inspection} · {CANON.inspectionProgress}% · E. Voronova</p>
           </div>
-          <span className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded border-2 border-warn bg-warn-bg text-warn-ink" role="status" aria-label="Network degraded">
-            <SignalLow size={24} />
+          <span className="min-w-[48px] min-h-[48px] flex items-center justify-center rounded border-2 border-warn bg-warn-bg text-warn-ink" role="status" aria-label={online ? 'Online' : 'Offline'}>
+            {online ? <CloudUpload size={24} /> : <SignalLow size={24} />}
           </span>
         </div>
       </header>
 
       <main className="w-full max-w-3xl mx-auto px-4 pt-[124px] flex flex-col gap-4">
-        {pending > 0 && (
+        {!online && pendingItems.length > 0 && (
           <div className="flex items-center gap-2 px-3 py-3 rounded border-2 border-warn bg-warn-bg text-warn-ink" role="alert">
             <WifiOff size={22} />
-            <p className="text-sm font-semibold">Link degraded — queue held locally. Nothing is lost.</p>
+            <p className="text-sm font-semibold">Offline — queue held on-device (IndexedDB). Nothing is lost; it replays automatically when the link returns.</p>
           </div>
         )}
 
         <section className="rounded border-2 border-slate900 bg-white shadow-hard p-3 flex items-center justify-between gap-2" aria-label="Queue summary">
           <div>
             <h2 className="text-lg font-semibold font-display">Outbox Queue</h2>
-            <p className="text-sm text-muted">{pending === 0 ? 'Queue clear' : `${pending} item(s) pending · oldest 14:31 WIB`}</p>
+            <p className="text-sm text-muted">
+              {pendingItems.length === 0
+                ? 'Queue clear'
+                : `${pendingItems.length} item(s) pending${oldest ? ` · oldest ${new Date(oldest).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : ''}`}
+              {expiredItems.length > 0 ? ` · ${expiredItems.length} expired (>7d, not replayed)` : ''}
+            </p>
           </div>
-          <Button variant="field" className="bg-slate900" onClick={syncAll} disabled={pending === 0}>Sync Now</Button>
+          <Button
+            variant="field"
+            className="bg-slate900"
+            onClick={syncAll}
+            disabled={pendingItems.length === 0 || busyId !== null}
+          >
+            {busyId === 'ALL' ? 'Syncing…' : 'Sync Now'}
+          </Button>
         </section>
 
-        {pending === 0 ? (
+        {pendingItems.length === 0 ? (
           <div className="rounded border-2 border-dashed border-pass bg-white p-6 text-center flex flex-col items-center gap-2">
             <CloudUpload size={36} className="text-pass" />
             <p className="text-lg font-semibold font-display">Queue clear</p>
@@ -92,55 +163,63 @@ export function SyncStatus() {
           </div>
         ) : (
           <ul className="flex flex-col gap-2" aria-label="Pending items">
-            {ITEMS.map((item) => {
-              const st = states[item.id];
-              if (st === 'SYNCED') return null;
-              return (
-                <li key={item.id} className="rounded border-2 border-border-strong bg-white p-3 flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="apex-id font-bold">{item.title}</span>
-                    <span className={cn(
-                      'text-xs font-bold border px-2 py-0.5 rounded',
-                      st === 'QUEUED' ? 'text-warn border-warn bg-warn-bg' : 'text-cobalt-deep border-cobalt-deep bg-cobalt-tint'
-                    )}>
-                      {st}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted">{item.op} · key <span className="apex-id">{item.key}</span></p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="field"
-                      className="flex-1 bg-white text-body border-2 border-slate900"
-                      onClick={() => retry(item)}
-                      disabled={st === 'SENDING…'}
-                    >
-                      {st === 'SENDING…' ? 'Sending…' : 'Retry'}
-                    </Button>
-                    <Link
-                      href={`/field/audits/${CANON.inspection}/run`}
-                      className="flex-1 min-h-[48px] rounded bg-surface-subtle text-sm font-bold inline-flex items-center justify-center"
-                    >
-                      Open Step
-                    </Link>
-                  </div>
-                </li>
-              );
-            })}
+            {[...pendingItems, ...expiredItems].map((item) => (
+              <li key={item.id} className="rounded border-2 border-border-strong bg-white p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="apex-id font-bold">{item.op}</span>
+                  <span className={chip(item.status)}>{item.status}</span>
+                </div>
+                <p className="text-sm text-muted">
+                  {item.method} {item.url} · key <span className="apex-id">{item.idempotencyKey.slice(0, 13)}…</span>
+                  {item.attempts > 0 ? ` · ${item.attempts} attempt(s)` : ''}
+                </p>
+                {item.errorMessage && (
+                  <p className="text-xs font-semibold text-fail" role="alert">{item.errorMessage}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="field"
+                    className="flex-1 bg-white text-body border-2 border-slate900"
+                    onClick={() => retry(item)}
+                    disabled={busyId !== null || item.status === 'SENDING' || item.status === 'EXPIRED'}
+                  >
+                    {item.status === 'SENDING' ? 'Sending…' : 'Retry'}
+                  </Button>
+                  <Link
+                    href={`/field/audits/${CANON.inspection}/run`}
+                    className="flex-1 min-h-[48px] rounded bg-surface-subtle text-sm font-bold inline-flex items-center justify-center"
+                  >
+                    Open Step
+                  </Link>
+                </div>
+              </li>
+            ))}
           </ul>
         )}
 
         <section className="rounded border-2 border-border-strong bg-white p-3 flex flex-col gap-1" aria-label="Synced">
-          <h2 className="text-lg font-semibold font-display">Recently Synced</h2>
-          <ul className="flex flex-col gap-1 text-sm">
-            <li className="flex items-center justify-between gap-2">
-              <span>PHOTO_CHILLER4_SEAL.RAW · GPS stamped</span>
-              <span className="text-xs font-bold text-pass">SYNCED 14:36</span>
-            </li>
-            <li className="flex items-center justify-between gap-2">
-              <span>STEP 01 LOTO PASS · {CANON.lotoPadlock}</span>
-              <span className="text-xs font-bold text-pass">SYNCED 08:05</span>
-            </li>
-          </ul>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold font-display">Recently Synced</h2>
+            {syncedItems.length > 0 && (
+              <button type="button" className="text-xs font-bold text-muted hover:text-fail underline" onClick={clearSynced}>
+                Clear
+              </button>
+            )}
+          </div>
+          {syncedItems.length === 0 ? (
+            <p className="text-sm text-muted">Nothing synced yet on this device.</p>
+          ) : (
+            <ul className="flex flex-col gap-1 text-sm">
+              {syncedItems.map((item) => (
+                <li key={item.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate">{item.op} · idempotent replay ✓</span>
+                  <span className="text-xs font-bold text-pass whitespace-nowrap">
+                    SYNCED {item.lastAttemptAt ? new Date(item.lastAttemptAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </main>
 

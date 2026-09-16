@@ -1,10 +1,22 @@
 'use client';
 
 import { useState } from 'react';
+import { startAuthentication } from '@simplewebauthn/browser';
+import { Fingerprint } from 'lucide-react';
+import { has } from '@/lib/platform/capability';
 import { Lock, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CANON } from '@/lib/canon';
+import { ApiError, apiFetch } from '@/lib/api/client';
 import type { AuthContext } from '@/lib/auth/session';
+
+interface LoginResponse {
+  status?: string;
+  challengeId?: string;
+  devHint?: string;
+  redirect?: string;
+  user?: AuthContext;
+}
 
 /**
  * Real login (Phase 1, slice #1) — POSTs /api/auth/login (scrypt verify +
@@ -40,29 +52,28 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const data = await apiFetch<LoginResponse>('/api/auth/login', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password: pass }),
+        body: { email, password: pass },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Login failed' };
-        if (err.code === 'RATE_LIMITED') err.message += ' Try again shortly.';
-        setError(err);
-        return;
-      }
-      if (body.data.status === 'mfa_required') {
-        setChallengeId(body.data.challengeId);
-        setDevHint(body.data.devHint ?? null);
+      if (data.status === 'mfa_required') {
+        setChallengeId(data.challengeId ?? '');
+        setDevHint(data.devHint ?? null);
         setStep('mfa');
       } else {
-        setUser(body.data.user ?? null);
+        setUser(data.user ?? null);
         setStep('done');
-        setTimeout(() => window.location.assign(body.data.redirect || redirectTo), 400);
+        setTimeout(() => window.location.assign(data.redirect || redirectTo), 400);
       }
-    } catch {
-      setError({ code: 'NETWORK', message: 'Network error — server not reachable.' });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError({
+          code: err.code,
+          message: err.code === 'RATE_LIMITED' ? `${err.message} Try again shortly.` : err.message,
+        });
+      } else {
+        setError({ code: 'NETWORK', message: 'Network error — server not reachable.' });
+      }
     } finally {
       setBusy(false);
     }
@@ -73,23 +84,47 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
     setBusy(true);
     setMfaError('');
     try {
-      const res = await fetch('/api/auth/mfa', {
+      const data = await apiFetch<LoginResponse>('/api/auth/mfa', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ challengeId, code }),
+        body: { challengeId, code },
       });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        const err = body?.error ?? { code: 'HTTP_' + res.status, message: 'Verification failed' };
-        setMfaError(`${err.message} (${err.code})`);
-        setCode('');
-        return;
-      }
-      setUser(body.data.user ?? null);
+      setUser(data.user ?? null);
       setStep('done');
-      setTimeout(() => window.location.assign(body.data.redirect || redirectTo), 400);
-    } catch {
-      setMfaError('Network error — nothing verified. Retry.');
+      setTimeout(() => window.location.assign(data.redirect || redirectTo), 400);
+    } catch (err) {
+      setMfaError(err instanceof ApiError ? `${err.message} (${err.code})` : 'Network error — nothing verified. Retry.');
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) setCode('');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** TASK-28 — passkey login: two-step assertion di server, MFA tetap dijalankan bila enrolled. */
+  const submitPasskey = async () => {
+    if (busy || !emailOk) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const options = (await apiFetch<{ challenge: string; rpId: string; allowCredentials: { type: string; id: string }[] }>('/api/auth/passkeys/login', {
+        method: 'POST',
+        body: { orgId: CANON.tenant, email },
+      })) as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'];
+      const assertion = await startAuthentication({ optionsJSON: options });
+      const data = await apiFetch<LoginResponse>('/api/auth/passkeys/login', {
+        method: 'PUT',
+        body: { assertion },
+      });
+      if (data.status === 'mfa_required') {
+        setChallengeId(data.challengeId ?? '');
+        setStep('mfa');
+      } else if (data.status === 'ok') {
+        window.location.href = redirectTo;
+      }
+    } catch (err) {
+      setError({
+        code: err instanceof ApiError ? err.code : 'PASSKEY_ERROR',
+        message: err instanceof ApiError ? err.message : 'Passkey assertion failed — use password + TOTP.',
+      });
     } finally {
       setBusy(false);
     }
@@ -124,6 +159,12 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <Lock size={16} />}
             {busy ? 'Verifying credentials…' : 'Continue'}
           </Button>
+
+          {has.webAuthn() && (
+            <Button type="button" variant="secondary" disabled={busy || !emailOk} onClick={submitPasskey}>
+              <Fingerprint size={16} /> Passkey
+            </Button>
+          )}
           <Button type="button" variant="ghost" disabled title="SSO is not configured yet (Phase 1b)">SSO not configured (Phase 1b)</Button>
         </>
       )}

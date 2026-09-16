@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Activity, CalendarClock, CheckCircle2, Database, Download, Eye, FileText, Play, TrendingDown, TrendingUp, X, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { downloadText } from '@/lib/download';
+import { apiFetch } from '@/lib/api/client';
+
+interface Aggregates {
+  workOrders: { total: number; open: number; completed: number };
+  assets: { totalRegistered: number };
+  inventory: { totalSkus: number; lowStockSkus: number; valuationUsd: string };
+  serviceRequests: { total: number; converted: number };
+}
 
 const MONTHS = [
   { m: 'JAN', v: 292 }, { m: 'FEB', v: 298 }, { m: 'MAR', v: 275 },
@@ -54,17 +63,7 @@ const OUTPUTS = ['PDF Executive Dossier', 'Formatted Excel (.xlsx)', 'Raw CSV / 
 interface Toast { id: number; ok: boolean; title: string; msg: string }
 let toastSeq = 1400;
 
-function download(filename: string, text: string, type = 'text/csv') {
-  const blob = new Blob([text], { type: `${type};charset=utf-8` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+const download = (filename: string, text: string, type = 'text/csv') => downloadText(filename, text, type);
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -95,6 +94,28 @@ export function ReportsHub() {
   const [mets, setMets] = useState<string[]>(['Labor Hours', 'Parts Cost']);
   const [out, setOut] = useState<string>(OUTPUTS[2]);
   const [ran, setRan] = useState(false);
+  const [agg, setAgg] = useState<Aggregates | null>(null);
+  const [aggMs, setAggMs] = useState<number | null>(null);
+  const [aggError, setAggError] = useState<string | null>(null);
+  // GAP-14/F21: KPI cards are live server aggregates (fetched on mount),
+  // not the static OPEX/MTTR figures that used to sit here.
+  const [kpi, setKpi] = useState<Aggregates | null>(null);
+  const [kpiLive, setKpiLive] = useState(false);
+  const [kpiLoading, setKpiLoading] = useState(true);
+
+  const loadKpi = async () => {
+    setKpiLoading(true);
+    try {
+      const kpiData = await apiFetch<Aggregates>('/api/reports/aggregates');
+      setKpi(kpiData);
+      setKpiLive(true);
+    } catch {
+      setKpi(null);
+      setKpiLive(false);
+    } finally {
+      setKpiLoading(false);
+    }
+  };
 
   const push = (ok: boolean, title: string, msg: string) => {
     const id = toastSeq++;
@@ -104,13 +125,15 @@ export function ReportsHub() {
 
   const filtered = DOSSIERS.filter((d) => cat === 'All Report Classifications' || d.cat === cat);
 
+  useEffect(() => { void loadKpi(); }, []);
+
   const manifest = (d: Dossier) => {
     const rows = [['section', 'key', 'value'],
       ['dossier', 'id', d.id], ['dossier', 'title', d.title], ['dossier', 'category', d.cat],
       ['dossier', 'meta', d.meta], ['dossier', 'last_generated', d.gen], ['dossier', 'owner', d.owner],
       ['dossier', 'cadence', d.cadence], ['dossier', 'compliance', d.status]];
     download(`${d.id}-manifest.csv`, rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n'));
-    push(true, 'Dossier manifest downloaded', `${d.id} · full extract streams from read replica.`);
+    push(true, 'Dossier manifest downloaded', `${d.id} · local extract (no replica).`);
   };
 
   const schedule = () => {
@@ -120,7 +143,7 @@ export function ReportsHub() {
     setSchedOpen(false);
     setSchedMail('');
     setSchedTouched(false);
-    push(true, 'Dispatch scheduled', `${schedRep} · ${schedCad}.`);
+    push(true, 'Reminder noted (local only)', `${schedRep} · ${schedCad} · no email sent — delivery not connected.`);
   };
 
   const today = new Date();
@@ -131,22 +154,43 @@ export function ReportsHub() {
     : range === 'Q1 2026' ? `BETWEEN '2026-01-01' AND '2026-03-31'` : `BETWEEN '2026-01-01' AND '${isoDay(today)}'`;
   const sql = `SELECT ${DIM_SQL[DIMS.indexOf(dim as (typeof DIMS)[number])]}, ${mets.map((m) => METRICS.find((x) => x.n === m)?.sql).join(', ') || 'COUNT(*)'} FROM telemetry_mart WHERE facility_id = '${FAC_IDS[FACS.indexOf(fac as (typeof FACS)[number])]}' AND log_timestamp ${rangeSql}`;
 
-  const runQuery = () => {
+  // GAP-12/F10: the builder SQL is a local design preview (telemetry_mart does not
+  // exist); "Run" executes the REAL server aggregate query and reports live counts.
+  const runQuery = async () => {
     if (mets.length === 0) {
       push(false, 'No metrics selected', 'Pick at least one telemetry metric.');
       return;
     }
-    setRan(true);
-    push(true, 'Query executed in 46ms', '412 Records Processed · replica read · plan cached.');
+    setAggError(null);
+    const t0 = performance.now();
+    try {
+      // apiFetch unwraps the { data } envelope — the resolved value IS the aggregates.
+      const aggData = await apiFetch<Aggregates>('/api/reports/aggregates');
+      setAgg(aggData);
+      setAggMs(Math.round(performance.now() - t0));
+      setRan(true);
+      const total = aggData.workOrders.total + aggData.assets.totalRegistered
+        + aggData.inventory.totalSkus + aggData.serviceRequests.total;
+      push(true, 'Aggregate query executed', `${total} live records · server aggregates (this database).`);
+    } catch (e) {
+      setAgg(null);
+      setAggMs(null);
+      const msg = e instanceof Error ? e.message : 'Aggregate query failed';
+      setAggError(`${msg} — showing no figures rather than estimates.`);
+      push(false, 'Aggregate query failed', `${msg} — no figures shown.`);
+    }
   };
 
   const dossierCsv = () => {
+    const live = agg
+      ? `live · WO ${agg.workOrders.total} / assets ${agg.assets.totalRegistered} / SKUs ${agg.inventory.totalSkus} / SR ${agg.serviceRequests.total}`
+      : 'no live aggregate loaded — run the aggregate query first';
     const rows = [['section', 'key', 'value'],
       ['query', 'temporal_scope', range], ['query', 'facility', fac], ['query', 'dimension', dim],
       ['query', 'metrics', mets.join(' | ') || '(none)'], ['query', 'output', out],
-      ['receipt', 'records', '412'], ['receipt', 'exec_ms', '46'], ['receipt', 'engine', 'BI v4.6-OLAP']];
+      ['receipt', 'records', live], ['receipt', 'exec_ms', aggMs === null ? 'n/a' : String(aggMs)], ['receipt', 'engine', 'server aggregates (this database)']];
     download('custom-query-dossier.csv', rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n'));
-    push(true, 'Dossier downloaded', `${out} · 412 records · manifest + receipt attached.`);
+    push(true, 'Dossier downloaded', `${out} · ${live} · manifest + receipt attached.`);
   };
 
   return (
@@ -160,7 +204,7 @@ export function ReportsHub() {
       <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-labelledby="rep-h">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="apex-id text-muted">BI ENGINE v4.6-OLAP · READ REPLICA: SYNCED</p>
+            <p className="apex-id text-muted">Server aggregates · direct DB read · no replica</p>
             <h1 id="rep-h" className="text-2xl font-semibold tracking-tight">Reports &amp; Analytics Hub</h1>
             <p className="text-[13px] text-muted">Enterprise operational business intelligence, cost accounting, MTTR telemetry analysis, and custom report builder for multi-facility operations.</p>
           </div>
@@ -171,7 +215,7 @@ export function ReportsHub() {
               </DialogTrigger>
               <DialogContent aria-labelledby="sch-h">
                 <DialogTitle id="sch-h">Schedule Automated Dispatch</DialogTitle>
-                <DialogDescription>Emails the dossier on cadence.</DialogDescription>
+                <DialogDescription>Local reminder only — email delivery is not connected, nothing is sent.</DialogDescription>
                 <label className="text-xs font-semibold" htmlFor="sch-rep">Dossier</label>
                 <select id="sch-rep" value={schedRep} onChange={(e) => setSchedRep(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card apex-id">
                   {DOSSIERS.map((d) => <option key={d.id} value={d.id}>{d.id} · {d.title}</option>)}
@@ -189,7 +233,7 @@ export function ReportsHub() {
                 </div>
               </DialogContent>
             </Dialog>
-            <Button variant="secondary" onClick={() => { window.print(); push(true, 'PDF dossier queued', 'Full-fidelity print dossier · 4 dossiers · charts embedded.'); }}>
+            <Button variant="secondary" onClick={() => { window.print(); push(true, 'Print dossier opened', 'Browser print dialog · charts as shown on screen.'); }}>
               <Download size={16} /> Export Full PDF Dossier
             </Button>
             <Button onClick={() => document.getElementById('query-builder')?.scrollIntoView({ behavior: 'smooth' })}>
@@ -198,12 +242,28 @@ export function ReportsHub() {
           </div>
         </div>
 
+        {/* GAP-14/F21: KPI cards are live server aggregates. The old static
+            OPEX/MTTR/availability figures had no source — removed. Charts
+            below remain design reference (labeled as such). */}
+        <div className="flex items-center gap-2">
+          <Badge variant={kpiLive ? 'pass' : 'warn'}>
+            {kpiLoading ? 'Loading aggregates…' : kpiLive ? 'Live · server aggregates' : 'Demo offline — server unreachable'}
+          </Badge>
+          <button type="button" onClick={() => void loadKpi()} disabled={kpiLoading} className="text-xs font-semibold text-cobalt hover:underline disabled:opacity-50">
+            Refresh KPIs
+          </button>
+        </div>
+        {!kpiLive && !kpiLoading && (
+          <p className="rounded border border-warn bg-warn-bg text-warn-ink text-[13px] p-3" role="alert">
+            Aggregate query failed — showing no figures rather than estimates.
+          </p>
+        )}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           {[
-            { l: 'YTD Maintenance OPEX', v: '$1,428,650.00', s: '-4.2% Under Budget · Healthy · Cap: $1,490,000 · Oracle ERP Sync: 4m ago' },
-            { l: 'Fleet Mean Time to Repair (MTTR)', v: '2.38 hours', s: '-18m vs L30D Target · Optimal (≤3.0h) · 94.6% First-Time Fix · +1.8% L7D' },
-            { l: 'Fleet Availability & Uptime', v: '99.82% YTD', s: '+0.14% Uptime · Tier-1: 100% · Unplanned: 14.2h / 412 assets · Zero fatal trips' },
-            { l: 'Inventory Carrying Valuation', v: '$582,340', s: '1,840 Active SKUs · Turns: 4.8x/yr · 98.9% In-Stock Critical Spares' },
+            { l: 'Open Work Orders', v: kpi ? String(kpi.workOrders.open) : '—', s: kpi ? `${kpi.workOrders.total} total · ${kpi.workOrders.completed} completed (live)` : 'no live data' },
+            { l: 'Registered Assets', v: kpi ? String(kpi.assets.totalRegistered) : '—', s: kpi ? 'live asset count (this database)' : 'no live data' },
+            { l: 'Inventory Valuation', v: kpi ? `$${kpi.inventory.valuationUsd}` : '—', s: kpi ? `${kpi.inventory.totalSkus} SKUs · ${kpi.inventory.lowStockSkus} low-stock (live)` : 'no live data' },
+            { l: 'Service Requests', v: kpi ? String(kpi.serviceRequests.total) : '—', s: kpi ? `${kpi.serviceRequests.converted} converted (live)` : 'no live data' },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-border-subtle bg-surface p-3 flex flex-col gap-0.5">
               <span className="apex-label-caps text-muted">{k.l}</span>
@@ -216,7 +276,7 @@ export function ReportsHub() {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold">Monthly OPEX vs Budget Variance <span className="text-xs font-normal text-muted">FY 2026</span></h2>
+              <h2 className="text-base font-semibold">Monthly OPEX vs Budget Variance <span className="text-xs font-normal text-muted">FY 2026 · design reference — archived figures, not live</span></h2>
               <TrendingDown size={16} className="text-pass" />
             </div>
             <p className="text-xs text-muted -mt-1">Consolidated operating maintenance spend across Nusantara Tower campus</p>
@@ -237,7 +297,7 @@ export function ReportsHub() {
           </div>
 
           <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2">
-            <h2 className="text-base font-semibold">Category Cost Allocation</h2>
+            <h2 className="text-base font-semibold">Category Cost Allocation <span className="text-xs font-normal text-muted">· design reference — archived figures, not live</span></h2>
             <p className="text-xs text-muted -mt-1">Distribution across primary infrastructure subsystems · Total Tracked Runs: 4,892 WO lines</p>
             {CATS.map((c) => (
               <div key={c.n} className="text-[13px]">
@@ -255,7 +315,7 @@ export function ReportsHub() {
 
         <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold flex items-center gap-2"><Activity size={16} /> Incident Resolution Velocity &amp; SLA Compliance</h2>
+            <h2 className="text-base font-semibold flex items-center gap-2"><Activity size={16} /> Incident Resolution Velocity &amp; SLA Compliance <span className="text-xs font-normal text-muted">· design reference — archived figures, not live</span></h2>
             <Badge variant="pass">100% P1 COMPLIANCE</Badge>
           </div>
           <p className="text-xs text-muted -mt-1">Real-time dispatch response benchmarks correlated against facility severity thresholds · Sensor Telemetry Cycle: 60s</p>
@@ -275,7 +335,7 @@ export function ReportsHub() {
 
         <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold">Standard Operational Reports &amp; Dossiers <span className="text-xs font-normal text-muted">{filtered.length} Active Dossiers</span></h2>
+            <h2 className="text-base font-semibold">Standard Operational Reports &amp; Dossiers <span className="text-xs font-normal text-muted">{filtered.length} Active Dossiers · reference catalog — metadata only, no report engine yet</span></h2>
             <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Report classification filter" className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
               {['All Report Classifications', 'Financial & OPEX', 'Reliability Engineering', 'Workforce Operations', 'Supply Chain'].map((c) => <option key={c}>{c}</option>)}
             </select>
@@ -319,9 +379,9 @@ export function ReportsHub() {
         <div id="query-builder" className="rounded-lg border-2 border-cobalt-deep bg-surface p-4 flex flex-col gap-3 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold">Custom Analytical Query &amp; Report Builder</h2>
-            <Badge variant="info">OLAP CUBE</Badge>
+            <Badge variant="info">SERVER AGGREGATES</Badge>
           </div>
-          <p className="text-[13px] text-muted -mt-2">Compose multidimensional queries with granular field cross-sections · Ready (Est Execution: ~84ms)</p>
+          <p className="text-[13px] text-muted -mt-2">Compose multidimensional queries with granular field cross-sections · Run executes the live server aggregate query</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[13px]">
             <div className="flex flex-col gap-0.5">
               <label className="text-xs font-semibold" htmlFor="qb-range">1. Temporal Scope / Range</label>
@@ -363,11 +423,19 @@ export function ReportsHub() {
               ))}
             </div>
           </fieldset>
-          <pre className="rounded border border-border-subtle bg-card p-2 text-[11px] apex-id overflow-x-auto" aria-label="Generated SQL">{sql}</pre>
+          <p className="text-[11px] text-muted">Builder preview (local only — Run executes the server aggregate query, not this SQL):</p>
+          <pre className="rounded border border-border-subtle bg-card p-2 text-[11px] apex-id overflow-x-auto" aria-label="Generated SQL (local design preview — not executed)">{sql}</pre>
           <div className="flex flex-wrap gap-2 items-center">
-            <Button variant="secondary" onClick={runQuery}><Play size={15} /> Run Simulation / Live Preview</Button>
+            <Button variant="secondary" onClick={() => void runQuery()}><Play size={15} /> Run Aggregate Query (live)</Button>
             <Button onClick={dossierCsv}><FileText size={15} /> Generate &amp; Download Dossier</Button>
-            {ran && <span className="text-[13px] font-semibold text-pass" role="status">Query Executed in 46ms · 412 Records Processed</span>}
+            {aggError && <span className="text-[13px] font-semibold text-fail" role="alert">{aggError}</span>}
+            {ran && agg && aggMs !== null && (
+              <span className="text-[13px] font-semibold text-pass" role="status">
+                Live aggregates in {aggMs}ms · WO {agg.workOrders.total} (open {agg.workOrders.open})
+                {' '}· assets {agg.assets.totalRegistered} · SKUs {agg.inventory.totalSkus} (low {agg.inventory.lowStockSkus})
+                {' '}· valuation ${agg.inventory.valuationUsd} · SR {agg.serviceRequests.total} (converted {agg.serviceRequests.converted})
+              </span>
+            )}
           </div>
         </div>
       </section>

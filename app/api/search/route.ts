@@ -3,6 +3,7 @@ import { and, eq, ilike, or } from 'drizzle-orm';
 import { withRoute } from '@/lib/api/http';
 import { getDb } from '@/db/client';
 import { assets, parts, serviceRequests, workOrders } from '@/db/schema';
+import { log } from '@/lib/log';
 
 export interface SearchResultItem {
   id: string;
@@ -16,9 +17,14 @@ export interface SearchResultItem {
 /**
  * GET /api/search?q={query}
  * Fast tenant-scoped search across Work Orders, Service Requests, Assets, and Inventory Parts.
+ *
+ * FP-26: 4 query dijalankan PARALEL (Promise.all) — p95 berhenti menunggu query terlama.
+ * Kegagalan satu bagian didegradasi parsial (bagian lain tetap tampil), bukan 500 total.
+ * Permission: 'wo.read' (sebelumnya 'audit.read' — mengecualikan Senior Field Tech &
+ * Vendor Partner Tech yang sah memakai ⌘K palette; semua role operasional punya wo.read).
  */
 export async function GET(req: NextRequest) {
-  return withRoute({ op: 'search.query', method: 'GET', permission: 'audit.read' }, req, async (ctx) => {
+  return withRoute({ op: 'search.query', method: 'GET', permission: 'wo.read' }, req, async (ctx) => {
     const { searchParams } = new URL(req.url);
     const query = (searchParams.get('q') || '').trim();
 
@@ -27,26 +33,89 @@ export async function GET(req: NextRequest) {
     }
 
     const db = getDb();
+    const orgId = ctx!.orgId;
     const pattern = `%${query}%`;
+
+    const section = <T>(name: string, fn: () => Promise<T[]>): Promise<T[]> =>
+      fn().catch((err) => {
+        log('warn', 'search_section_failed', {
+          section: name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return [] as T[];
+      });
+
+    const [wos, srs, asts, prts] = await Promise.all([
+      section('work_orders', () =>
+        db
+          .select({
+            number: workOrders.number,
+            title: workOrders.title,
+            status: workOrders.status,
+            assetCode: workOrders.assetCode,
+          })
+          .from(workOrders)
+          .where(
+            and(
+              eq(workOrders.organizationId, orgId),
+              or(ilike(workOrders.number, pattern), ilike(workOrders.title, pattern), ilike(workOrders.assetCode, pattern)),
+            ),
+          )
+          .limit(6),
+      ),
+      section('service_requests', () =>
+        db
+          .select({
+            number: serviceRequests.number,
+            title: serviceRequests.title,
+            status: serviceRequests.status,
+          })
+          .from(serviceRequests)
+          .where(
+            and(
+              eq(serviceRequests.organizationId, orgId),
+              or(ilike(serviceRequests.number, pattern), ilike(serviceRequests.title, pattern)),
+            ),
+          )
+          .limit(5),
+      ),
+      section('assets', () =>
+        db
+          .select({
+            code: assets.code,
+            name: assets.name,
+            klass: assets.klass,
+            location: assets.location,
+          })
+          .from(assets)
+          .where(
+            and(
+              eq(assets.organizationId, orgId),
+              or(ilike(assets.code, pattern), ilike(assets.name, pattern), ilike(assets.klass, pattern)),
+            ),
+          )
+          .limit(5),
+      ),
+      section('parts', () =>
+        db
+          .select({
+            sku: parts.sku,
+            name: parts.name,
+            bin: parts.bin,
+            onHand: parts.onHand,
+          })
+          .from(parts)
+          .where(
+            and(
+              eq(parts.organizationId, orgId),
+              or(ilike(parts.sku, pattern), ilike(parts.name, pattern)),
+            ),
+          )
+          .limit(5),
+      ),
+    ]);
+
     const results: SearchResultItem[] = [];
-
-    // 1. Search Work Orders
-    const wos = await db
-      .select({
-        number: workOrders.number,
-        title: workOrders.title,
-        status: workOrders.status,
-        assetCode: workOrders.assetCode,
-      })
-      .from(workOrders)
-      .where(
-        and(
-          eq(workOrders.organizationId, ctx!.orgId),
-          or(ilike(workOrders.number, pattern), ilike(workOrders.title, pattern), ilike(workOrders.assetCode, pattern)),
-        ),
-      )
-      .limit(6);
-
     for (const w of wos) {
       results.push({
         id: w.number,
@@ -57,23 +126,6 @@ export async function GET(req: NextRequest) {
         href: `/work-orders/${w.number}`,
       });
     }
-
-    // 2. Search Service Requests
-    const srs = await db
-      .select({
-        number: serviceRequests.number,
-        title: serviceRequests.title,
-        status: serviceRequests.status,
-      })
-      .from(serviceRequests)
-      .where(
-        and(
-          eq(serviceRequests.organizationId, ctx!.orgId),
-          or(ilike(serviceRequests.number, pattern), ilike(serviceRequests.title, pattern)),
-        ),
-      )
-      .limit(5);
-
     for (const s of srs) {
       results.push({
         id: s.number,
@@ -84,24 +136,6 @@ export async function GET(req: NextRequest) {
         href: `/service-requests/${s.number}`,
       });
     }
-
-    // 3. Search Assets
-    const asts = await db
-      .select({
-        code: assets.code,
-        name: assets.name,
-        klass: assets.klass,
-        location: assets.location,
-      })
-      .from(assets)
-      .where(
-        and(
-          eq(assets.organizationId, ctx!.orgId),
-          or(ilike(assets.code, pattern), ilike(assets.name, pattern), ilike(assets.klass, pattern)),
-        ),
-      )
-      .limit(5);
-
     for (const a of asts) {
       results.push({
         id: a.code,
@@ -112,24 +146,6 @@ export async function GET(req: NextRequest) {
         href: `/assets/${a.code}`,
       });
     }
-
-    // 4. Search Parts
-    const prts = await db
-      .select({
-        sku: parts.sku,
-        name: parts.name,
-        bin: parts.bin,
-        onHand: parts.onHand,
-      })
-      .from(parts)
-      .where(
-        and(
-          eq(parts.organizationId, ctx!.orgId),
-          or(ilike(parts.sku, pattern), ilike(parts.name, pattern)),
-        ),
-      )
-      .limit(5);
-
     for (const p of prts) {
       results.push({
         id: p.sku,

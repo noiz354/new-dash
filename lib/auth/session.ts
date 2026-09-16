@@ -115,12 +115,16 @@ export interface UserSessionSummary {
   userAgent: string | null;
   lastSeenAt: string;
   expiresAt: string;
+  /** True for the session matching the caller's own token (GAP-5). */
+  current: boolean;
 }
 
 export async function listUserSessions(
   db: Db,
   userId: string,
   organizationId: string,
+  /** sha256 of the caller's own session token — marks exactly one row `current` (GAP-5). */
+  currentIdHash?: string,
 ): Promise<UserSessionSummary[]> {
   const rows = await db
     .select({
@@ -138,5 +142,30 @@ export async function listUserSessions(
     userAgent: r.userAgent,
     lastSeenAt: r.lastSeenAt.toISOString(),
     expiresAt: r.expiresAt.toISOString(),
+    current: currentIdHash ? r.idHash === currentIdHash : false,
   }));
+}
+
+/**
+ * Revoke every session of the user EXCEPT the caller's own (GAP-5:
+ * "sign out other devices" — the caller stays signed in).
+ * Returns the number of sessions revoked.
+ */
+export async function revokeOtherUserSessions(
+  db: Db,
+  userId: string,
+  organizationId: string,
+  exceptIdHash: string,
+): Promise<number> {
+  const deleted = await db
+    .delete(sessions)
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        eq(sessions.organizationId, organizationId),
+        sql`${sessions.idHash} != ${exceptIdHash}`,
+      ),
+    )
+    .returning();
+  return deleted.length;
 }

@@ -22,3 +22,6 @@ export const staleState = (message: string, details?: unknown) =>
 
 export const notFound = (entity: string, id: string) =>
   new DomainError(404, `${entity}_NOT_FOUND`, `${entity.toLowerCase()} ${id} not found in this organization`);
+
+export const forbiddenOp = (code: string, message: string) =>
+  new DomainError(403, code, message);

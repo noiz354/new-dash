@@ -5,10 +5,21 @@ import Link from 'next/link';
 import { ClipboardList, CloudUpload, Inbox, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CANON } from '@/lib/canon';
+import { CANON, wibNow } from '@/lib/canon';
 import { cn } from '@/lib/utils';
+import { apiFetch } from '@/lib/api/client';
+import { listOutbox } from '@/lib/offline/outbox';
 import { FieldOffline } from './FieldOffline';
 import { FieldToasts, useFieldToasts } from './toasts';
+
+interface ServerAudit {
+  number: string;
+  title: string;
+  auditorName: string;
+  progressPct: number;
+  status: string;
+  createdAt: string;
+}
 
 interface Audit {
   id: string;
@@ -21,7 +32,8 @@ interface Audit {
   critical?: boolean;
 }
 
-const AUDITS: Audit[] = [
+/** Demo fallback (GAP-11): shown ONLY when the server list is unreachable. */
+const AUDITS_DEMO: Audit[] = [
   {
     id: CANON.inspection,
     title: 'Weekly Chiller Run-Check · Chiller #04',
@@ -54,24 +66,65 @@ const pillTone: Record<Audit['pillTone'], string> = {
   pass: 'text-pass border-pass bg-pass-bg',
 };
 
-/** My Audits — H2 field queue (reference: web/my-audits.html). */
+function toCard(r: ServerAudit): Audit {
+  const st = r.status.toUpperCase();
+  if (st === 'COMPLETED') {
+    return { id: r.number, title: r.title, sub: `${r.auditorName} · completed`, pill: 'DONE', pillTone: 'pass', progress: 100 };
+  }
+  if (st === 'OVERDUE') {
+    return { id: r.number, title: r.title, sub: `${r.auditorName} · overdue`, pill: 'OVERDUE', pillTone: 'fail', progress: r.progressPct };
+  }
+  if (st === 'SCHEDULED') {
+    return { id: r.number, title: r.title, sub: `${r.auditorName} · scheduled`, pill: 'QUEUED', pillTone: 'pass' };
+  }
+  return {
+    id: r.number, title: r.title, sub: `${r.auditorName} · in progress`,
+    pill: 'IN PROGRESS', pillTone: 'warn', progress: r.progressPct,
+    foot: `Tap to resume run`,
+  };
+}
+
+/** My Audits — H2 field queue (GAP-11: live GET /api/inspections, demo fallback). */
 export function AuditQueue() {
   const [loading, setLoading] = useState(true);
+  const [live, setLive] = useState(false);
+  const [audits, setAudits] = useState<Audit[]>([]);
+  const [completed, setCompleted] = useState<ServerAudit[]>([]);
+  const [syncCount, setSyncCount] = useState(0);
   const [q, setQ] = useState('');
   const { toasts, push } = useFieldToasts();
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      setLoading(false);
-      if (!navigator.onLine) push(false, 'Offline', 'List served from cache. Changes queue to Sync.');
-    }, 600);
-    return () => clearTimeout(t);
+    let alive = true;
+    void listOutbox()
+      .then((items) => {
+        if (alive) setSyncCount(items.filter((i) => i.status === 'QUEUED' || i.status === 'FAILED').length);
+      })
+      .catch(() => { /* outbox unreadable — badge stays 0 */ });
+    void apiFetch<{ rows: ServerAudit[]; total: number }>('/api/inspections')
+      .then((res) => {
+        if (!alive) return;
+        setAudits(res.rows.filter((r) => r.status.toUpperCase() !== 'COMPLETED').map(toCard));
+        setCompleted(res.rows.filter((r) => r.status.toUpperCase() === 'COMPLETED'));
+        setLive(true);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setAudits(AUDITS_DEMO);
+        setCompleted([]);
+        setLive(false);
+        setLoading(false);
+        push(false, 'Offline', 'Audit list served from demo fallback. Changes queue to Sync.');
+      });
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const rows = AUDITS.filter(
+  const rows = audits.filter(
     (a) => a.id.toLowerCase().includes(q.toLowerCase()) || a.title.toLowerCase().includes(q.toLowerCase())
   );
+  const lastDone = completed[0] ?? null;
 
   return (
     <>
@@ -86,16 +139,18 @@ export function AuditQueue() {
             </svg>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold font-display leading-tight truncate">My Audits</h1>
-              <p className="text-xs text-muted truncate">E. Voronova · Shift A · {CANON.tenant}</p>
+              <p className="text-xs text-muted truncate">
+                E. Voronova · Shift A · {CANON.tenant} · {live ? 'Live server list' : 'Demo offline'}
+              </p>
             </div>
           </div>
           <Link
             href="/field/sync"
             className="relative min-w-[48px] min-h-[48px] flex items-center justify-center rounded border-2 border-slate900 bg-white"
-            aria-label="Sync status, 2 items pending"
+            aria-label={`Sync status, ${syncCount} items pending`}
           >
             <CloudUpload size={24} />
-            <span className="absolute -top-2 -right-2 px-1 rounded bg-fail text-white text-[11px] leading-tight font-bold min-w-[20px] text-center">2</span>
+            <span className="absolute -top-2 -right-2 px-1 rounded bg-fail text-white text-[11px] leading-tight font-bold min-w-[20px] text-center">{syncCount}</span>
           </Link>
         </div>
       </header>
@@ -147,6 +202,14 @@ export function AuditQueue() {
                         <span className="apex-id font-bold bg-surface-subtle border-[1.5px] border-hold px-2 py-0.5 rounded">{a.id}</span>
                         <span className={cn('text-xs font-bold border px-2 py-0.5 rounded', pillTone[a.pillTone])}>{a.pill}</span>
                       </span>
+                      {/* GAP-15 (F18): run route only renders the checklist for the
+                          canonical inspection — other audits land on an honest
+                          "TODO Fase 2" EmptyState, so the card says so upfront. */}
+                      {a.id !== CANON.inspection && (
+                        <span className="text-xs font-bold text-warn border border-warn bg-warn-bg px-2 py-0.5 rounded self-start">
+                          Phase 2 · run checklist not available yet
+                        </span>
+                      )}
                       <span className="text-lg font-semibold font-display">{a.title}</span>
                       <span className="text-sm text-muted">{a.sub}</span>
                       {typeof a.progress === 'number' && (
@@ -166,20 +229,21 @@ export function AuditQueue() {
           </ul>
         )}
 
-        <section className="rounded border-2 border-slate900 bg-white shadow-hard p-3 flex flex-col gap-2" aria-label="Last submission">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold font-display">Last Submission</h2>
-            <span className="text-xs font-bold text-pass border border-pass bg-pass-bg px-2 py-0.5 rounded">SUBMITTED</span>
-          </div>
-          <p className="text-sm">
-            INS-2026-0409 · Cooling Tower Loop · auto-dispatched{' '}
-            <Link className="apex-id font-bold text-cobalt-deep underline" href={`/work-orders/${CANON.workOrderSeal}`}>{CANON.workOrderSeal}</Link>
-          </p>
-          <p className="text-xs text-muted">Submitted 13:58 WIB · hash-chained to audit ledger</p>
-        </section>
+        {lastDone && (
+          <section className="rounded border-2 border-slate900 bg-white shadow-hard p-3 flex flex-col gap-2" aria-label="Last completed run">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold font-display">Last Completed Run</h2>
+              <span className="text-xs font-bold text-pass border border-pass bg-pass-bg px-2 py-0.5 rounded">COMPLETED</span>
+            </div>
+            <p className="text-sm">
+              <span className="apex-id font-bold">{lastDone.number}</span> · {lastDone.title} · {lastDone.auditorName}
+            </p>
+            <p className="text-xs text-muted">Recorded in the inspection ledger {wibNow()} WIB · server status {lastDone.status}</p>
+          </section>
+        )}
 
         <p className="text-xs text-muted flex items-center gap-1">
-          <ClipboardList size={14} /> 3 assigned · Shift A {CANON.shiftA}
+          <ClipboardList size={14} /> {audits.length} assigned · Shift A {CANON.shiftA} {live ? '(live)' : '(demo)'}
         </p>
       </main>
 

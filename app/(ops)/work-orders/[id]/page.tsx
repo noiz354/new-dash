@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ops/EmptyState';
 import { SlaCountdown, LaborStopwatch } from '@/components/ops/WoTimers';
 import { HoldDialog, EscalateDialog, ResumeDialog, CancelDialog, SignoffDialog, ExportDialog, PrintButton } from '@/components/ops/WoDialogs';
+import { WoChecklist } from '@/components/ops/WoChecklist';
 import { getSessionContext } from '@/lib/auth/context';
 import { can } from '@/lib/auth/rbac';
 import { getDb } from '@/db/client';
 import { getWorkOrder, listWoEvents, type WoRow, type WoHistoryEntry } from '@/lib/services/wo-service';
+import { listWoEvidence, listWoTasks, type EvidenceRow, type WoTaskRow } from '@/lib/services/task-service';
 import { findSrByConvertedWo } from '@/lib/services/asset-service';
 import { DomainError } from '@/lib/domain/errors';
 import { CANON } from '@/lib/canon';
@@ -52,8 +54,8 @@ const KNOWN_LINKED_WOS: Record<string, Partial<WoRow>> = {
     location: 'Central Utility Plant Floor 2',
     assetCode: 'AST-FIRE-002',
     priority: 'P2',
-    status: 'PENDING_DISPATCH',
-    statusLabel: 'PENDING DISPATCH',
+    status: 'DISPATCHED',
+    statusLabel: 'DISPATCHED (PENDING TECH)',
     tech: 'Sarah Al-Mansoor',
   },
   'WO-2026-0905': {
@@ -61,8 +63,8 @@ const KNOWN_LINKED_WOS: Record<string, Partial<WoRow>> = {
     location: 'Chiller Plant Room B-204',
     assetCode: 'AST-HVAC-001',
     priority: 'P2',
-    status: 'DRAFT',
-    statusLabel: 'DRAFT',
+    status: 'OPEN',
+    statusLabel: 'OPEN (DRAFT PLAN)',
     tech: 'Robert Langdon',
   },
   'WO-2026-0906': {
@@ -134,15 +136,23 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
   let wo: WoRow;
   let history: WoHistoryEntry[] = [];
   let originSr: { number: string; title: string } | null = null;
+  let tasks: WoTaskRow[] = [];
+  let evidence: EvidenceRow[] = [];
 
   try {
     wo = await getWorkOrder(getDb(), ctx, id);
-    const [h, s] = await Promise.all([
+    const [h, s, t, e] = await Promise.all([
       listWoEvents(getDb(), ctx, id),
       findSrByConvertedWo(getDb(), ctx, id),
+      // DB-driven execution checklist (GAP-12/F5) — empty = honest empty-state.
+      listWoTasks(getDb(), ctx, id).catch(() => [] as WoTaskRow[]),
+      // Served evidence (GAP-13/F6) — empty = honest "none attached".
+      listWoEvidence(getDb(), ctx, id).catch(() => [] as EvidenceRow[]),
     ]);
     history = h;
     originSr = s;
+    tasks = t;
+    evidence = e;
   } catch (err) {
     if (err instanceof DomainError && err.status === 404) {
       if (!isWoPattern) {
@@ -268,9 +278,10 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
               ))}
               {history.length === 0 && <li className="pl-4 text-[13px] text-muted">No transitions recorded yet.</li>}
             </ol>
+            <h2 className="text-base font-semibold">Checklist Execution</h2>
+            <WoChecklist number={wo.number} initialTasks={tasks} enabled={transitionable} />
             <p className="text-[11px] text-muted" role="note">
-              Checklist, parts ledger, and telemetry dossiers are canon-seeded for {CANON.workOrderSeal} only — DB-driven
-              execution records (tasks/parts/evidence) for every WO ship with the inventory &amp; evidence slice.
+              Parts ledger and telemetry dossiers are canon-seeded for {CANON.workOrderSeal} only.
             </p>
           </section>
           <section className="xl:col-span-5 bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-2 shadow-card" aria-label="Record">
@@ -342,7 +353,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-border-subtle">
-          <div className="flex flex-col gap-0.5"><span className="apex-label-caps text-muted">Step Progress</span><span className="text-xl font-semibold tabular-nums">4 / 7 Complete</span><span className="text-[11px] text-muted">Step 04 torqued 13:58 WIB</span></div>
+          <div className="flex flex-col gap-0.5"><span className="apex-label-caps text-muted">Step Progress</span><span className="text-xl font-semibold tabular-nums">{tasks.filter((t) => t.status === 'DONE').length} / {tasks.length} Complete</span><span className="text-[11px] text-muted">Live execution records</span></div>
           <div className="flex flex-col gap-0.5"><span className="apex-label-caps text-muted">Labor Clock (Stopwatch)</span><LaborStopwatch initialSec={3600 + 42 * 60 + 18} isRunning={wo.status === 'IN_PROGRESS'} /><span className="text-[11px] text-muted">Active technician clock</span></div>
           <div className="flex flex-col gap-0.5"><span className="apex-label-caps text-muted">Parts Committed</span><span className="text-xl font-semibold tabular-nums apex-id text-pass">$1,765.00</span><span className="text-[11px] text-muted">3 SKUs tagged · 1 reserved</span></div>
           <div className="flex flex-col gap-0.5"><span className="apex-label-caps text-muted">Origin Ticket</span><Link className="text-xl font-semibold apex-id text-cobalt hover:underline" href={`/service-requests/${CANON.serviceRequest}`}>{CANON.serviceRequest}</Link><span className="text-[11px] text-muted">Converted 13:39 WIB</span></div>
@@ -353,15 +364,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
         <section className="xl:col-span-7 bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-label="Execution details">
           <div>
             <h2 className="text-base font-semibold">Checklist Execution</h2>
-            <ol className="flex flex-col divide-y divide-surface-subtle mt-2 text-[13px]">
-              <li className="py-2 flex items-center justify-between"><span>01. LOTO Padlock #4092 applied &amp; zero-energy verified</span><Badge variant="pass">DONE</Badge></li>
-              <li className="py-2 flex items-center justify-between"><span>02. Refrigerant R-134a recovered to holding cylinder</span><Badge variant="pass">DONE</Badge></li>
-              <li className="py-2 flex items-center justify-between"><span>03. Old mechanical seal disassembled &amp; shaft inspected</span><Badge variant="pass">DONE</Badge></li>
-              <li className="py-2 flex items-center justify-between"><span>04. New silicon-carbide seal installed &amp; torqued (85 Nm)</span><Badge variant="pass">DONE</Badge></li>
-              <li className="py-2 flex items-center justify-between"><span>05. Nitrogen pressure test (150 PSI hold for 30m)</span><Badge variant="warn">IN PROGRESS</Badge></li>
-              <li className="py-2 flex items-center justify-between text-muted"><span>06. Evacuation &lt; 500 microns &amp; refrigerant recharge</span><Badge variant="hold">PENDING</Badge></li>
-              <li className="py-2 flex items-center justify-between text-muted"><span>07. Post-repair vibration &amp; temperature baseline run</span><Badge variant="hold">PENDING</Badge></li>
-            </ol>
+            <WoChecklist number={wo.number} initialTasks={tasks} enabled={transitionable} evidence={evidence} />
           </div>
 
           <div className="pt-2 border-t border-border-subtle">

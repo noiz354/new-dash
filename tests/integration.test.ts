@@ -10,6 +10,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { createDb, type Db } from '../db/client';
+import { auditEvents, users } from '../db/schema';
 import { seedAll, SEED_PASSWORD, SEED_TOTP_SECRET } from '../db/seed';
 import { workOrderEvents } from '../db/schema';
 import { login, logout, verifyMfa } from '../lib/services/auth-service';
@@ -21,11 +22,29 @@ import {
   createServiceRequest, getServiceRequest, listServiceRequests,
   listSrHistory, transitionServiceRequest,
 } from '../lib/services/sr-service';
-import { listAuditEvents } from '../lib/services/audit-service';
+import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
+import { convertFindingToWo, createFinding, createInspection, dismissFinding, forceDispatchInspection, getFinding, getInspection, listFindings, listInspections, updateInspectionProgress } from '../lib/services/inspection-service';
+import { listWoTasks, updateWoTask } from '../lib/services/task-service';
+import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
+import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
+import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
+import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '../lib/services/pm-service';
+import { addEvidence, listWoEvidence } from '../lib/services/task-service';
+import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
+import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
+import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
+import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
+import {
+  createSession,
+  hashToken,
+  listUserSessions,
+  revokeAllUserSessions,
+  revokeOtherUserSessions,
+} from '../lib/auth/session';
 
 const TEST_DIR = `.data/test-integration-${Date.now()}`;
 let db: Db;
@@ -412,6 +431,31 @@ test('audit: ledger holds real events from every flow, tenant-scoped', async () 
   assert.ok(decoyPage.rows.every((r) => r.entityId === null || !r.entityId.startsWith('WO-2026-08')));
 });
 
+// ---------------------------------------------------------------------------
+// TASK-20: hash-chain verification is a real server recomputation, and it
+// catches tampering (stored entryHash mismatch).
+// ---------------------------------------------------------------------------
+test('audit: verifyAuditHashChain recomputes the real chain and detects tampering', async () => {
+  const clean = await verifyAuditHashChain(db, admin);
+  assert.equal(clean.valid, true);
+  assert.ok(clean.verifiedCount >= 10, `expected populated ledger, got ${clean.verifiedCount}`);
+  assert.match(clean.rootHash, /^[0-9a-f]{64}$/);
+  assert.match(clean.genesisHash, /^[0-9a-f]{64}$/);
+  assert.equal(clean.tamperedEventId, null);
+
+  // Simulate a tampered row: plant a wrong stored hash, expect detection.
+  const victim = (await listAuditEvents(db, admin)).rows[0];
+  await db.update(auditEvents).set({ entryHash: '0'.repeat(64) }).where(eq(auditEvents.id, victim.id));
+  try {
+    const tampered = await verifyAuditHashChain(db, admin);
+    assert.equal(tampered.valid, false);
+    assert.equal(tampered.tamperedEventId, victim.id);
+  } finally {
+    await db.update(auditEvents).set({ entryHash: null }).where(eq(auditEvents.id, victim.id));
+  }
+  assert.equal((await verifyAuditHashChain(db, admin)).valid, true);
+});
+
 test('assets: registry with real workload counts; dossier relations; cross-tenant 404', async () => {
   const rows = await listAssets(db, admin);
   assert.ok(rows.length >= 4);
@@ -441,4 +485,823 @@ test('assets: registry with real workload counts; dossier relations; cross-tenan
     () => getAssetDossier(db, decoy, 'AST-HVAC-004'),
     404, 'ASSET_NOT_FOUND',
   );
+});
+
+// ---------------------------------------------------------------------------
+// Findings persistence (GAP #1: POST used to return 201 without insert)
+// ---------------------------------------------------------------------------
+test('findings: create persists with canon numbering + audit; list reads DB rows', async () => {
+  const before = await listFindings(db, admin);
+  assert.ok(before.some((f) => f.status === 'CONVERTED'), 'seeded converted finding visible');
+
+  const fnd = await createFinding(db, admin, {
+    title: 'Oil mist at compressor terminal box',
+    severity: 'MAJOR',
+    assetCode: 'AST-HVAC-004',
+    extra: { description: 'Visible misting', zone: 'Plant Room' },
+  });
+  assert.equal(fnd.number, 'FND-2026-0189');
+  assert.equal(fnd.status, 'OPEN');
+  assert.equal(fnd.severity, 'MAJOR');
+
+  // Refresh test: row survives a fresh read; audit event written.
+  const refetched = await getFinding(db, admin, 'FND-2026-0189');
+  assert.equal(refetched.title, 'Oil mist at compressor terminal box');
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'FINDING_CREATE' && e.entityId === 'FND-2026-0189'), 'FINDING_CREATE audited');
+
+  const after = await listFindings(db, admin);
+  assert.equal(after.length, before.length + 1);
+
+  // Cross-tenant isolation: decoy org sees none of canon's findings.
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.equal((await listFindings(db, decoy)).length, 0);
+  await expectDomainError(() => getFinding(db, decoy, 'FND-2026-0189'), 404, 'FINDING_NOT_FOUND');
+});
+
+test('findings: idempotent create replays without a second row', async () => {
+  const key = 'finding-idem-key-0001';
+  const first = await createFinding(db, admin, {
+    title: 'Vibration probe loose on AHU-3', severity: 'MODERATE', assetCode: 'AST-HVAC-003',
+  }, { idempotencyKey: key });
+  assert.equal(first.number, 'FND-2026-0190');
+
+  const replay = await createFinding(db, admin, {
+    title: 'Vibration probe loose on AHU-3', severity: 'MODERATE', assetCode: 'AST-HVAC-003',
+  }, { idempotencyKey: key });
+  assert.equal(replay.number, first.number, 'replay returns the stored row, no duplicate');
+
+  const after = await createFinding(db, admin, {
+    title: 'After idempotency', severity: 'MINOR', assetCode: 'AST-HVAC-003',
+  });
+  assert.equal(after.number, 'FND-2026-0191', 'sequence advanced only for real inserts');
+});
+
+// ---------------------------------------------------------------------------
+// Finding convert/dismiss (GAP #4: FindingDesk convert/dismiss + PM button
+// were setTimeout/setState fake success; now wired to real endpoints)
+// ---------------------------------------------------------------------------
+test('findings: convert creates WO transactionally, second convert 409, replay idempotent', async () => {
+  const fnd = await createFinding(db, admin, {
+    title: 'Gap-4 convert probe', severity: 'CRITICAL', assetCode: 'AST-HVAC-004',
+  });
+  assert.equal(fnd.status, 'OPEN');
+
+  const wosBefore = await listWorkOrders(db, admin);
+  const key = 'finding-convert-key-0001';
+  const res = await convertFindingToWo(db, admin, fnd.number,
+    { woPriority: 'P1', reason: 'Gap-4 probe' }, { idempotencyKey: key });
+  assert.equal(res.finding.status, 'CONVERTED');
+  assert.ok(res.finding.convertedWoNumber, 'WO number linked');
+  assert.equal(res.wo.number, res.finding.convertedWoNumber);
+  assert.equal(res.wo.status, 'OPEN');
+
+  // WO really exists + finding row updated + audit chained.
+  const wo = await getWorkOrder(db, admin, res.wo.number);
+  assert.equal(wo.title, `Corrective Action: ${fnd.title}`);
+  const refetched = await getFinding(db, admin, fnd.number);
+  assert.equal(refetched.convertedWoNumber, res.wo.number);
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'FINDING_CONVERT_WO' && e.entityId === fnd.number), 'FINDING_CONVERT_WO audited');
+
+  // One-time conversion: second attempt without key → 409.
+  await expectDomainError(
+    () => convertFindingToWo(db, admin, fnd.number, { woPriority: 'P1' }),
+    409, 'ALREADY_CONVERTED',
+  );
+
+  // Replay with the same key returns the stored result, no second WO.
+  const replay = await convertFindingToWo(db, admin, fnd.number,
+    { woPriority: 'P1', reason: 'Gap-4 probe' }, { idempotencyKey: key });
+  assert.equal(replay.wo.number, res.wo.number, 'replay returns stored conversion');
+  const wosAfter = await listWorkOrders(db, admin);
+  assert.equal(wosAfter.length, wosBefore.length + 1, 'exactly one WO created');
+});
+
+test('findings: dismiss writes DISMISSED + audit; guards enforced', async () => {
+  const fnd = await createFinding(db, admin, {
+    title: 'Gap-4 dismiss probe', severity: 'MODERATE', assetCode: 'AST-HVAC-003',
+  });
+
+  // Short justification rejected server-side.
+  await expectDomainError(
+    () => dismissFinding(db, admin, fnd.number, { justification: 'too short' }),
+    400, 'VALIDATION_ERROR',
+  );
+  assert.equal((await getFinding(db, admin, fnd.number)).status, 'OPEN', 'rejected dismiss changes nothing');
+
+  const done = await dismissFinding(db, admin, fnd.number,
+    { justification: 'Duplicate of earlier evidence pack, verified by lead' });
+  assert.equal(done.finding.status, 'DISMISSED');
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'FINDING_DISMISS' && e.entityId === fnd.number), 'FINDING_DISMISS audited');
+
+  // Terminal: dismiss twice → 409 ALREADY_DISMISSED.
+  await expectDomainError(
+    () => dismissFinding(db, admin, fnd.number, { justification: 'Another long enough justification here' }),
+    409, 'ALREADY_DISMISSED',
+  );
+
+  // Dismiss after convert → 409 ALREADY_CONVERTED.
+  const conv = await createFinding(db, admin, {
+    title: 'Gap-4 convert-then-dismiss probe', severity: 'MAJOR', assetCode: 'AST-HVAC-004',
+  });
+  await convertFindingToWo(db, admin, conv.number, { woPriority: 'P2' });
+  await expectDomainError(
+    () => dismissFinding(db, admin, conv.number, { justification: 'Too late, already a work order now' }),
+    409, 'ALREADY_CONVERTED',
+  );
+
+  // Cross-tenant isolation holds for lifecycle ops too.
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  await expectDomainError(() => dismissFinding(db, decoy, fnd.number, { justification: 'Decoy attempt with long text' }), 404, 'FINDING_NOT_FOUND');
+});
+
+// ---------------------------------------------------------------------------
+// Organization directory (GAP #2: deactivate / edit-role / reset-MFA were
+// local-only false success; now wired to real Postgres mutations)
+// ---------------------------------------------------------------------------
+test('org: provision → edit role → deactivate (login blocked) → reactivate, all audited', async () => {
+  const created = await createUser(db, admin, {
+    email: 'gap2.probe@apexops.io',
+    name: 'Gap Two Probe',
+    role: 'Senior Field Tech',
+    title: 'Facilities Engineering · Senior Field Tech',
+  });
+  assert.equal(created.isActive, true);
+  assert.equal(created.hasMfa, false);
+
+  const edited = await updateUser(db, admin, created.id, { role: 'Engineering Lead' });
+  assert.equal(edited.role, 'Engineering Lead');
+
+  const off = await updateUser(db, admin, created.id, { isActive: false });
+  assert.equal(off.isActive, false);
+
+  // Deactivated login is refused with the same 401 as a wrong password (no enumeration).
+  await expectDomainError(
+    () => login(db, { email: 'gap2.probe@apexops.io', password: 'wrong-pass', ip: '10.9.0.99' }),
+    401, 'INVALID_CREDENTIALS',
+  );
+
+  const on = await updateUser(db, admin, created.id, { isActive: true });
+  assert.equal(on.isActive, true);
+
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'USER_INVITE' && e.entityId === created.id), 'USER_INVITE audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'USER_DEACTIVATE' && e.entityId === created.id), 'USER_DEACTIVATE audited');
+});
+
+test('org: reset-mfa clears totp, revokes live sessions, audited; self-targets → 403', async () => {
+  const dir = await listUsers(db, admin);
+  const chen = dir.find((u) => u.email === 'd.chen@apexops.io');
+  assert.ok(chen, 'seeded Engineering Lead listed');
+  assert.equal(chen.hasMfa, true);
+
+  const { token: chenToken } = await sessionFor('d.chen@apexops.io');
+  assert.ok(await verifySession(db, chenToken), 'live session verifies before reset');
+
+  const res = await resetUserMfa(db, admin, chen.id);
+  assert.equal(res.mfaEnrolled, false);
+  assert.ok(res.sessionsRevoked >= 1, 'at least the live session revoked');
+  assert.equal(await verifySession(db, chenToken), null, 'revoked session no longer verifies');
+
+  const after = await listUsers(db, admin);
+  assert.equal(after.find((u) => u.email === 'd.chen@apexops.io')?.hasMfa, false);
+
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'USER_MFA_RESET' && e.entityId === chen.id), 'USER_MFA_RESET audited');
+
+  // Self-target guards: no self lockout.
+  await expectDomainError(() => updateUser(db, admin, admin.userId, { isActive: false }), 403, 'USER_SELF_DEACTIVATE');
+  await expectDomainError(() => resetUserMfa(db, admin, admin.userId), 403, 'USER_SELF_MFA_RESET');
+  await expectDomainError(
+    () => resetUserMfa(db, admin, '00000000-0000-0000-0000-000000000000'),
+    404, 'USER_NOT_FOUND',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Inventory mutations (GAP #3: receive/mutasi were local-only + PIN '2468';
+// now POST /api/parts/movements with server-verified step-up TOTP)
+// ---------------------------------------------------------------------------
+test('inventory (GAP-3): wrong step-up code → 403 STEP_UP_INVALID, stock untouched', async () => {
+  const before = await getPart(db, admin, 'PART-BRG-6205');
+  const code = totpNow(SEED_TOTP_SECRET) === '000000' ? '000001' : '000000';
+  await expectDomainError(() => verifyStepUpCode(db, admin, code), 403, 'STEP_UP_INVALID');
+  const after = await getPart(db, admin, 'PART-BRG-6205');
+  assert.equal(after.onHand, before.onHand, 'rejected step-up mutates nothing');
+});
+
+test('inventory (GAP-3): user without enrolled MFA → 403 STEP_UP_UNAVAILABLE', async () => {
+  const created = await createUser(db, admin, {
+    email: 'gap3.nomfa@apexops.io',
+    name: 'Gap Three NoMfa',
+    role: 'Senior Field Tech',
+  });
+  assert.equal(created.hasMfa, false);
+  const ctx: AuthContext = { ...admin, userId: created.id, email: created.email, name: created.name };
+  await expectDomainError(() => verifyStepUpCode(db, ctx, totpNow(SEED_TOTP_SECRET)), 403, 'STEP_UP_UNAVAILABLE');
+});
+
+test('inventory (GAP-3): RECEIVE + ISSUE with step-up persist, audited with stepUpAt; replay idempotent; over-issue → 422', async () => {
+  const sku = 'PART-BRG-6205';
+  const start = await getPart(db, admin, sku);
+  const key = `gap3-${Date.now()}`;
+
+  const received = await mutateStock(
+    db, admin,
+    { sku, type: 'RECEIVE', qty: 4, refNumber: 'PO-2026-0999', reason: 'GAP-3 probe receipt' },
+    { idempotencyKey: key, stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(received.onHand, start.onHand + 4);
+
+  // Idempotent replay: same key + same payload → same result, no double mutation.
+  const replay = await mutateStock(
+    db, admin,
+    { sku, type: 'RECEIVE', qty: 4, refNumber: 'PO-2026-0999', reason: 'GAP-3 probe receipt' },
+    { idempotencyKey: key, stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(replay.onHand, start.onHand + 4, 'replay must not double-apply');
+
+  const issued = await mutateStock(
+    db, admin,
+    { sku, type: 'ISSUE', qty: 1, refNumber: 'WO-2026-0894', reason: 'GAP-3 probe issue' },
+    { stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(issued.onHand, start.onHand + 3);
+
+  // Over-issue is refused and changes nothing.
+  await expectDomainError(
+    () => mutateStock(db, admin, { sku, type: 'ISSUE', qty: 9999, refNumber: 'WO-2026-0894' }, {}),
+    422, 'INSUFFICIENT_STOCK',
+  );
+  assert.equal((await getPart(db, admin, sku)).onHand, start.onHand + 3);
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'part' });
+  const recv = ledger.rows.find((e) => e.action === 'PART_RECEIVE' && e.entityId === sku);
+  assert.ok(recv, 'PART_RECEIVE audited');
+  assert.ok((recv.after as { stepUpAt?: string })?.stepUpAt, 'step-up approval timestamp recorded');
+  assert.ok(ledger.rows.some((e) => e.action === 'PART_ISSUE' && e.entityId === sku), 'PART_ISSUE audited');
+});
+
+// ---------------------------------------------------------------------------
+// Sessions (GAP #5: ProfileSessions showed a hardcoded SESSIONS const with
+// local-only revoke; now GET lists live rows with a current-device flag and
+// POST supports revoke-others + revoke-all)
+// ---------------------------------------------------------------------------
+test('sessions (GAP-5): list marks exactly the caller current; prefixes only, never full hashes', async () => {
+  const other = await createSession(db, admin.userId, admin.orgId, 'gap5-test tablet');
+  const rows = await listUserSessions(db, admin.userId, admin.orgId, hashToken(adminToken));
+  assert.ok(rows.length >= 2, 'caller session + probe session listed');
+  const current = rows.filter((r) => r.current);
+  assert.equal(current.length, 1, 'exactly one row is current');
+  assert.equal(current[0].idHashPrefix, hashToken(adminToken).slice(0, 8));
+  assert.ok(rows.every((r) => r.idHashPrefix.length === 8), 'only 8-char prefixes exposed');
+  assert.ok(!('idHash' in current[0]), 'full hash never leaves the server');
+  assert.ok(rows.some((r) => r.userAgent === 'gap5-test tablet' && !r.current));
+  await logout(db, other);
+  assert.equal(await verifySession(db, other), null, 'probe session cleaned up');
+});
+
+test('sessions (GAP-5): revoke-others keeps the caller, kills the rest', async () => {
+  const doomed = await createSession(db, admin.userId, admin.orgId, 'gap5-doomed device');
+  assert.ok(await verifySession(db, doomed), 'probe session live before revoke');
+
+  const n = await revokeOtherUserSessions(db, admin.userId, admin.orgId, hashToken(adminToken));
+  assert.ok(n >= 1, 'at least the probe session revoked');
+  assert.ok(await verifySession(db, adminToken), 'caller session survives revoke-others');
+  assert.equal(await verifySession(db, doomed), null, 'other session revoked');
+});
+
+test('sessions (GAP-5): revoke-all kills everything incl. caller', async () => {
+  const probe = await createSession(db, admin.userId, admin.orgId, 'gap5-revoke-all probe');
+  const n = await revokeAllUserSessions(db, admin.userId, admin.orgId);
+  assert.ok(n >= 2, 'caller + probe revoked');
+  assert.equal(await verifySession(db, adminToken), null, 'caller gone after revoke-all');
+  assert.equal(await verifySession(db, probe), null, 'probe gone after revoke-all');
+  // Restore the shared admin fixture for any later tests.
+  const fresh = await sessionFor('m.vance@apexops.io');
+  admin = fresh.ctx;
+  adminToken = fresh.token;
+});
+
+// ---------------------------------------------------------------------------
+// Billing webhook + checkout (GAP #6: BAD_SIGNATURE was swallowed by
+// catch{}, HMAC ran over a re-serialization, no dedup, checkout stub
+// cs_${Date.now()}. Now: raw-body HMAC fail-closed, event-id dedup via
+// withIdempotency, real Stripe Checkout or honest 503.)
+// ---------------------------------------------------------------------------
+import { createHmac } from 'node:crypto';
+import {
+  createCheckoutSession,
+  processStripeWebhook,
+} from '../lib/services/billing-service';
+import { organizations, subscriptions } from '../db/schema';
+
+const GAP6_SECRET = 'whsec_gap6_test_secret';
+
+function gap6Sign(rawBody: string, secret = GAP6_SECRET): string {
+  const t = String(Math.floor(Date.now() / 1000));
+  const v1 = createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex');
+  return `t=${t},v1=${v1}`;
+}
+
+function gap6Event(id: string, type = 'customer.subscription.updated', plan = 'GROWTH') {
+  return JSON.stringify({
+    id,
+    type,
+    data: {
+      object: {
+        id: 'sub_gap6',
+        customer: 'cus_gap6',
+        subscription: 'sub_gap6',
+        metadata: { organizationId: admin.orgId, plan },
+        status: 'active',
+        cancel_at_period_end: false,
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400,
+      },
+    },
+  });
+}
+
+async function gap6AuditCount(eventId: string): Promise<number> {
+  const rows = await db.select().from(auditEvents)
+    .where(and(eq(auditEvents.organizationId, admin.orgId), eq(auditEvents.entityId, admin.orgId)));
+  return rows.filter((r) => (r.after as { eventId?: string })?.eventId === eventId).length;
+}
+
+test('billing (GAP-6): valid signature processes once; replay is deduped without duplicate audit', async () => {
+  process.env.STRIPE_WEBHOOK_SECRET = GAP6_SECRET;
+  try {
+    const raw = gap6Event('evt_gap6_once');
+    const sig = gap6Sign(raw);
+    const first = await processStripeWebhook(db, raw, sig);
+    assert.equal(first.status, 'subscription_updated');
+    assert.equal(first.processed, true);
+    assert.equal(first.replayed, false);
+    assert.equal(await gap6AuditCount('evt_gap6_once'), 1, 'exactly one audit row');
+
+    const replay = await processStripeWebhook(db, raw, sig);
+    assert.equal(replay.status, 'subscription_updated');
+    assert.equal(replay.replayed, true, 'replay flagged');
+    assert.equal(await gap6AuditCount('evt_gap6_once'), 1, 'replay must not duplicate audit');
+
+    const [sub] = await db.select().from(subscriptions)
+      .where(eq(subscriptions.organizationId, admin.orgId)).limit(1);
+    assert.equal(sub?.plan, 'GROWTH');
+    assert.equal(sub?.status, 'ACTIVE');
+  } finally {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    await db.update(subscriptions).set({ plan: 'ENTERPRISE', status: 'ACTIVE' })
+      .where(eq(subscriptions.organizationId, admin.orgId));
+    await db.update(organizations).set({ plan: 'ENTERPRISE' })
+      .where(eq(organizations.id, admin.orgId));
+  }
+});
+
+test('billing (GAP-6): bad/tampered signature and missing header fail closed with no mutation', async () => {
+  process.env.STRIPE_WEBHOOK_SECRET = GAP6_SECRET;
+  try {
+    const raw = gap6Event('evt_gap6_evil');
+    const before = await gap6AuditCount('evt_gap6_evil');
+
+    await expectDomainError(() => processStripeWebhook(db, raw, gap6Sign(raw, 'wrong-secret')), 400, 'BILLING_BAD_SIGNATURE');
+    await expectDomainError(() => processStripeWebhook(db, `${raw} `, gap6Sign(raw)), 400, 'BILLING_BAD_SIGNATURE');
+    await expectDomainError(() => processStripeWebhook(db, raw, null), 401, 'BILLING_SIGNATURE_MISSING');
+    await expectDomainError(() => processStripeWebhook(db, 'not-json', gap6Sign('not-json')), 400, 'BILLING_BAD_PAYLOAD');
+    assert.equal(await gap6AuditCount('evt_gap6_evil'), before, 'rejected webhooks mutate nothing');
+  } finally {
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+  }
+});
+
+test('billing (GAP-6): missing webhook secret fails closed (503), never silently skips verify', async () => {
+  delete process.env.STRIPE_WEBHOOK_SECRET;
+  const raw = gap6Event('evt_gap6_nosecret');
+  await expectDomainError(() => processStripeWebhook(db, raw, gap6Sign(raw)), 503, 'BILLING_NOT_CONFIGURED');
+  assert.equal(await gap6AuditCount('evt_gap6_nosecret'), 0, 'unconfigured webhook persists nothing');
+});
+
+test('billing (GAP-6): checkout without STRIPE_SECRET_KEY is an honest 503 — no fake URL, no TRIALING upsert', async () => {
+  delete process.env.STRIPE_SECRET_KEY;
+  const before = await db.select().from(subscriptions)
+    .where(eq(subscriptions.organizationId, admin.orgId)).limit(1);
+  await expectDomainError(
+    () => createCheckoutSession(db, admin, 'GROWTH', 'https://x.test/success'),
+    503, 'BILLING_NOT_CONFIGURED',
+  );
+  const after = await db.select().from(subscriptions)
+    .where(eq(subscriptions.organizationId, admin.orgId)).limit(1);
+  assert.deepEqual(after, before, 'failed checkout must not touch the subscription row');
+  await expectDomainError(
+    () => createCheckoutSession(db, admin, 'COMMUNITY', 'https://x.test/success'),
+    503, 'BILLING_NOT_CONFIGURED',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Purchasing wire (GAP #9: list/detail/authorize/GRN were local-only fiction;
+// now backed by po-service + routes + DB)
+// ---------------------------------------------------------------------------
+test('purchasing (GAP-9): PR create persists with canon numbering + audit; empty lines → 400; tenant-scoped', async () => {
+  await expectDomainError(
+    () => createRequisition(db, admin, { title: 'Empty probe', lineItems: [] }),
+    400, 'LINE_ITEMS_REQUIRED',
+  );
+
+  const pr = await createRequisition(db, admin, {
+    title: 'GAP-9 probe requisition',
+    vendorSlug: 'grainger-industrial-supply',
+    lineItems: [{ sku: CANON.sealSku, description: 'GAP-9 probe seal', quantity: 2, unitPriceCents: 145000 }],
+  });
+  assert.match(pr.number, /^PR-\d{4}-\d{4}$/, 'canon PR numbering');
+  assert.equal(pr.status, 'PENDING_APPROVAL');
+  assert.equal(pr.totalCents, 290000);
+  assert.equal(pr.lineItems.length, 1);
+
+  const fetched = await getPurchase(db, admin, pr.number);
+  assert.equal(fetched.title, 'GAP-9 probe requisition');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'purchase_requisition' });
+  assert.ok(ledger.rows.some((e) => e.action === 'PR_CREATE' && e.entityId === pr.number), 'PR_CREATE audited');
+
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.ok(!(await listPurchases(db, decoy)).some((d) => d.number === pr.number), 'decoy tenant sees nothing');
+  await expectDomainError(() => getPurchase(db, decoy, pr.number), 404, 'PURCHASE_DOCUMENT_NOT_FOUND');
+});
+
+test('purchasing (GAP-9): approve persists + audited; replay idempotent; terminal 409; reject guards', async () => {
+  const key = `gap9-decide-${Date.now()}`;
+  const decided = await decidePurchase(db, admin, 'PO-2026-0315', { decision: 'APPROVE' }, { idempotencyKey: key });
+  assert.equal(decided.status, 'APPROVED');
+  assert.equal(decided.decidedBy, admin.name);
+
+  const audits = async () =>
+    (await listAuditEvents(db, admin, { entityType: 'purchase_document' })).rows
+      .filter((e) => e.action === 'PO_APPROVE' && e.entityId === 'PO-2026-0315');
+  assert.equal((await audits()).length, 1, 'exactly one PO_APPROVE audit');
+
+  const replay = await decidePurchase(db, admin, 'PO-2026-0315', { decision: 'APPROVE' }, { idempotencyKey: key });
+  assert.equal(replay.status, 'APPROVED');
+  assert.equal((await audits()).length, 1, 'idempotent replay writes no second audit');
+
+  await expectDomainError(() => decidePurchase(db, admin, 'PO-2026-0315', { decision: 'APPROVE' }), 409, 'ALREADY_DECIDED');
+  await expectDomainError(() => decidePurchase(db, admin, 'PO-2026-9999', { decision: 'APPROVE' }), 404, 'PURCHASE_DOCUMENT_NOT_FOUND');
+
+  const rej = await createRequisition(db, admin, {
+    title: 'GAP-9 reject-path probe',
+    lineItems: [{ sku: CANON.sealSku, description: 'probe', quantity: 1, unitPriceCents: 100 }],
+  });
+  await expectDomainError(() => decidePurchase(db, admin, rej.number, { decision: 'REJECT' }), 400, 'REASON_REQUIRED');
+  const rejected = await decidePurchase(db, admin, rej.number, { decision: 'REJECT', reason: 'GAP-9 probe: over budget cap' });
+  assert.equal(rejected.status, 'REJECTED');
+  assert.equal(rejected.reason, 'GAP-9 probe: over budget cap');
+  const ledger = await listAuditEvents(db, admin, { entityType: 'purchase_document' });
+  assert.ok(ledger.rows.some((e) => e.action === 'PO_REJECT' && e.entityId === rej.number), 'PO_REJECT audited');
+});
+
+test('purchasing (GAP-9): GRN posts with step-up, canon GRN number, stock loop closes; guards enforced', async () => {
+  const sku = CANON.sealSku;
+  const start = await getPart(db, admin, sku);
+  const stepUpAt = await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', waybill: 'GAP9-WB-1', skuReceived: sku, qtyReceived: 3 }),
+    403, 'STEP_UP_REQUIRED',
+  );
+
+  const grn = await postGoodsReceipt(
+    db, admin,
+    { poNumber: 'PO-2026-0315', waybill: 'GAP9-WB-1', skuReceived: sku, qtyReceived: 3 },
+    { idempotencyKey: `gap9-grn-${Date.now()}`, stepUpAt },
+  );
+  assert.match(grn.number, /^GRN-\d{4}-\d{4}$/, 'canon GRN numbering (no Math.random)');
+  assert.equal(grn.status, 'RECEIVED');
+  assert.equal(grn.verifiedBy, admin.name);
+
+  assert.equal((await getPart(db, admin, sku)).onHand, start.onHand + 3, 'GRN RECEIVE hits stock');
+  assert.equal((await getPurchase(db, admin, 'PO-2026-0315')).status, 'RECEIVED', 'PO flips to RECEIVED');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'part' });
+  const recv = ledger.rows.find((e) => e.action === 'PART_RECEIVE' && (e.after as { ref?: string })?.ref === 'PO-2026-0315');
+  assert.ok(recv, 'PART_RECEIVE audited with PO ref');
+  assert.ok((recv.after as { stepUpAt?: string })?.stepUpAt, 'step-up timestamp carried into stock audit');
+
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-9999', waybill: 'GAP9-WB-2', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
+    404, 'PURCHASE_DOCUMENT_NOT_FOUND',
+  );
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', waybill: 'GAP9-WB-2', skuReceived: 'PART-NOPE-000', qtyReceived: 1 }, { stepUpAt }),
+    404, 'PART_NOT_FOUND',
+  );
+
+  // GRN against a PR (not a PO) is refused.
+  const pr = await createRequisition(db, admin, {
+    title: 'GAP-9 kind-guard probe',
+    lineItems: [{ sku, description: 'probe', quantity: 1, unitPriceCents: 100 }],
+  });
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: pr.number, waybill: 'GAP9-WB-3', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
+    422, 'WRONG_DOCUMENT_KIND',
+  );
+
+  // Explicit duplicate GRN number → honest 409.
+  await expectDomainError(
+    () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', grnNumber: grn.number, waybill: 'GAP9-WB-4', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
+    409, 'DUPLICATE_RECEIPT',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// PM hub (GAP #10: SEED/QUEUE + fabricated WO numbers were local-only fiction;
+// rules/generate/toggle now hit pm-service + sequences + audit)
+// ---------------------------------------------------------------------------
+test('pm (GAP-10): create rule with canon PM number; list reflects it; tenant-scoped + audited', async () => {
+  const rule = await createPmRule(db, admin, {
+    title: 'GAP-10 chiller loop probe',
+    assetCode: CANON.assetSeal,
+    intervalDays: 90,
+    priority: 'P2',
+  });
+  assert.match(rule.id, /^PM-\d{4}-\d{4}$/, 'canon PM numbering (no Math.random)');
+  assert.equal(rule.status, 'ACTIVE');
+  assert.equal(rule.intervalDays, 90);
+
+  const list = await listPmRules(db, admin);
+  assert.ok(list.some((r) => r.id === rule.id), 'list contains the new rule');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'pm_rule' });
+  assert.ok(ledger.rows.some((e) => e.action === 'PM_RULE_CREATE' && e.entityId === rule.id), 'PM_RULE_CREATE audited');
+});
+
+test('pm (GAP-10): generate WO from rule; idempotent replay; nextDueAt advances; guards enforced', async () => {
+  const rule = await createPmRule(db, admin, {
+    title: 'GAP-10 generate probe',
+    assetCode: CANON.assetSeal,
+    intervalDays: 30,
+    priority: 'P3',
+  });
+
+  const key = `gap10-gen-${Date.now()}`;
+  const first = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: key });
+  assert.match(first.wo.number, /^WO-\d{4}-\d{4}$/, 'WO from the WO sequence (not fabricated)');
+  assert.equal(first.wo.status, 'SCHEDULED');
+  assert.ok(first.rule.lastGeneratedAt, 'rule stamps lastGeneratedAt');
+
+  const replay = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: key });
+  assert.equal(replay.wo.number, first.wo.number, 'same Idempotency-Key → same WO, no duplicate');
+
+  // Pause the rule → generation refused.
+  const paused = await togglePmRule(db, admin, rule.id, 'PAUSED');
+  assert.equal(paused.status, 'PAUSED');
+  await expectDomainError(
+    () => generatePmWorkOrder(db, admin, rule.id),
+    422, 'RULE_PAUSED',
+  );
+  const resumed = await togglePmRule(db, admin, rule.id, 'ACTIVE');
+  assert.equal(resumed.status, 'ACTIVE');
+
+  await expectDomainError(
+    () => generatePmWorkOrder(db, admin, 'PM-2099-9999'),
+    404, 'PM_RULE_NOT_FOUND',
+  );
+  await expectDomainError(
+    () => togglePmRule(db, admin, 'PM-2099-9999', 'PAUSED'),
+    404, 'PM_RULE_NOT_FOUND',
+  );
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'pm_rule' });
+  assert.ok(
+    ledger.rows.some((e) => e.action === 'PM_GENERATE_WO' && e.entityId === rule.id),
+    'PM_GENERATE_WO audited',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// GAP-11: inspections + force-dispatch (F20→F16)
+// ---------------------------------------------------------------------------
+test('inspections (GAP-11): create persists with canon numbering + audit; tenant-scoped', async () => {
+  const ins = await createInspection(db, admin, { title: 'GAP-11 probe inspection', auditorName: 'GAP Probe' });
+  assert.match(ins.number, /^INS-\d{4}-\d{4}$/, 'canon INS numbering (no Math.random)');
+  assert.equal(ins.status, 'SCHEDULED');
+  assert.equal(ins.progressPct, 0);
+
+  const fetched = await getInspection(db, admin, ins.number);
+  assert.equal(fetched.title, 'GAP-11 probe inspection');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'inspection' });
+  assert.ok(ledger.rows.some((e) => e.action === 'INSPECTION_CREATE' && e.entityId === ins.number), 'INSPECTION_CREATE audited');
+
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.ok(!(await listInspections(db, decoy)).some((r) => r.number === ins.number), 'decoy tenant sees nothing');
+  await expectDomainError(() => getInspection(db, decoy, ins.number), 404, 'INSPECTION_NOT_FOUND');
+});
+
+test('inspections (GAP-11): force-dispatch persists + audited; replay idempotent; 404/409 guards; progress preserved', async () => {
+  const ins = await createInspection(db, admin, { title: 'GAP-11 dispatch probe' });
+  const key = `gap11-dispatch-${Date.now()}`;
+
+  const disp = await forceDispatchInspection(db, admin, ins.number, { reason: 'GAP-11 probe' }, { idempotencyKey: key });
+  assert.equal(disp.status, 'IN_PROGRESS');
+  assert.equal(disp.progressPct, 0, 'fresh dispatch keeps progress');
+
+  const audits = async () =>
+    (await listAuditEvents(db, admin, { entityType: 'inspection' })).rows
+      .filter((e) => e.action === 'INSPECTION_FORCE_DISPATCH' && e.entityId === ins.number);
+  assert.equal((await audits()).length, 1, 'exactly one INSPECTION_FORCE_DISPATCH audit');
+
+  const replay = await forceDispatchInspection(db, admin, ins.number, { reason: 'GAP-11 probe' }, { idempotencyKey: key });
+  assert.equal(replay.status, 'IN_PROGRESS');
+  assert.equal((await audits()).length, 1, 'idempotent replay writes no second audit');
+
+  // Progress preserved across dispatch (old inline route reset to 0).
+  await updateInspectionProgress(db, admin, ins.number, 45);
+  const redispatched = await forceDispatchInspection(db, admin, ins.number, {}, {});
+  assert.equal(redispatched.progressPct, 45, 'dispatch preserves existing progress');
+  assert.equal(redispatched.status, 'IN_PROGRESS');
+
+  await expectDomainError(() => forceDispatchInspection(db, admin, 'INS-2099-9999', {}, {}), 404, 'INSPECTION_NOT_FOUND');
+
+  await updateInspectionProgress(db, admin, ins.number, 100);
+  await expectDomainError(() => forceDispatchInspection(db, admin, ins.number, {}, {}), 409, 'ALREADY_COMPLETED');
+});
+
+test('inspections (GAP-11): progress persists COMPLETED + audit; clamps; unknown → 404', async () => {
+  const ins = await createInspection(db, admin, { title: 'GAP-11 progress probe' });
+
+  const done = await updateInspectionProgress(db, admin, ins.number, 150);
+  assert.equal(done.progressPct, 100, 'service clamps to 100');
+  assert.equal(done.status, 'COMPLETED');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'inspection' });
+  assert.ok(ledger.rows.some((e) => e.action === 'INSPECTION_PROGRESS' && e.entityId === ins.number), 'INSPECTION_PROGRESS audited');
+
+  await expectDomainError(() => updateInspectionProgress(db, admin, 'INS-2099-9999', 10), 404, 'INSPECTION_NOT_FOUND');
+});
+
+test('wo-tasks (GAP-12/F5): seed 7 steps → advance 05 DONE unlocks 06 → 07 early is 422 → photo gate on T01', async () => {
+  const tasks = await listWoTasks(db, admin, CANON.workOrderSeal);
+  assert.equal(tasks.length, 7, 'canon seal WO seeds 7 execution tasks');
+  assert.deepEqual(tasks.map((t) => t.status), ['DONE', 'DONE', 'DONE', 'DONE', 'IN_PROGRESS', 'PENDING', 'LOCKED']);
+
+  // Jumping to the locked final step first violates the sequence gate.
+  const t07 = tasks.find((t) => t.stepOrder === 7)!;
+  await expectDomainError(() => updateWoTask(db, admin, { taskId: t07.id, woNumber: CANON.workOrderSeal, status: 'DONE' }), 422, 'SEQUENCE_VIOLATION');
+
+  // Completing the in-progress step 05 unlocks step 06.
+  const t05 = tasks.find((t) => t.stepOrder === 5)!;
+  const done05 = await updateWoTask(db, admin, { taskId: t05.id, woNumber: CANON.workOrderSeal, status: 'DONE' });
+  assert.equal(done05.status, 'DONE');
+  assert.equal(done05.verifiedBy, 'Marcus Vance');
+  const after = await listWoTasks(db, admin, CANON.workOrderSeal);
+  assert.equal(after.find((t) => t.stepOrder === 6)!.status, 'PENDING', 'next LOCKED step unlocks on DONE');
+
+  // Photo gate: create a fresh WO + photo-required task, completing without evidence is 422.
+  const woNo = 'WO-2026-0911';
+  await db.insert((await import('../db/schema')).workOrders).values({
+    organizationId: admin.orgId, number: woNo, title: 'Photo gate probe', assetCode: null,
+    location: 'Probe Bay', priority: 'P3', status: 'IN_PROGRESS', holdReason: null,
+    slaDueAt: new Date(Date.now() + 3600_000), assignedTo: null,
+  }).onConflictDoNothing();
+  const { woTasks } = await import('../db/schema');
+  await db.insert(woTasks).values({
+    organizationId: admin.orgId, id: 'PROBE-T01', workOrderNumber: woNo, stepOrder: 1,
+    title: 'Photo-gated step', instruction: '', status: 'IN_PROGRESS', requiresPhoto: true,
+  }).onConflictDoNothing();
+  await expectDomainError(() => updateWoTask(db, admin, { taskId: 'PROBE-T01', woNumber: woNo, status: 'DONE' }), 422, 'PHOTO_REQUIRED');
+
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'WO_TASK_UPDATE'), 'WO_TASK_UPDATE audited');
+});
+
+test('api-keys (GAP-13/F30): issue show-once → list hides secret → revoke → 409 replay', async () => {
+  const created = await createApiKey(db, admin, { name: 'gap13-probe' });
+  assert.match(created.id, /^AK-\d{4}-\d{4}$/, 'canon AK numbering');
+  assert.ok(created.secret.startsWith('ak_live_'), 'secret issued once');
+  assert.equal(created.last4, created.secret.slice(-4), 'last4 derives from secret');
+
+  const keys = await listApiKeys(db, admin);
+  const listed = keys.find((k) => k.id === created.id)!;
+  assert.ok(listed, 'new key listed');
+  assert.ok(!('secret' in listed), 'secret NEVER readable again');
+
+  const again = await createApiKey(db, admin, { name: 'gap13-second' });
+  assert.notEqual(again.id, created.id, 'ids unique');
+  assert.notEqual(again.secret, created.secret, 'secrets unique');
+
+  const revoked = await revokeApiKey(db, admin, created.id);
+  assert.ok(revoked.revokedAt, 'revokedAt stamped');
+  assert.ok(!(await listApiKeys(db, admin)).some((k) => k.id === created.id), 'revoked key leaves the active list');
+
+  await expectDomainError(() => revokeApiKey(db, admin, created.id), 409, 'API_KEY_ALREADY_REVOKED');
+  await expectDomainError(() => revokeApiKey(db, admin, 'AK-2099-9999'), 404, 'API_KEY_NOT_FOUND');
+  await expectDomainError(() => createApiKey(db, admin, { name: '   ' }), 400, 'VALIDATION_ERROR');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'api_key' });
+  assert.ok(ledger.rows.some((e) => e.action === 'API_KEY_CREATE' && e.entityId === created.id), 'API_KEY_CREATE audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'API_KEY_REVOKE' && e.entityId === created.id), 'API_KEY_REVOKE audited');
+});
+
+test('evidence (GAP-13/F6): addEvidence persists row + listWoEvidence tenant-scoped', async () => {
+  const ev = await addEvidence(db, admin, {
+    workOrderNumber: CANON.workOrderSeal,
+    taskId: null,
+    fileName: 'probe.png',
+    filePath: '.data/evidence/probe.png',
+    mimeType: 'image/png',
+    fileSize: 68,
+    sha256Hash: 'probe-hash-gap13',
+  });
+  assert.ok(ev.id.startsWith('ev-'), 'evidence id issued');
+  assert.equal(ev.uploadedBy, 'Marcus Vance');
+
+  const rows = await listWoEvidence(db, admin, CANON.workOrderSeal);
+  assert.ok(rows.some((r) => r.id === ev.id), 'row visible in WO evidence list');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'evidence' });
+  assert.ok(ledger.rows.some((e) => e.action === 'EVIDENCE_UPLOAD' && e.entityId === ev.id), 'EVIDENCE_UPLOAD audited');
+});
+
+/**
+ * Decoy-org session WITHOUT the login flow — the suite already spends the
+ * per-email login rate budget (8/10min) on t.user@apexgl.io, so tenant
+ * isolation here mints a session directly (same verifySession path).
+ */
+let gap14DecoyCache: { ctx: AuthContext; token: string } | null = null;
+async function gap14Decoy(): Promise<{ ctx: AuthContext; token: string }> {
+  if (gap14DecoyCache) return gap14DecoyCache;
+  const rows = await db.select({ id: users.id, organizationId: users.organizationId })
+    .from(users).where(eq(users.email, 't.user@apexgl.io')).limit(1);
+  assert.ok(rows[0], 'decoy user seeded');
+  const token = await createSession(db, rows[0].id, rows[0].organizationId, 'gap14-probe');
+  const ctx = await verifySession(db, token);
+  assert.ok(ctx, 'decoy session verifies');
+  gap14DecoyCache = { ctx, token };
+  return gap14DecoyCache;
+}
+
+test('vendors (GAP-14/F14): create → 409 slug replay → list tenant-scoped', async () => {  const v = await createVendor(db, admin, { name: 'Carrier Rental Systems', tier: 'TIER-2', duns: '00-555-0199', scope: 'Temporary chillers', contact: 'Jane Doe' }, { idempotencyKey: 'gap14-vendor-1' });
+  assert.equal(v.slug, 'carrier-rental-systems', 'slug derives from name');
+  assert.equal(v.msaStatus, 'NO MSA', 'no term on file');
+  assert.equal(v.scope, 'Temporary chillers');
+
+  await expectDomainError(() => createVendor(db, admin, { name: 'Carrier Rental Systems' }), 409, 'VENDOR_SLUG_EXISTS');
+  await expectDomainError(() => createVendor(db, admin, { name: 'Bad Tier Co', tier: 'TIER-9' }), 400, 'VALIDATION_ERROR');
+
+  // Idempotent replay returns the same row, no duplicate.
+  const replay = await createVendor(db, admin, { name: 'Carrier Rental Systems', tier: 'TIER-2', duns: '00-555-0199', scope: 'Temporary chillers', contact: 'Jane Doe' }, { idempotencyKey: 'gap14-vendor-1' });
+  assert.equal(replay.slug, v.slug, 'idempotent replay returns same vendor');
+
+  const rows = await listVendors(db, admin);
+  assert.ok(rows.some((r) => r.slug === v.slug), 'new vendor listed');
+  assert.ok(rows.some((r) => r.slug === CANON.vendorSlug), 'seeded canon vendor listed');
+
+  const { ctx: decoy } = await gap14Decoy();
+  assert.ok(!(await listVendors(db, decoy)).some((r) => r.slug === v.slug), 'decoy tenant sees nothing');
+  await expectDomainError(() => getVendor(db, decoy, v.slug), 404, 'VENDOR_NOT_FOUND');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'vendor' });
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_CREATE' && e.entityId === v.slug), 'VENDOR_CREATE audited');
+});
+
+test('vendors (GAP-14/F14): amend + renew advance expiry + commend audited + 404', async () => {
+  const v = await amendVendor(db, admin, 'carrier-rental-systems', { scope: 'Temporary chillers + pumps', contact: 'Jane Doe · AM' }, { idempotencyKey: 'gap14-amend-1' });
+  assert.equal(v.scope, 'Temporary chillers + pumps');
+  await expectDomainError(() => amendVendor(db, admin, 'carrier-rental-systems', {}), 400, 'VALIDATION_ERROR');
+
+  const renewed = await renewVendor(db, admin, CANON.vendorSlug, { termMonths: 12 }, { idempotencyKey: 'gap14-renew-1' });
+  assert.equal(renewed.msaStatus, 'ACTIVE', 'canon vendor stays in-term');
+  assert.ok(renewed.msaExpiresOn! > '2026-09-16', 'expiry is a future date');
+  await expectDomainError(() => renewVendor(db, admin, CANON.vendorSlug, { termMonths: 7 }), 400, 'VALIDATION_ERROR');
+
+  const cmd = await commendVendor(db, admin, CANON.vendorSlug, { note: 'Night response under 2h — zero extension.' });
+  assert.equal(cmd.slug, CANON.vendorSlug, 'commendation recorded');
+  await expectDomainError(() => commendVendor(db, admin, CANON.vendorSlug, { note: 'short' }), 400, 'VALIDATION_ERROR');
+  await expectDomainError(() => getVendor(db, admin, 'no-such-vendor'), 404, 'VENDOR_NOT_FOUND');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'vendor' });
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_AMEND'), 'VENDOR_AMEND audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_RENEW'), 'VENDOR_RENEW audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'VENDOR_COMMEND'), 'VENDOR_COMMEND audited');
+});
+
+test('vendors (GAP-14/F14): related POs resolve by vendorSlug', async () => {
+  const pos = await listVendorPos(db, admin, CANON.vendorSlug);
+  assert.ok(pos.some((p) => p.number === CANON.purchaseOrder), 'canon PO linked to canon vendor');
+  const empty = await listVendorPos(db, admin, 'carrier-rental-systems');
+  assert.equal(empty.length, 0, 'new vendor has no POs yet');
+});
+
+test('telemetry (GAP-14/F8): ingest → listRecent by assetCode feeds BIM refresh', async () => {
+  const r = await ingestSensorReading(db, admin, { assetCode: CANON.assetSeal, sensorType: 'TEMPERATURE', value: 84.1, unit: '°C' });
+  assert.equal(r.status, 'WARNING', '84.1°C trips the 75°C warning threshold');
+  await ingestSensorReading(db, admin, { assetCode: CANON.assetSeal, sensorType: 'PRESSURE_PSI', value: 118, unit: 'PSI' });
+
+  const rows = await listRecentSensorReadings(db, admin, CANON.assetSeal, 20);
+  assert.ok(rows.some((x) => x.sensorType === 'TEMPERATURE' && x.value === '84.1'), 'temperature reading listed');
+  assert.ok(rows.some((x) => x.sensorType === 'PRESSURE_PSI'), 'pressure reading listed');
+
+  const { ctx: decoy } = await gap14Decoy();
+  assert.equal((await listRecentSensorReadings(db, decoy, CANON.assetSeal, 20)).length, 0, 'decoy sees no readings');
 });

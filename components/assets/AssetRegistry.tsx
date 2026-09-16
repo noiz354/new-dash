@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+
 import type { AssetRow } from '@/lib/services/asset-service';
 
 /**
@@ -50,18 +51,20 @@ export function AssetRegistry({ rows, orgId }: { rows: AssetRow[]; orgId: string
   const openWos = rows.reduce((sum, r) => sum + r.openWos, 0);
   const activeSrs = rows.reduce((sum, r) => sum + r.activeSrs, 0);
 
-  const exportCsv = () => {
-    const head = 'code,name,class,location,oem,serial,health,status,commissioned_on,open_wos,total_wos,active_srs';
-    const body = filtered.map((r) => [
-      `"${r.code}"`, `"${r.name}"`, r.klass, `"${r.location}"`, `"${r.oem}"`, `"${r.serial}"`,
-      r.health, r.status, r.commissionedOn ?? '', r.openWos, r.totalWos, r.activeSrs,
-    ].join(','));
-    const blob = new Blob([[head, ...body].join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'asset-registry.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
+  const exportCsv = async () => {
+    // TASK-29: konversi rows→csv via Web Worker (off-main-thread); TASK-30: save-as picker Chromium.
+    const { exportCsvViaWorker, saveAsViaPickerOrDownload } = await import('@/lib/download');
+    const rows: (string | number)[][] = [
+      ['code', 'name', 'class', 'location', 'oem', 'serial', 'health', 'status', 'commissioned_on', 'open_wos', 'total_wos', 'active_srs'],
+      ...filtered.map((r) => [
+        r.code, r.name, r.klass, r.location, r.oem, r.serial,
+        r.health, r.status, r.commissionedOn ?? '', r.openWos, r.totalWos, r.activeSrs,
+      ]),
+    ];
+    const { buildCsvViaWorker } = await import('@/lib/download');
+    const csv = await buildCsvViaWorker(rows, ',');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    await saveAsViaPickerOrDownload('asset-registry.csv', blob, 'text/csv');
   };
 
   return (

@@ -12,7 +12,7 @@ import {
   Play,
   Plus,
   Radio,
-  Sensors,
+  Radar,
   ShieldCheck,
   Thermometer,
   Wrench,
@@ -193,7 +193,7 @@ export default async function FacilityRoomDetailPage({
             <span className="text-xl font-bold font-display text-ink tabular-nums">{room.metrics.pressure}</span>
             <span className="text-[11px] text-pass-ink font-semibold block mt-0.5">Barrier Maintained</span>
           </div>
-          <Sensors size={22} className="text-cobalt-deep" />
+          <Radar size={22} className="text-cobalt-deep" />
         </div>
 
         <div className="bg-card rounded-xl p-4 border border-border-subtle shadow-card flex items-center justify-between">
