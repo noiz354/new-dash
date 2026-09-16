@@ -385,6 +385,18 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [ ] (U) kedalaman belum terverifikasi — verifikasi saat implementasi (4 item): persistensi cron Schedule Dispatch; revoke perilaku profil user; empty state roster Displayed; viewer hasil restore + RPO/RTO/diff; feedback job seed/backup; adopsi FormField + guard
 - [ ] Dependensi kanon belum diputus: WO-2024 vs WO-2026, tenant APX-NUSA-01 vs APX-GL-9021, 6 vs 8 roles, Shift A, PR vs PO, Quiet Hours, zona, kontak, screen.png salah sorot, artefak mobile shell purchasing/vendors, ID contoh ui-patterns, presisi logo
 
+## Backlog Step 2 — Batch 4 ui-audit (triase PROMOTE, detail: `docs/triase-batch-4-ui-audit.md`)
+
+> Hasil: 23+ref DONE / 15+1ref PROMOTE / 4 (U) / 1 USANG atas ~41 kapabilitas
+> distinct (458 sebutan TODO dari 40 file `docs/ui-audit/`).
+
+- [ ] Rute hilang: `inventory/transfers/[id]`, `inventory/adjustments/[id]`, halaman `field/runs*`
+- [ ] Backend belum ada: vendors (+MSA +summary), assets/registry (+telemetri/BOM), settings/system, locations/facilities, live-queue/steps/time-entries, dispatch-queue/batch, notifications read-all/preferences, webhook vendor (billing.webhook hanya Stripe inbound), wo-draft, purchase authorize flow (terpisah dari `po.create`)
+- [ ] Wire-up UI → endpoint nyata yang SUDAH ADA: `inventory.mutate` (mutasi kini lokal), `po.receive` (GRN kini pesan lokal), `reports.aggregates`, `inventory.*`/parts (wiring belum terverifikasi)
+- [ ] Temuan TASK-25 tetap: persist findings (ref, tak diduplikasi); PIN supervisor nyata (kini `2468`)
+- [ ] (U): wiring UI reports/inventory, pemicu auto-flush reconnect, impersonate enforcement (ref batch 3)
+- [ ] USANG: usulan endpoint `verify-root` (dihapus by design; pakai `verify-chain`); konvensi path `/api/v1/*` (API = `/api/*`)
+
 ### Definition of Done per slice (WAJIB semua)
 
 1. `npm run typecheck` hijau · `npm test` hijau (test baru untuk domain/service yang ditambah) · `npm run build` hijau (0 log level error)

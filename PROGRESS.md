@@ -151,3 +151,8 @@
 - Sorotan DONE baru: hash-chain audit + verify panel (buah TASK-20), transport SSE jujur + fallback (buah TASK-26), secret rotate crypto-random (P1 BLOKER selesai), ConfirmDialog destruktif, Schedule Dispatch, WoTimers BREACH, states adoption, markAllRead.
 - Sorotan PROMOTE terbesar: Notifications (8: Reassign/transfer crib, markAllRead rollback, kanal, banner WS jujur, eskalasi, query params), Reports (7: filter dimensi, job EXP/RPT, export async, badge LAG/STALE, validasi builder), Settings (7: konfirmasi destruktif, drawer editor, deep-link, Maint audit, lazy-fetch).
 - (U) = 4 item (cron persist, revoke perilaku, roster empty, restore viewer/RPO + seed feedback, FormField) — verifikasi saat implementasi backlog.
+### Step 2 batch 4 — triase ui-audit (23+ref DONE / 15+1ref PROMOTE / 4 (U), 1 USANG)
+- Sumber `docs/ui-audit/` (40 file, 458 sebutan TODO/404 unik, NOL checkbox) vs HEAD a219caa + inventaris 61 op backend (`/tmp/opencode/real-ops.txt`); detail: `docs/triase-batch-4-ui-audit.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 4.
+- Sorotan DONE baru: routing WO/PO/field/PM/reports/SR (rute ada), wo/sr/audit/notif/inspections/pm/po/org-users/reports/search/queue/telemetry/auth ops (backend ada), anti-artifak bulk (ref batch 1-3), Retry outbox.
+- Sorotan PROMOTE terbesar: backend vendors/assets/settings/locations/live-queue/dispatch/read-all-preferences/webhook-vendor/wo-draft/authorize (TAK ADA backend); wire-up UI→endpoint nyata (`inventory.mutate`, `po.receive`, reports, parts); rute transfers/adjustments/runs; PIN supervisor nyata.
+- USANG: usulan `verify-root` (dihapus by design) + konvensi `/api/v1/*`. (U) = 4 (wiring reports/inventory, auto-flush, impersonate, PR-vs-PO naming).
