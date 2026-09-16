@@ -132,3 +132,9 @@
 - F-A11Y: form-field tanpa id/name ×2 (console issue, dari uji TASK-26).
 - F-COPY: label `WS-PUSH: 12ms` (NotificationsHub debugger), `Live Sync Active`, `Telemetry Bus` — kandidat triase Step 2.
 - OBS: entryHash audit selalu null (mode hash-opsional); backfill saat insert bila chain tegas diinginkan.
+
+### Step 2 batch 1 — triase operasi (DONE 29 / PROMOTE 44 / USANG 0)
+
+- Sumber `docs/exp-check/part-operasi.md` (73 item) vs HEAD 4121970; detail tabel: `docs/triase-batch-1-operasi.md`; backlog PROMOTE masuk TODO.md §Backlog Step 2 Batch 1.
+- Pola: layar WO/mobile/findings sebagian besar DONE (rute + komponen inti ada); SR triage paling berlubang (10 PROMOTE).
+- (U) = kedalaman belum terverifikasi: WO-3, SR-4/6/12, PM-1/7, FI-9, ME-3/6 — verifikasi saat implementasi backlog.

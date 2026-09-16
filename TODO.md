@@ -345,6 +345,18 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [x] TASK-26 SSE Alerts → PASS (laporan: `docs/runtime-verification-task26.md`; stream/snapshot/heartbeat/header + fallback jujur + recovery live→fallback→live)
 - [x] Final matrix + bug list + final decision Wave 3–4 → 19 PARTIAL, 20/21/23/24/26 PASS, 25 FAIL (lihat laporan per task + PROGRESS.md)
 
+## Backlog Step 2 — Batch 1 Operasi (triase PROMOTE, detail: `docs/triase-batch-1-operasi.md`)
+
+> Hasil: DONE 29, PROMOTE 44, USANG 0 dari 73 item `docs/exp-check/part-operasi.md` vs HEAD 4121970.
+
+- [ ] WO: evidence viewer LOTO (WO-2/ME-5), requisition prefill (WO-3, U), tech assist (WO-5), autosave STALE (WO-9), drag pipeline (WO-10), labor validation (WO-11)
+- [ ] SR: asset drawer (SR-3), batch bar (SR-4, U), dispatch taxonomy (SR-5), export log (SR-6, U), convert confirm P1+LOTO (SR-7), breach (SR-8), convert validation (SR-9), optimistic STALE (SR-10), reject/dup modal (SR-11), chat retry (SR-12, U)
+- [ ] PM: history-link target (PM-1, U), checklist detail (PM-3), row drawer (PM-4), export CSV (PM-6), STALE engine badge (PM-9), simulate marker (PM-10), ready-first sort (PM-11)
+- [ ] Inspections: unified drawer (FI-3), templates content+create (FI-4/5), fast-link a11y (FI-8), publish validation (FI-10), reorder keyboard (FI-11), IoT offline widget (FI-12)
+- [ ] Findings: conversion result page (FC-1), evidence lightbox (FC-3a), unresolved recount (FC-5), batch convert (FC-6), export CSV (FC-7), convert-fail toast (FC-11), OSHA derivation (FC-12), BOM shortage (FC-10)
+- [ ] Mobile: site picker (ME-7), FAIL validation rule (ME-8), Modbus fail fallback (ME-10), pinch-zoom decision (ME-12)
+- [ ] Dependensi kanon belum diputus: WO 0894/8802, LOTO #4092/#M-44, INS-412 65/50, PART-SEAL-8821, jam Shift A, GPS Kalimantan
+
 ### Definition of Done per slice (WAJIB semua)
 
 1. `npm run typecheck` hijau · `npm test` hijau (test baru untuk domain/service yang ditambah) · `npm run build` hijau (0 log level error)
