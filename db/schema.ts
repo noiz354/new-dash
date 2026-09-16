@@ -364,6 +364,41 @@ export const settingsKv = pgTable(
   (t) => [primaryKey({ columns: [t.organizationId, t.key] })],
 );
 
+// ------------------------------------------------------------ shift handovers (GAP-22/F27) --
+
+/** Shift handover records. Seed ships ZERO rows (the old UI hard-coded fake
+ *  HND-2026-* history + an AUDIT COMPLIANT badge with no backend) — rows are
+ *  created by operators via POST /api/shifts/handovers and move through
+ *  PENDING → ACCEPTED | REJECTED (terminal) via the decision endpoint only.
+ *  Every transition writes a HANDOVER_* audit row in the same transaction. */
+export const HANDOVER_STATUSES = ['PENDING', 'ACCEPTED', 'REJECTED'] as const;
+export type HandoverStatus = (typeof HANDOVER_STATUSES)[number];
+
+export const handovers = pgTable(
+  'handovers',
+  {
+    id: uuid('id').notNull().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    shiftFrom: text('shift_from').notNull(),
+    shiftTo: text('shift_to').notNull(),
+    leadFrom: text('lead_from').notNull(),
+    leadTo: text('lead_to').notNull(),
+    woRef: text('wo_ref'), // bound WO when initiated from a WO context (e.g. canonical seal WO)
+    items: text('items').notNull().default(''),
+    notes: text('notes').notNull().default(''),
+    status: text('status').notNull().default('PENDING'), // HANDOVER_STATUSES
+    rejectReason: text('reject_reason'), // REQUIRED when status=REJECTED; cleared/null otherwise
+    decidedBy: text('decided_by'), // actor who made the terminal decision
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('handovers_org_status_idx').on(t.organizationId, t.status),
+  ],
+);
+
 export const PO_STATUSES = [
   'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DISPATCHED', 'PARTIAL', 'RECEIVED', 'REJECTED', 'CLOSED',
 ] as const;
