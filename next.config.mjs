@@ -49,7 +49,10 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Standalone prototypes live in web/ — never bundle them.
+  // PGlite (WASM + node:fs) must load as a real Node external: bundling it
+  // through Turbopack breaks its file-URL handling ("path must be of type
+  // string... Received an instance of URL" on every query).
+  serverExternalPackages: ['@electric-sql/pglite'],
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
