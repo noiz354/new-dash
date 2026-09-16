@@ -179,5 +179,17 @@ Contract: severity UI→service di adapter; status canon OPEN; description/zone 
 Runtime proof (MCP dev :3145, m.vance): submit LOW → FND-2026-0189 OPEN/MINOR; GET total 2; reload persists; POST invalid → 400 VALIDATION_ERROR total tetap 2; console hanya 400 sengaja.
 Tests: 2 test integrasi baru (persist+numbering+audit+tenant; replay idempoten); npm test 67/67.
 Remaining limitation: live-403 belum diuji browser (tak ada seed user Vendor/Auditor; enforcement via withRoute, pola terbukti); offline-flush runtime menyusul (jalur generik + endpoint idempoten, verified-by-construction).
-Commit: (menyusul di bawah)
+Commit: 42161ad (pushed, sinkron origin).
 NEXT GAP: #2 Org deactivate/edit role/reset MFA — local-only false success
+
+## GAP CLOSED #2 — Org deactivate / edit-role / reset-MFA (2026-09-16)
+
+Domain: Org | Feature: directory mutations | Previous: BROKEN (local-only false success) | New: END-TO-END
+Root cause: OrgHub roster SEED hardcoded; Deactivate/Edit/Reset-MFA = setState lokal + toast sukses ("audit-chained", "Okta SCIM push <50ms"); PATCH users/[id] ada tak dipanggil; endpoint reset-MFA tak ada.
+Backend: lib/services/org-service.ts baru (listUsers/createUser/updateUser/resetUserMfa); route jadi wrapper tipis; POST [id]/reset-mfa baru (clear totp + revokeAllUserSessions + audit USER_MFA_RESET); deactivate juga revoke sesi; self-guard 403 (USER_SELF_DEACTIVATE / USER_SELF_MFA_RESET).
+Frontend: roster live dari GET (badge Live directory / Demo offline); provision/edit/deactivate/reactivate/reset-MFA via API + toast jujur (gagal → pesan server, tak ada append); copy SCIM diluruskan; focus key = email (bug RFID-focus diperbaiki saat verifikasi).
+Runtime proof (MCP dev :3145, m.vance): roster 7 live; provision gap2.ui → 200; self-deactivate → 403 + toast jujur; deactivate → server isActive:false; reactivate → true; reset-MFA → 0 sesi + note; 0 console error. 2 bug UI (ternary terbalik, focus key) ditemukan & diperbaiki saat verifikasi.
+Tests: 2 test integrasi baru (provision→edit→deactivate→login-401→reactivate + audit; reset-mfa revoke sesi + self-403 + 404); npm test 69/69; tsc nol error baru.
+Artefak dev: user gap2.ui@apexops.io aktif di .data/pg (scratch, abaikan).
+Commit: (menyusul di bawah)
+NEXT GAP: #3 (dokumen CLOSE ALL GAPS — urutan berikut)

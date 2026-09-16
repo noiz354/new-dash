@@ -40,6 +40,30 @@ type Cell = 'granted' | 'restricted' | 'locked';
 interface Person {
   name: string; title: string; role: string; team: string; status: string;
   line: string; sub: string; focus: string;
+  /** Present only for real directory rows (GET /api/organization/users).
+   *  Seed rows without an id are demo entries — mutations on them are refused. */
+  id?: string; email?: string;
+}
+
+interface DirectoryUser {
+  id: string; email: string; name: string; initials: string; title: string;
+  role: string; isActive: boolean; hasMfa: boolean;
+}
+
+function toPerson(u: DirectoryUser): Person {
+  const dept = (u.title || '').split(' · ')[0];
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    title: u.title || '—',
+    role: u.role,
+    team: DEPT_TEAM[dept] ?? 'Executive Leadership',
+    status: u.isActive ? 'Active' : 'Deactivated',
+    line: u.email,
+    sub: `MFA ${u.hasMfa ? 'enrolled' : 'not enrolled'} · directory record`,
+    focus: u.email,
+  };
 }
 
 const SEED: Person[] = [
@@ -52,7 +76,7 @@ const SEED: Person[] = [
 ];
 
 const TEAMS = ['All Teams (All)', 'HVAC Mech Crew', 'HV Electrical', 'Life Safety & Fire', 'Executive Leadership', 'Vendor Contractors'] as const;
-const STATUSES = ['All Statuses', 'Active', 'On Shift / Leave', 'Expiring Contract'] as const;
+const STATUSES = ['All Statuses', 'Active', 'On Shift / Leave', 'Expiring Contract', 'Deactivated'] as const;
 const DEPTS = ['HVAC Mechanical Shift A', 'HV Electrical Substation', 'Life Safety & Protection', 'Facilities Engineering', 'Vendor Partner Tier-1'] as const;
 const DEPT_TEAM: Record<string, string> = {
   'HVAC Mechanical Shift A': 'HVAC Mech Crew',
@@ -136,7 +160,33 @@ export function OrgHub() {
   const [cloneTouched, setCloneTouched] = useState(false);
   const [ssoOpen, setSsoOpen] = useState(false);
   const [mfaNote, setMfaNote] = useState('');
+  const [dirState, setDirState] = useState<'loading' | 'live' | 'demo'>('loading');
+  const [acting, setActing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Roster source of truth: GET /api/organization/users. Seed rows stay only
+  // as an offline/demo fallback and are clearly marked (no id → no mutations).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await apiFetch<DirectoryUser[]>('/api/organization/users');
+        if (cancelled || !Array.isArray(rows) || rows.length === 0) return;
+        const mapped = rows.map(toPerson);
+        setPeople(mapped);
+        setFocus(mapped[0].focus);
+        setEditRole(mapped[0].role);
+        setDirState('live');
+      } catch {
+        if (!cancelled) {
+          setDirState('demo');
+          push(false, 'Directory unreachable', 'Showing demo roster — mutations disabled until the directory loads.');
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const hot = (e: KeyboardEvent) => {
@@ -174,6 +224,7 @@ export function OrgHub() {
     if (statusF === 'Active' && p.status !== 'Active') return false;
     if (statusF === 'On Shift / Leave' && p.status !== 'On Shift') return false;
     if (statusF === 'Expiring Contract' && p.status !== 'Expiring Contract') return false;
+    if (statusF === 'Deactivated' && p.status !== 'Deactivated') return false;
     const needle = q.trim().toLowerCase();
     return !needle || `${p.name} ${p.title} ${p.line} ${p.focus}`.toLowerCase().includes(needle);
   });
@@ -187,19 +238,14 @@ export function OrgHub() {
     push(true, 'Audit log exported', `${filtered.length} roster rows → rbac-audit-log.csv.`);
   };
 
+  const failMsg = (e: unknown) => (e instanceof Error ? e.message : 'Request failed');
+
   const provision = async () => {
     setProvTouched(true);
     if (!prov.name.trim() || !/.+@.+\..+/.test(prov.email.trim()) || !/^RFID-\d{4}$/.test(prov.rfid.trim())) return;
-    const newPerson: Person = {
-      name: prov.name.trim(), title: `${prov.dept} · ${prov.role}`, role: prov.role,
-      team: DEPT_TEAM[prov.dept] || 'Engineering Lead', status: 'Active',
-      line: `${prov.rfid.trim()} · ${prov.email.trim().toLowerCase()}`, sub: 'Login: never · SCIM provisioned just now', focus: prov.rfid.trim(),
-    };
-    setPeople((p) => [...p, newPerson]);
-    setProvOpen(false);
-
+    setActing(true);
     try {
-      await apiFetch('/api/organization/users', {
+      const created = await apiFetch<DirectoryUser>('/api/organization/users', {
         method: 'POST',
         body: {
           name: prov.name.trim(),
@@ -208,19 +254,88 @@ export function OrgHub() {
           title: `${prov.dept} · ${prov.role}`,
         },
       });
-    } catch {
-      // offline / client state persisted
+      const np = { ...toPerson(created), line: `${prov.rfid.trim()} · ${created.email}` };
+      setPeople((p) => [...p, np]);
+      setFocus(np.focus);
+      setProvOpen(false);
+      setProv({ name: '', email: '', role: 'Engineering Lead', dept: DEPTS[0], rfid: '' });
+      setProvTouched(false);
+      push(true, 'User provisioned', `${np.name} · ${np.role} · directory record created (RFID badge is local display only).`);
+    } catch (e) {
+      push(false, 'Provision failed', `${failMsg(e)} — no directory record created.`);
+    } finally {
+      setActing(false);
     }
-
-    setProv({ name: '', email: '', role: 'Engineering Lead', dept: DEPTS[0], rfid: '' });
-    setProvTouched(false);
-    push(true, 'User provisioned & synced to DB', `${newPerson.name} · ${newPerson.role} · Okta SCIM push <50ms.`);
   };
 
-  const saveEdit = () => {
-    setPeople((ps) => ps.map((p) => (p.focus === focusP.focus ? { ...p, role: editRole, team: DEPT_TEAM[editDept], title: `${editDept} · ${editRole}` } : p)));
-    setEditOpen(false);
-    push(true, 'Assignment updated', `${focusP.name} → ${editRole} · ${editDept} · directory re-synced.`);
+  const saveEdit = async () => {
+    if (!focusP.id) {
+      push(false, 'Edit refused', `${focusP.name} is a demo roster entry — not in the directory.`);
+      return;
+    }
+    setActing(true);
+    try {
+      const updated = await apiFetch<DirectoryUser>(`/api/organization/users/${focusP.id}`, {
+        method: 'PATCH',
+        body: { role: editRole, title: `${editDept} · ${editRole}` },
+      });
+      setPeople((ps) => ps.map((p) => (p.focus === focusP.focus ? toPerson(updated) : p)));
+      setEditOpen(false);
+      push(true, 'Assignment updated', `${updated.name} → ${updated.role} · directory record saved.`);
+    } catch (e) {
+      push(false, 'Edit failed', `${failMsg(e)} — directory record unchanged.`);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const setActive = async (active: boolean) => {
+    if (!focusP.id) {
+      push(false, 'Action refused', `${focusP.name} is a demo roster entry — not in the directory.`);
+      return;
+    }
+    setActing(true);
+    try {
+      const updated = await apiFetch<DirectoryUser>(`/api/organization/users/${focusP.id}`, {
+        method: 'PATCH',
+        body: { isActive: active },
+      });
+      setPeople((ps) => ps.map((p) => (p.focus === focusP.focus ? toPerson(updated) : p)));
+      push(
+        true,
+        active ? 'User reactivated' : 'User deactivated',
+        active
+          ? `${updated.name} can log in again · audit-chained.`
+          : `${updated.email} · login disabled immediately · audit-chained.`,
+      );
+    } catch (e) {
+      push(false, active ? 'Reactivation failed' : 'Deactivation failed', `${failMsg(e)} — directory record unchanged.`);
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const resetMfa = async () => {
+    if (!focusP.id) {
+      push(false, 'Reset refused', `${focusP.name} is a demo roster entry — not in the directory.`);
+      return;
+    }
+    setActing(true);
+    try {
+      const res = await apiFetch<{ email: string; mfaEnrolled: boolean; sessionsRevoked: number }>(
+        `/api/organization/users/${focusP.id}/reset-mfa`,
+        { method: 'POST', body: {} },
+      );
+      setPeople((ps) => ps.map((p) =>
+        (p.focus === focusP.focus ? { ...p, sub: 'MFA not enrolled · re-enroll pending · directory record' } : p),
+      ));
+      setMfaNote(`MFA key revoked ${new Date().toLocaleString('en-GB')} · ${res.sessionsRevoked} session(s) revoked · re-enroll at next login.`);
+      push(true, 'MFA key revoked', `${res.email} · ${res.sessionsRevoked} session(s) revoked · must re-enroll at next login.`);
+    } catch (e) {
+      push(false, 'MFA reset failed', `${failMsg(e)} — enrollment unchanged.`);
+    } finally {
+      setActing(false);
+    }
   };
 
   const impersonate = () => {
@@ -289,7 +404,7 @@ export function OrgHub() {
               </DialogTrigger>
               <DialogContent aria-labelledby="prov-h">
                 <DialogTitle id="prov-h">Provision Enterprise User</DialogTitle>
-                <DialogDescription>Pushes a directory identity via Okta SCIM.</DialogDescription>
+                <DialogDescription>Creates a real directory identity (Postgres). SCIM push is not configured.</DialogDescription>
                 <label className="text-xs font-semibold" htmlFor="prov-name">Full Legal Name</label>
                 <Input id="prov-name" value={prov.name} onChange={(e) => setProv((p) => ({ ...p, name: e.target.value }))} invalid={provTouched && !prov.name.trim()} />
                 <label className="text-xs font-semibold" htmlFor="prov-email">Enterprise Work Email</label>
@@ -315,7 +430,7 @@ export function OrgHub() {
                 )}
                 <div className="flex justify-end gap-2">
                   <Button variant="secondary" onClick={() => setProvOpen(false)}>Cancel</Button>
-                  <Button onClick={provision}>Provision via SCIM</Button>
+                  <Button onClick={provision} disabled={acting}>Provision in Directory</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -340,7 +455,7 @@ export function OrgHub() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <div className="xl:col-span-2 rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold">Personnel Roster <span className="text-xs font-normal text-muted">{filtered.length} Displayed</span></h2>
+              <h2 className="text-base font-semibold">Personnel Roster <span className="text-xs font-normal text-muted">{filtered.length} Displayed</span> <span className="text-xs font-semibold">{dirState === 'live' ? '· Live directory' : dirState === 'loading' ? '· Loading directory…' : '· Demo roster (offline)'}</span></h2>
               <span className="apex-id text-xs text-muted">Live Filtering · Ctrl + /</span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -393,7 +508,9 @@ export function OrgHub() {
               <p>Focused User: <strong className="apex-id">{focusP.focus}</strong></p>
               <p className="font-semibold">{focusP.name} · {focusP.title}</p>
               <p>Assigned Role: <strong>{focusP.role}</strong></p>
-              <p>Directory Sync: <span className="text-pass font-semibold">Synchronized via Okta SCIM</span></p>
+              <p>Directory Sync: {focusP.id
+                ? <span className="text-pass font-semibold">Directory record · Postgres (live)</span>
+                : <span className="text-warn font-semibold">Demo entry — not in the directory (actions refused)</span>}</p>
               {mfaNote && <p className="text-xs text-muted">{mfaNote}</p>}
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -403,7 +520,7 @@ export function OrgHub() {
                 </DialogTrigger>
                 <DialogContent aria-labelledby="edit-h">
                   <DialogTitle id="edit-h">Edit Assignment — {focusP.name}</DialogTitle>
-                  <DialogDescription>Role + department push to Okta on save.</DialogDescription>
+                  <DialogDescription>Role + department are saved to the directory record.</DialogDescription>
                   <label className="text-xs font-semibold" htmlFor="edit-role">Assigned Role</label>
                   <select id="edit-role" value={editRole} onChange={(e) => setEditRole(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
                     {roles.map((r) => <option key={r}>{r}</option>)}
@@ -414,12 +531,12 @@ export function OrgHub() {
                   </select>
                   <div className="flex justify-end gap-2">
                     <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
-                    <Button onClick={saveEdit}>Save Assignment</Button>
+                    <Button onClick={saveEdit} disabled={acting}>Save Assignment</Button>
                   </div>
                 </DialogContent>
               </Dialog>
-              <ConfirmDialog title="Reset MFA / Key?" description={`${focusP.name} must re-enroll FIDO2/TOTP at next login. Current sessions stay alive.`} confirmLabel="Rotate Key" onConfirm={() => { setMfaNote(`MFA key rotated 14 Sep 2026 14:05 WIB · re-enroll pending for ${focusP.focus}.`); push(true, 'MFA key rotated', `${focusP.focus} · re-enroll at next login.`); }}>
-                <Button variant="secondary"><KeyRound size={15} /> Reset MFA / Key</Button>
+              <ConfirmDialog title="Reset MFA / Key?" description={`${focusP.name} must re-enroll TOTP/FIDO2 at next login. All live sessions are revoked immediately.`} confirmLabel="Revoke Key" onConfirm={resetMfa}>
+                <Button variant="secondary" disabled={acting}><KeyRound size={15} /> Reset MFA / Key</Button>
               </ConfirmDialog>
               <Dialog open={impOpen} onOpenChange={setImpOpen}>
                 <DialogTrigger asChild>
@@ -441,8 +558,8 @@ export function OrgHub() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <ConfirmDialog title={`Deactivate ${focusP.name}?`} description="Directory login + badge access revoked immediately. Roster history is kept for audit." confirmLabel="Deactivate User" onConfirm={() => { setPeople((ps) => ps.map((p) => (p.focus === focusP.focus ? { ...p, status: 'Deactivated' } : p))); push(true, 'User deactivated', `${focusP.focus} · access revoked · audit-chained.`); }}>
-                <Button variant="destructive"><UserX size={15} /> Deactivate User</Button>
+              <ConfirmDialog title={`${focusP.status === 'Deactivated' ? 'Reactivate' : 'Deactivate'} ${focusP.name}?`} description={focusP.status === 'Deactivated' ? 'Login is re-enabled for this directory account.' : 'Directory login is disabled immediately. Roster history is kept for audit.'} confirmLabel={focusP.status === 'Deactivated' ? 'Reactivate User' : 'Deactivate User'} onConfirm={() => setActive(focusP.status === 'Deactivated')}>
+                <Button variant={focusP.status === 'Deactivated' ? 'secondary' : 'destructive'} disabled={acting}><UserX size={15} /> {focusP.status === 'Deactivated' ? 'Reactivate User' : 'Deactivate User'}</Button>
               </ConfirmDialog>
             </div>
             <Link href={`/organization/users/${focusP.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>

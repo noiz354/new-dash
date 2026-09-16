@@ -18,8 +18,8 @@
 | Auth | Signup / provisioning tenant | NOT FOUND | POST signup FOUND | org provision FOUND | DB organizations (U) | — | BACKEND-ONLY |
 | Auth | Revoke semua sesi | ProfileSessions SEED MOCKED | GET+POST sessions FOUND | list+revoke FOUND | DB sessions FOUND | Daftar statis | BROKEN |
 | Org | Provision user | OrgHub POST FOUND | POST users FOUND | org.users.create FOUND | DB users (U) | Toast + row lokal | PARTIAL |
-| Org | Deactivate user | setPeople lokal BYPASSED | PATCH users/[id] ada tak dipanggil | org.users.update FOUND | DB (tak tersentuh) | Toast "access revoked · audit-chained" | BROKEN |
-| Org | Edit role / reset MFA / clone policy | setState lokal BYPASSED | PATCH ada tak dipanggil | FOUND | DB (tak tersentuh) | Toast sukses | BROKEN |
+| Org | Deactivate user | setActive → PATCH isActive (fix GAP-2) | PATCH users/[id] CALLED | updateUser + revoke sessions + audit FOUND | DB users FOUND | Toast + status valid | END-TO-END |
+| Org | Edit role / reset MFA / clone policy | saveEdit → PATCH role; resetMfa → POST reset-mfa (fix GAP-2; clone policy tetap lokal = PROMOTE) | PATCH + reset-mfa CALLED | updateUser + resetUserMfa + audit FOUND | DB users FOUND | Toast + note valid | END-TO-END |
 | WO | CRUD + transisi status | WorkOrderList apiFetch FOUND | wo/* + transitions FOUND | wo-service + audit FOUND | DB FOUND | List/detail/dialog | END-TO-END |
 | WO | Tasks per WO | NOT FOUND | wo/[id]/tasks FOUND | (U) FOUND | DB (U) | — | BACKEND-ONLY |
 | WO | Evidence upload | RunChecklist apiFetch FOUND | evidence/upload FOUND | writeFile + auth FOUND | FS FOUND, ref publik (U) | Status upload | PARTIAL |
@@ -79,9 +79,9 @@
 
 ## 1. SEMUA MOCKED/FAKE/STATIC FUNCTIONALITY
 
-- Finding create/list server (hardcode 3 baris + POST tanpa insert).
+- Finding create/list server (hardcode 3 baris + POST tanpa insert). [CLOSED GAP-1]
 - FindingDesk convert (setTimeout) + dismiss (setState + klaim audit).
-- OrgHub deactivate/edit-role/reset-MFA (setState + toast "audit-chained"/"revoked").
+- OrgHub deactivate/edit-role/reset-MFA (setState + toast "audit-chained"/"revoked"). [CLOSED GAP-2]
 - Inventory receive/mutasi (setRows/setMovs + PIN `2468`).
 - Purchasing authorize/GRN (fase EDI simulasi + toast sukses).
 - Inventory KPI + valuasi + counts (konstanta).
@@ -95,7 +95,7 @@
 - Klik referensi TO-8891 / ADJ-… → rute `/inventory/transfers`, `/inventory/adjustments` TAK ADA.
 - Buka hasil run INS-… → rute `/field/runs` TAK ADA.
 - Vendor onboard/amend/submit → backend TAK ADA (aksi menggantung).
-- Deactivate/convert/mutasi/authorize → tampak sukses, efek server nol (dead-end semantik).
+- Deactivate/convert/mutasi/authorize → tampak sukses, efek server nol (dead-end semantik). [Deactivate CLOSED GAP-2; sisanya OPEN]
 - PDF compliance audit → disabled jujur (HONEST PLACEHOLDER, bukan dead-end menipu).
 - Flag/rollback audit → dinyatakan tanpa endpoint (HONEST PLACEHOLDER).
 
@@ -117,7 +117,7 @@ signup · sessions list/revoke-all · users PATCH (parsial: FE memalsukan via se
 
 ## 6. SEMUA LOCAL-ONLY BUSINESS MUTATION
 
-Deactivate · edit role · MFA rotate · provision display · inventory receive/mutasi · PO authorize/reject/RFQ/dispute/GRN · vendor onboard/amend · finding convert/dismiss · shift accept/reject · settings rotate/maint · PM dispatch/batch · report builder run · facility reassign/defect.
+Deactivate [CLOSED GAP-2] · edit role [CLOSED GAP-2] · MFA rotate [CLOSED GAP-2] · provision display [CLOSED GAP-2] · inventory receive/mutasi · PO authorize/reject/RFQ/dispute/GRN · vendor onboard/amend · finding convert/dismiss · shift accept/reject · settings rotate/maint · PM dispatch/batch · report builder run · facility reassign/defect.
 
 ## 7. SEMUA MISLEADING SUCCESS/LIVE/VERIFIED/SAVED CLAIMS
 

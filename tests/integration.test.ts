@@ -25,6 +25,7 @@ import {
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { createFinding, getFinding, listFindings } from '../lib/services/inspection-service';
+import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
@@ -518,4 +519,67 @@ test('findings: idempotent create replays without a second row', async () => {
     title: 'After idempotency', severity: 'MINOR', assetCode: 'AST-HVAC-003',
   });
   assert.equal(after.number, 'FND-2026-0191', 'sequence advanced only for real inserts');
+});
+
+// ---------------------------------------------------------------------------
+// Organization directory (GAP #2: deactivate / edit-role / reset-MFA were
+// local-only false success; now wired to real Postgres mutations)
+// ---------------------------------------------------------------------------
+test('org: provision → edit role → deactivate (login blocked) → reactivate, all audited', async () => {
+  const created = await createUser(db, admin, {
+    email: 'gap2.probe@apexops.io',
+    name: 'Gap Two Probe',
+    role: 'Senior Field Tech',
+    title: 'Facilities Engineering · Senior Field Tech',
+  });
+  assert.equal(created.isActive, true);
+  assert.equal(created.hasMfa, false);
+
+  const edited = await updateUser(db, admin, created.id, { role: 'Engineering Lead' });
+  assert.equal(edited.role, 'Engineering Lead');
+
+  const off = await updateUser(db, admin, created.id, { isActive: false });
+  assert.equal(off.isActive, false);
+
+  // Deactivated login is refused with the same 401 as a wrong password (no enumeration).
+  await expectDomainError(
+    () => login(db, { email: 'gap2.probe@apexops.io', password: 'wrong-pass', ip: '10.9.0.99' }),
+    401, 'INVALID_CREDENTIALS',
+  );
+
+  const on = await updateUser(db, admin, created.id, { isActive: true });
+  assert.equal(on.isActive, true);
+
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'USER_INVITE' && e.entityId === created.id), 'USER_INVITE audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'USER_DEACTIVATE' && e.entityId === created.id), 'USER_DEACTIVATE audited');
+});
+
+test('org: reset-mfa clears totp, revokes live sessions, audited; self-targets → 403', async () => {
+  const dir = await listUsers(db, admin);
+  const chen = dir.find((u) => u.email === 'd.chen@apexops.io');
+  assert.ok(chen, 'seeded Engineering Lead listed');
+  assert.equal(chen.hasMfa, true);
+
+  const { token: chenToken } = await sessionFor('d.chen@apexops.io');
+  assert.ok(await verifySession(db, chenToken), 'live session verifies before reset');
+
+  const res = await resetUserMfa(db, admin, chen.id);
+  assert.equal(res.mfaEnrolled, false);
+  assert.ok(res.sessionsRevoked >= 1, 'at least the live session revoked');
+  assert.equal(await verifySession(db, chenToken), null, 'revoked session no longer verifies');
+
+  const after = await listUsers(db, admin);
+  assert.equal(after.find((u) => u.email === 'd.chen@apexops.io')?.hasMfa, false);
+
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'USER_MFA_RESET' && e.entityId === chen.id), 'USER_MFA_RESET audited');
+
+  // Self-target guards: no self lockout.
+  await expectDomainError(() => updateUser(db, admin, admin.userId, { isActive: false }), 403, 'USER_SELF_DEACTIVATE');
+  await expectDomainError(() => resetUserMfa(db, admin, admin.userId), 403, 'USER_SELF_MFA_RESET');
+  await expectDomainError(
+    () => resetUserMfa(db, admin, '00000000-0000-0000-0000-000000000000'),
+    404, 'USER_NOT_FOUND',
+  );
 });

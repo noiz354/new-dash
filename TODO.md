@@ -81,6 +81,7 @@
 ## Truth Map FE↔BE — backlog integrasi (detail: `docs/audit-fe-be-truth-map.md`, spec: `docs/audit-mocked-deadend-unintegrated-spec.md`)
 
 - [ ] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1)
+- [x] P0: wire `PATCH /api/organization/users/[id]` + reset-MFA ke OrgHub (GAP-2 CLOSED 2026-09-16: org-service baru — list/create/update/resetMfa + self-guard 403 + revoke sesi + audit USER_*; roster live dari GET; 69/69 test; runtime MCP: provision→deactivate→reactivate + reset-MFA + self-403, 0 console error)
 - [x] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (GAP-1 CLOSED 2026-09-16: route via inspection-service, perm finding.create/read, severity adapter, idempotensi; 67/67 test; runtime MCP terverifikasi)
 - [ ] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (G3)
 - [ ] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5)
