@@ -27,7 +27,7 @@ const SEQS: Seq[] = [
 interface Snap { ts: string; mode: string; vol: string; sum: string; ret: string; live?: boolean }
 
 const SNAPS: Snap[] = [
-  { ts: '2026-05-24 02:00:14 UTC', mode: 'Full Scheduled Snapshot', vol: '842.6 MB', sum: 'Verified', ret: '30-day Lock • Glacier Deep' },
+  { ts: '2026-05-24 02:00:14 UTC', mode: 'Full Scheduled Snapshot', vol: '842.6 MB', sum: 'Verified', ret: '30-day Lock • Glacier Deep (planned — no backup job)' },
   { ts: '2026-05-23 02:00:11 UTC', mode: 'Full Scheduled Snapshot', vol: '839.1 MB', sum: 'Verified', ret: '30-day Lock • S3 Standard' },
   { ts: '2026-05-22 18:45:00 UTC', mode: 'Ad-hoc Pre-deployment Snapshot', vol: '834.0 MB', sum: 'Verified', ret: 'Manual Flag • S3 Standard' },
 ];
@@ -129,7 +129,7 @@ export function SettingsHub() {
   const save = () => {
     const n = tx + 1;
     setTx(n);
-    push(true, 'Parameters persisted', `TX-${n} · 14ms · production KV-store + 3 node clusters.`);
+    push(true, 'Parameters staged (local)', `TX-${n} · local state only — not persisted.`);
   };
 
   const exportBundle = () => {
@@ -180,8 +180,8 @@ export function SettingsHub() {
   const testConn = () => {
     setConnTest('probing…');
     setTimeout(() => {
-      setConnTest('12ms · 1,420 msgs/min · 0 drops');
-      push(true, 'SCADA link healthy', `${broker} · 12ms · 1,420 msgs/min.`);
+      setConnTest('no link · 0 msgs/min · broker not connected (local demo)');
+      push(true, 'SCADA link not connected', `${broker} · no SCADA link (local demo).`);
     }, 1200);
   };
 
@@ -192,7 +192,7 @@ export function SettingsHub() {
     setHkOpen(false);
     setHk({ url: '', topics: '', auth: 'HMAC-SHA256 Sig' });
     setHkTouched(false);
-    push(true, 'Webhook registered', `${hk.url.trim()} · handshake 200 OK.`);
+    push(true, 'Webhook staged (local)', `${hk.url.trim()} · handshake not performed (no webhook delivery).`);
   };
 
   const saveHookEdit = () => {
@@ -276,12 +276,12 @@ export function SettingsHub() {
             <Button onClick={save}><CheckCircle2 size={16} /> Save System Parameters</Button>
           </div>
         </div>
-        <p className="text-xs text-muted -mt-2">Parameters persist to production KV-store &amp; replicated across 3 node clusters · Last: TX-{tx} · 14ms</p>
+        <p className="text-xs text-muted -mt-2">Parameters are local demo state — not persisted · TX-{tx} (local)</p>
 
         <div className="flex flex-wrap gap-2" role="group" aria-label="Settings sections">
           {TABS.map((t) => (
             <button key={t} type="button" onClick={() => setTab(t)} aria-pressed={tab === t} className={cn('h-9 px-4 rounded text-[13px] font-semibold border flex items-center gap-2', tab === t ? 'bg-cobalt-deep text-white border-cobalt-deep' : 'bg-card border-border-subtle')}>
-              {t === 'Security & Auth Keys' && <Lock size={14} />} {t}{t === 'Security & Auth Keys' ? ' · mTLS Enforced' : ''}{t === 'Data & Seed Controls' ? ' · Phase 3' : ''}
+              {t === 'Security & Auth Keys' && <Lock size={14} />} {t}{t === 'Security & Auth Keys' ? ' · mTLS planned' : ''}{t === 'Data & Seed Controls' ? ' · Phase 3' : ''}
             </button>
           ))}
         </div>
@@ -304,11 +304,11 @@ export function SettingsHub() {
                   <Input id="br" value={brand} onChange={(e) => setBrand(e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <label className="text-xs font-semibold" htmlFor="ccy">Default Operating Currency · Live FX: Fixer.io</label>
+                  <label className="text-xs font-semibold" htmlFor="ccy">Default Operating Currency · FX: manual (no Fixer.io integration)</label>
                   <select id="ccy" value={ccy} onChange={(e) => setCcy(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
                     {['USD ($) - US Dollar', 'EUR (€) - Eurozone', 'SGD (S$) - Singapore Dollar', 'IDR (Rp) - Indonesian Rupiah', 'GBP (£) - British Pound'].map((c) => <option key={c}>{c}</option>)}
                   </select>
-                  <span className="text-[11px] text-muted">Exchange sync: Active (Updated 14 mins ago)</span>
+                  <span className="text-[11px] text-muted">Exchange sync: off (no FX integration)</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-xs font-semibold" htmlFor="tz">Primary Operational Timezone</label>
@@ -330,7 +330,7 @@ export function SettingsHub() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secondary" onClick={() => { setReindexed('14 Sep 2026 14:05 WIB'); push(true, 'Facilities re-indexed', '34 buildings · 1,420 rooms · GIS + roster rebound.'); }}>
+                <Button variant="secondary" onClick={() => { setReindexed('14 Sep 2026 14:05 WIB'); push(true, 'Facilities re-index staged (local)', '34 buildings · 1,420 rooms · local simulation — GIS + roster untouched.'); }}>
                   <RefreshCw size={15} /> Re-index Facilities
                 </Button>
                 <span className="text-xs text-muted">Last re-index {reindexed}</span>
@@ -339,17 +339,17 @@ export function SettingsHub() {
 
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-semibold">Dispatcher Telemetry Engine</h2>
-                <Badge variant="pass">ONLINE</Badge>
+                <h2 className="text-base font-semibold">Dispatcher Telemetry Engine (local demo)</h2>
+                <Badge variant="warn">OFFLINE</Badge>
               </div>
-              <p className="text-xs text-muted -mt-1">Real-time message routing thresholds, priority worker pool concurrency, and automatic SLA timeout escalation triggers.</p>
+              <p className="text-xs text-muted -mt-1">Local demo thresholds (no live routing engine): message routing, worker pool concurrency, and SLA escalation triggers.</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[13px]">
                 <div className="rounded border border-border-subtle bg-card p-2"><p className="apex-label-caps text-muted">Priority 1 (P1) SLA Breach Escalation</p><p className="font-bold">15 MIN THRESHOLD</p><p className="text-xs text-muted">Direct notification escalation to On-Call Plant Engineering Lead</p></div>
                 <div className="rounded border border-border-subtle bg-card p-2"><p className="apex-label-caps text-muted">Concurrent Work Dispatch Throttle</p><p className="font-bold">64 WORKERS / ZONE</p><p className="text-xs text-muted">Auto-rebalance workload across Nusantara East and Central hubs</p></div>
-                <div className="rounded border border-border-subtle bg-card p-2"><p className="apex-label-caps text-muted">SCADA Ingestion Backpressure Buffer</p><p className="font-bold text-pass">HEALTHY ({buffer}%)</p><p className="text-xs text-muted">Queue drain latency: 3.4ms • 250,000 msg ring buffer allocated</p></div>
+                <div className="rounded border border-border-subtle bg-card p-2"><p className="apex-label-caps text-muted">SCADA Ingestion Backpressure Buffer</p><p className="font-bold">NO BUFFER (local demo)</p><p className="text-xs text-muted">No live ingest — nothing buffered</p></div>
               </div>
               <div>
-                <Button variant="secondary" onClick={() => { setBuffer(2); push(true, 'Ingest buffer flushed', 'Ring drained · backpressure 12% → 2% · 0 msgs lost.'); }}>
+                <Button variant="secondary" onClick={() => { setBuffer(2); push(true, 'Flush skipped (local)', 'local demo — no ingest buffer exists.'); }}>
                   <Database size={15} /> Flush Ingest Buffer
                 </Button>
               </div>
@@ -443,10 +443,10 @@ export function SettingsHub() {
                   <Button onClick={snapshot}><Database size={15} /> Create Ad-hoc Snapshot Now</Button>
                 </div>
               </div>
-              <p className="text-xs text-muted -mt-1">Hourly differential write-ahead-logs and encrypted cold storage images in compliance with SOC2 Type II standard.</p>
-              <p className="text-[13px]">Backup Schedule Status: <strong>Active • Hourly Diff + Daily Full (02:00 UTC)</strong></p>
+              <p className="text-xs text-muted -mt-1">Planned design (no backup job running): hourly differential write-ahead-logs and encrypted cold storage images would target SOC2 Type II standard.</p>
+              <p className="text-[13px]">Backup Schedule Status: <strong>Not running · (planned: Hourly Diff + Daily Full)</strong></p>
               <p className="text-[13px]">Storage S3 Vault: <span className="apex-id">s3://apex-backup-us-east-prod-wal/</span></p>
-              <p className="text-[13px]">Latest Verified Snapshot: <strong>2026-05-24 02:00:14 UTC • 842.6 MB (SHA-256)</strong></p>
+              <p className="text-[13px]">Latest Verified Snapshot: <strong>none (demo schedule below)</strong></p>
               <div className="overflow-x-auto rounded-lg border border-border-subtle">
                 <table className="w-full text-[13px] min-w-[820px]">
                   <thead>
@@ -488,7 +488,7 @@ export function SettingsHub() {
                 <p className="text-xs text-muted">Telemetry ingest pipeline for chiller, pump, and electrical vibration sensor arrays.</p>
                 <p>Broker Address: <strong className="apex-id">{broker}</strong></p>
                 <p>Supported Protocols: <strong>MQTT / BACnet IP / OPC-UA</strong></p>
-                <p>Active Ingest Rate: <strong>1,420 msgs/min (12ms ping)</strong></p>
+                <p>Active Ingest Rate: <strong>Not connected (no live ingest)</strong></p>
                 <p>Monitored Fields: <strong>Vibration, Temp, Ultrasonic Gas</strong></p>
                 {connTest && <p className="font-semibold text-pass" role="status">Probe: {connTest}</p>}
                 <div className="flex gap-2 mt-1">
@@ -505,21 +505,21 @@ export function SettingsHub() {
                 <p>SMTP Relay Host: <strong className="apex-id">smtp.sendgrid.net:587</strong></p>
                 <p>Transport Encryption: <strong>TLS 1.3 Strict Verification</strong></p>
                 <p>Authorized Sender: <strong className="apex-id">alerts@apexops.io</strong></p>
-                <p>24hr Delivery Rate: <strong>99.94% (0 Bounces)</strong></p>
+                <p>24hr Delivery Rate: <strong>no delivery data (local demo)</strong></p>
                 <div className="flex gap-2 mt-1 items-center">
-                  <Button variant="secondary" onClick={() => push(true, 'Diagnostic accepted', 'Test mail queued · message-id diag-8841 · DKIM/SPF pass.')}>Send Test Email Diagnostic</Button>
-                  <Badge variant="pass">DKIM / SPF Valid</Badge>
+                  <Button variant="secondary" onClick={() => push(true, 'Diagnostic skipped (local)', 'local demo — no mail sent.')}>Send Test Email Diagnostic</Button>
+                  <Badge variant="warn">DKIM / SPF: not verified</Badge>
                 </div>
               </div>
               <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-1.5 text-[13px]">
-                <h3 className="text-sm font-semibold">ERP &amp; Financial GL Sync · Oracle ERP</h3>
+                <h3 className="text-sm font-semibold">ERP &amp; Financial GL Sync · Oracle ERP (not connected)</h3>
                 <p className="text-xs text-muted">Synchronizes purchase order encumbrances, parts deprecation, and contractor work billing.</p>
-                <p>Sync Health: <strong className="text-pass">Synced ({erpSync})</strong></p>
+                <p>Sync Health: <strong>Not connected (local demo)</strong></p>
                 <p>Polling Frequency: <strong>15 mins cron window</strong></p>
                 <p>Payload Scope: <strong>POs, Invoices, Capex</strong></p>
                 <p>OAuth2 Client: <strong className="apex-id">apex-erp-bridge-prod</strong></p>
                 <div className="flex gap-2 mt-1 items-center">
-                  <Button variant="secondary" onClick={() => { setErpSync('just now'); push(true, 'Ledgers re-synced', 'POs + invoices + capex · 0 conflicts · next cron in 15 min.'); }}>Re-sync Ledgers</Button>
+                  <Button variant="secondary" onClick={() => { setErpSync('just now'); push(true, 'Re-sync skipped (local)', 'local demo — no ERP sync performed.'); }}>Re-sync Ledgers</Button>
                   <span className="text-xs text-muted">Token expires: 48h</span>
                 </div>
               </div>
@@ -530,7 +530,7 @@ export function SettingsHub() {
                 <h2 className="text-base font-semibold flex items-center gap-2"><Webhook size={16} /> Active Webhook Dispatchers</h2>
                 <Button onClick={() => setHkOpen(true)}>Register New Webhook URL</Button>
               </div>
-              <p className="text-xs text-muted -mt-1">Real-time HTTP event callbacks for automated Slack notifications, Incident.io runbooks, and PagerDuty escalations.</p>
+              <p className="text-xs text-muted -mt-1">(local registry, no delivery) — HTTP event callbacks for automated Slack notifications, Incident.io runbooks, and PagerDuty escalations.</p>
               <div className="overflow-x-auto rounded-lg border border-border-subtle">
                 <table className="w-full text-[13px] min-w-[820px]">
                   <thead>
@@ -624,7 +624,7 @@ export function SettingsHub() {
               )}
               <div className="rounded border border-border-subtle bg-card p-3 text-[13px] flex flex-wrap items-center gap-2">
                 <ShieldCheck size={16} className="text-pass" />
-                <span><strong>mTLS Enforced</strong> · SCADA gateways + field tablets present client certs · broker {broker}</span>
+                <span><strong>mTLS: not enforced (planned)</strong> · SCADA gateways + field tablets would present client certs · broker {broker}</span>
               </div>
             </div>
           </div>
@@ -659,7 +659,7 @@ export function SettingsHub() {
           {epTouched && !/^mqtt:\/\/.+:\d+$/.test(epVal.trim()) && <p className="text-[11px] font-semibold text-fail">Format mqtt://host:port required.</p>}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setEpOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setEpTouched(true); if (!/^mqtt:\/\/.+:\d+$/.test(epVal.trim())) return; setBroker(epVal.trim()); setEpOpen(false); setEpTouched(false); push(true, 'Endpoints saved', `${epVal.trim()} · ingest draining to new broker.`); }}>Save Endpoints</Button>
+            <Button onClick={() => { setEpTouched(true); if (!/^mqtt:\/\/.+:\d+$/.test(epVal.trim())) return; setBroker(epVal.trim()); setEpOpen(false); setEpTouched(false); push(true, 'Endpoints saved (local)', `${epVal.trim()} · ingest NOT rerouted (no live broker).`); }}>Save Endpoints</Button>
           </div>
         </DialogContent>
       </Dialog>

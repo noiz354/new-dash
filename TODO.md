@@ -102,8 +102,8 @@
 > 2026-09-16, read-only, 32 fitur terverifikasi (bukan 37 — lihat §22). Eksekusi GAP-06→GAP-17 satu-per-satu, spec-driven, commit+push per gap.
 
 - [x] GAP-06 P0: billing HMAC fail-closed + dedup + Stripe call/hapus stub (F24 CLOSED 2026-09-16: verifyWebhookSignature raw-body — secret hilang 503, header hilang 401, salah 400, tanpa swallow; dedup via withIdempotency scope stripe.webhook + tx; checkout Stripe Checkout API asli via fetch tanpa dep baru, tanpa key/price → 503 jujur tanpa URL palsu/tanpa TRIALING upsert; route webhook req.text(); 4 test baru; npm test 81/81; runtime curl dev: webhook→BILLING_NOT_CONFIGURED fail-closed, checkout unauth→401)
-- [ ] GAP-07 P0: impersonate — audit event nyata atau cabut klaim "audit-chained" (F29)
-- [ ] GAP-08 P1: copy cluster jujur + EVT-fallback wajib-auditId + perluas grep-test (F31/F32)
+- [x] GAP-07 P0: impersonate — audit event nyata atau cabut klaim "audit-chained" (F29 CLOSED 2026-09-16: teater dihapus total di ProfileSessions+OrgHub → tombol disabled + copy jujur; guard-test 7 frasa fiksi hilang; "audit-chained" tersisa TEPAT 2 yang memang server-audited; npm test 99/99; runtime MCP /profile+/organization 0 error)
+- [x] GAP-08 P1: copy cluster jujur + EVT-fallback wajib-auditId + perluas grep-test (F31/F32 CLOSED 2026-09-16: ~40 edit string jujur di SideNav/NotificationsHub/ReportsHub/FacilityHub/PmHub/dialogs/SettingsHub/OrgHub; "WS-PUSH"→"SSE"; dialog fail-closed tanpa auditId; guard-test GAP-08 file-scoped absence+presence; npm test 121/121; tsc bersih; runtime MCP: /notifications SSE intact + /settings copy jujur, 0 console error; temuan: 500 passkeys/login = drift dev-DB pre-existing, bukan GAP-08)
 - [ ] GAP-09 P1: purchasing wire list/detail/GRN → po-service (F13, big rock M/L)
 - [ ] GAP-10 P1: PM hub wire list+generate nyata (F19)
 - [ ] GAP-11 P1: force-dispatch route→service+audit, lalu field queue←inspections (F20→F16, big rock)

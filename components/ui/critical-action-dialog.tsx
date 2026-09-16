@@ -72,8 +72,15 @@ export function CriticalActionDialog({
     try {
       const res = await onExecute({ reason: reason.trim(), pin: pin.trim() });
       if (res.success) {
-        setAuditId(res.auditId || `EVT-${Math.floor(100000 + Math.random() * 900000)}`);
-        setPhase('success');
+        // Fail closed (GAP-08/F32): never fabricate an audit ID. A success
+        // without a server-issued audit proof is treated as NOT recorded.
+        if (!res.auditId) {
+          setErrorMsg('Action response missing audit proof — treated as NOT recorded. Retry.');
+          setPhase('failure');
+        } else {
+          setAuditId(res.auditId);
+          setPhase('success');
+        }
       } else {
         setErrorMsg(res.error || 'The action was rejected by safety or governance policies.');
         setPhase('failure');
@@ -200,7 +207,7 @@ export function CriticalActionDialog({
                 <div>
                   <h3 className="text-base font-semibold text-ink">Action Executed &amp; Recorded</h3>
                   <p className="text-xs text-muted mt-1">
-                    The critical operation succeeded. Proof of consensus has been committed to the hash chain.
+                    The critical operation succeeded. The returned audit ID is recorded — verify it in the audit trail.
                   </p>
                 </div>
                 <div className="bg-surface-subtle border border-border-subtle rounded-lg p-3 text-xs flex flex-col gap-1 text-left">
@@ -209,9 +216,9 @@ export function CriticalActionDialog({
                     <span className="apex-id font-bold text-cobalt">{auditId}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted">Cryptographic Proof:</span>
+                    <span className="text-muted">Audit Proof:</span>
                     <span className="text-pass font-semibold flex items-center gap-1">
-                      <ShieldCheck size={12} /> Root Merkle Verified
+                      <ShieldCheck size={12} /> Audit ID recorded — verify in trail
                     </span>
                   </div>
                 </div>

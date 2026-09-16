@@ -124,7 +124,7 @@ export function NotificationsHub() {
     const t = setTimeout(() => {
       if (countdown === 1) {
         setEscalated('auto');
-        push(true, 'Auto-escalated', 'P1 unacknowledged past window · paged D. Chen + on-duty VP.');
+        push(true, 'Auto-escalated', 'P1 unacknowledged past window · escalation logged (no pager integration).');
       }
       setCountdown((c) => c - 1);
     }, 1000);
@@ -300,7 +300,7 @@ export function NotificationsHub() {
                   {a.id === 'ALT-P1-0894' && (
                     <div className="flex flex-wrap items-center gap-2 pt-1">
                       <Link href={`/work-orders/${CANON.workOrderSeal}`}><Button variant="secondary"><Eye size={15} /> View Work Order</Button></Link>
-                      <Button variant="secondary" disabled={escalated !== 'idle'} onClick={() => { setEscalated('manual'); push(true, 'Escalated', 'D. Chen paged · P1 bridge opened.'); }}>
+                      <Button variant="secondary" disabled={escalated !== 'idle'} onClick={() => { setEscalated('manual'); push(true, 'Escalated', 'Escalation logged · bridge not opened (no pager integration).'); }}>
                         <Zap size={15} /> {escalated === 'idle' ? 'Escalate to Eng Mgr' : escalated === 'manual' ? 'Escalated ✓' : 'Auto-escalated ✓'}
                       </Button>
                       <Dialog open={backupOpen} onOpenChange={setBackupOpen}>
@@ -316,7 +316,7 @@ export function NotificationsHub() {
                           </select>
                           <div className="flex justify-end gap-2">
                             <Button variant="secondary" onClick={() => setBackupOpen(false)}>Cancel</Button>
-                            <Button onClick={() => { setBackupOpen(false); push(true, 'Backup dispatched', `${backup} paged to B-204 · ETA 12 min.`); }}>Page Tech</Button>
+                            <Button onClick={() => { setBackupOpen(false); push(true, 'Backup dispatch logged', `${backup} dispatch logged · tech not paged (no dispatch integration).`); }}>Log Dispatch</Button>
                           </div>
                         </DialogContent>
                       </Dialog>
@@ -486,7 +486,7 @@ export function NotificationsHub() {
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2 text-[13px]">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-semibold flex items-center gap-2"><Radio size={16} /> Active Bus Debugger</h2>
-                <span className="apex-id text-xs text-pass font-bold">WS-PUSH: 12ms</span>
+                <span className="apex-id text-xs text-pass font-bold">SSE: 12ms</span>
               </div>
               <p className="text-muted">Inject a real-time synthetic P1 telemetry alarm into the live message bus to test dispatch triggers.</p>
               <Button onClick={injectTest}><Zap size={15} /> Trigger Test P1 Alert (simulated)</Button>

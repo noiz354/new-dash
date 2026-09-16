@@ -259,3 +259,13 @@ Frontend: teater dihapus total di kedua file (impersonating state + banner + dia
 Tests: guard di tests/audit-truthfulness.test.ts — 7 frasa fiksi hilang dari kedua file; placeholder jujur hadir di keduanya; "audit-chained" tersisa TEPAT 2 (toast activate/deactivate OrgHub yang memang server-audited via GAP-2 PATCH→audit); npm test 99/99; tsc nol error baru.
 Runtime proof (MCP browser dev :3145, m.vance): /profile → "Impersonate Field Tech (disabled)" + copy jujur + sesi live THIS DEVICE; /organization → "Audit Impersonate (disabled)"; 0 console error; reload persist (disabled statis — tak ada state palsu); screenshot /tmp/opencode/evidence/gap07/.
 NEXT GAP: #8 copy cluster + EVT.
+
+## GAP CLOSED #8 — Copy cluster jujur + EVT-fallback fail-closed (2026-09-16)
+
+Domain: Copy/Audit | Feature: infra/transport/delivery copy (SideNav/NotificationsHub/ReportsHub/FacilityHub/PmHub/purchasing-dialogs/SettingsHub/OrgHub) + EVT-fallback | Previous: MOCKED (copy) — "Live Sync Active", "Broker HEALTHY", "WS-PUSH: 12ms" (SSE-nya nyata, prefix salah), "READ REPLICA: SYNCED", "paged", "DISPATCHED" toasts, "Root Merkle Verified", "KV-store + 3 node clusters"; EVT-fallback fabrikasi `EVT-${random}` menyembunyikan audit gagal | New: honest copy + fail-closed
+Root cause: SEED/MOCK LEAK + TEST GAP (guard grep hanya cover AuditTrail).
+Spec: docs/remediation-gap-08-spec.md (ditulis dulu — spec-driven; 34 situs old→new; out-of-scope eksplisit F13/F15/F19/F21/F23/F14/PIN/F26-backend/F27).
+Frontend: ~40 edit string jujur ("WS-PUSH"→"SSE", "SSE only", "STANDBY", "local demo", "not connected", "not verified", "no delivery", "mTLS planned", "Oracle not connected"); critical-action-dialog fail-closed — tanpa auditId → failure "treated as NOT recorded", tanpa ID fabrikasi; "Root Merkle Verified"→"Audit ID recorded — verify in trail".
+Tests: guard-test GAP-08 di tests/audit-truthfulness.test.ts (absence file-scoped + presence qualifier + Math.random check); npm test 121/121; tsc exit 0.
+Runtime proof (MCP browser dev :3145, m.vance): /notifications render "SSE: 12ms" + live stream intact + 0 console error; /settings General+Integrations+Security render semua copy jujur. Temuan: GET /api/auth/passkeys/login→500 pre-existing — dev DB .data/pg tak punya tabel webauthn_credentials (migrasi 0002), drift infra dev, BUKAN akibat GAP-08 (hanya ubah string klien); dipicu buka tab Security/PasskeyManager.
+NEXT GAP: #9 purchasing wire (F13, big rock M/L).

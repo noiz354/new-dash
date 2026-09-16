@@ -82,7 +82,7 @@ export function PmHub() {
       return;
     }
     setDispatching(true);
-    push(true, 'Dispatch started', `Executing ${pending.length} queued plan(s) · parts + shift leads notified…`);
+    push(true, 'Dispatch started', `Executing ${pending.length} queued plan(s) · parts + shift leads notify logged (local simulation)…`);
     pending.forEach((item, i) => {
       setTimeout(() => {
         // Sequential WO numbering continues past the vendor-drafted WO-2026-0905.
@@ -90,7 +90,7 @@ export function PmHub() {
         setDispatched((d) => ({ ...d, [item.plan]: wo }));
         if (i === pending.length - 1) {
           setDispatching(false);
-          push(true, 'Batch dispatched', `${pending.length} WO(s) created · leads paged · parts allocated.`);
+          push(true, 'Batch staged (local)', `${pending.length} WO(s) drafted · leads notify logged (no pager) · local simulation — nothing dispatched.`);
         }
       }, 700 * (i + 1));
     });
@@ -277,14 +277,14 @@ export function PmHub() {
         <div id="dispatch-queue" className="rounded-lg border-2 border-warn bg-warn-bg/40 p-4 flex flex-col gap-3 scroll-mt-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold">Generation Dispatch Queue</h2>
-            <span className="text-xs text-muted">Broker flagged {QUEUE.length} plans · dispatch allocates parts + pages shift leads.</span>
+            <span className="text-xs text-muted">Queue flagged {QUEUE.length} plans · notify logged (local) — no broker, no paging.</span>
           </div>
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {QUEUE.map((i) => (
               <li key={i.plan} className="rounded-lg border border-border-subtle bg-card p-3 flex flex-col gap-1 text-[13px]">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="apex-id font-bold">{i.plan}</span>
-                  {dispatched[i.plan] ? <Badge variant="pass">DISPATCHED → {dispatched[i.plan]}</Badge> : <Badge variant="warn">{i.label}</Badge>}
+                  {dispatched[i.plan] ? <Badge variant="pass">DISPATCHED (local) → {dispatched[i.plan]}</Badge> : <Badge variant="warn">{i.label}</Badge>}
                 </div>
                 <p className="font-semibold">{i.detail}</p>
                 <p className="text-muted text-xs">Assignee: {i.assignee} · {i.note} · {i.hours.toFixed(1)} man-hrs</p>

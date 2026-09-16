@@ -242,7 +242,7 @@ Tests: NONE. **Decision: MUST FIX** (endpoint rotate nyata atau ubah jadi
 honest placeholder "managed externally"). Target: END-TO-END atau
 PLACEHOLDER. Reason: key-rotation fiktif = security theater. P1/S/MODULE.
 
-**F31 — Misleading copy cluster.** Item: `Live Sync Active`+`Broker HEALTHY`
+**F31 — Misleading copy cluster. [CLOSED GAP-08]** Item: `Live Sync Active`+`Broker HEALTHY`
 (SideNav/FacilityHub), `WS-PUSH: 12ms` (NotificationsHub — SSE-nya nyata,
 prefix `WS-` salah; test truthfulness tak cover file ini), `READ REPLICA:
 SYNCED`, `paged` (4 file, tanpa pager API), `DISPATCHED` toasts
@@ -251,7 +251,7 @@ LEAK + TEST GAP (guard grep hanya AuditTrail). **Decision: MUST FIX** (copy +
 perluas `audit-truthfulness.test.ts` ke file-file ini). Target: honest copy.
 Reason: S-effort, memengaruhi kepercayaan seluruh app. P1/S/LOCAL.
 
-**F32 — EVT-fallback.** Current: `critical-action-dialog` fabrikasi
+**F32 — EVT-fallback. [CLOSED GAP-08]** Current: `critical-action-dialog` fabrikasi
 `EVT-${random}` tak ter-link saat `auditId` absen. Gap: SEED/MOCK LEAK
 menyembunyikan audit gagal. **Decision: MUST FIX** (wajibkan auditId / gagal
 tertutup, jangan fallback acak). Target: END-TO-END-honest. Reason: ID audit
@@ -293,8 +293,8 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 28 | Import | CSV import | NOT FOUND | — | DEFER | NONE | P3 | — | — |
 | 29 | AuthZ | Impersonate | MOCKED | FAKE SUCCESS (audit) | MUST FIX | E2E/honest | P0 | S/M | MODULE |
 | 30 | Profile | Rotate Key | MOCKED | BACKEND MISSING + fake | MUST FIX | E2E/placeholder | P1 | S | MODULE |
-| 31 | Copy | Live/WS-/paged/DISP. | MOCKED (copy) | SEED LEAK + TEST GAP | MUST FIX ⭐ | honest | P1 | S | LOCAL |
-| 32 | Audit | EVT-fallback | MOCKED | SEED LEAK | MUST FIX ⭐ | honest | P1 | S | LOCAL |
+| 31 | Copy | Live/WS-/paged/DISP. | HONEST COPY [CLOSED GAP-08] | SEED LEAK + TEST GAP | MUST FIX ⭐ | honest | P1 | S | LOCAL |
+| 32 | Audit | EVT-fallback | FAIL-CLOSED [CLOSED GAP-08] | SEED LEAK | MUST FIX ⭐ | honest | P1 | S | LOCAL |
 
 ⭐ = QUICK CLOSE · 🪨 = BIG ROCK
 

@@ -44,10 +44,10 @@ export function AuthDialog({ push }: { push: ToastFn }) {
         <p className="text-xs text-muted" role="status">
           {phase === 'ready' && 'Ready — EDI dispatch to vendor on confirm.'}
           {phase === 'sending' && 'Transmitting EDI to Trane EarthWise Direct…'}
-          {phase === 'done' && 'PO-2026-0315 DISPATCHED · key idem-auth-po0315.'}
+          {phase === 'done' && 'PO-2026-0315 DISPATCHED (local simulation — no EDI transmit) · key idem-auth-po0315.'}
           {phase === 'failed' && 'EDI failed — PO status unchanged (no half-dispatch). Retry with the same key.'}
         </p>
-        {phase === 'done' && <Badge variant="pass">PO-2026-0315 DISPATCHED</Badge>}
+        {phase === 'done' && <Badge variant="pass">PO-2026-0315 DISPATCHED (local)</Badge>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setPhase('ready')}>Reset demo</Button>
           <Button onClick={confirm} disabled={phase === 'sending'}>

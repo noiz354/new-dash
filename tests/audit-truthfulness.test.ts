@@ -108,3 +108,84 @@ test('verify-chain route delegates to real server recomputation', () => {
     'verify-chain route must call verifyAuditHashChain (server recomputation)',
   );
 });
+
+// ---------------------------------------------------------------------------
+// GAP-08: honest infra/transport/delivery copy (F31) + EVT fail-closed (F32).
+// File-scoped: each file must not contain the exact fiction strings removed.
+// ---------------------------------------------------------------------------
+const GAP08_ABSENT: Array<[label: string, rel: string, phrases: string[]]> = [
+  ['SideNav', '../components/ops/SideNav.tsx', ['Live Sync Active', '10.14.0.8', 'HEALTHY']],
+  ['NotificationsHub', '../components/notifications/NotificationsHub.tsx', ['WS-PUSH', 'paged D. Chen', 'D. Chen paged', 'paged to B-204 · ETA 12 min']],
+  ['ReportsHub', '../components/reports/ReportsHub.tsx', ['READ REPLICA', 'streams from read replica']],
+  ['FacilityHub', '../components/facilities/FacilityHub.tsx', ['Broker 10.14.0.8', 'crew paged']],
+  ['PmHub', '../components/pm/PmHub.tsx', ['leads paged', 'Broker flagged']],
+  ['PurchasingDialogs', '../components/purchasing/dialogs.tsx', ['DISPATCHED · key idem-auth-po0315.', 'PO-2026-0315 DISPATCHED</Badge>']],
+  ['OrgHub', '../components/org/OrgHub.tsx', ['Okta SCIM: 12ms']],
+  ['CriticalActionDialog', '../components/ui/critical-action-dialog.tsx', ['Math.random', 'Root Merkle Verified', 'Proof of consensus has been committed']],
+];
+
+for (const [label, rel, phrases] of GAP08_ABSENT) {
+  for (const phrase of phrases) {
+    test(`GAP-08 ${label} contains no infra fiction: "${phrase}"`, () => {
+      const body = readFileSync(new URL(rel, import.meta.url).pathname, 'utf8');
+      assert.ok(!body.includes(phrase), `${label} still contains "${phrase}"`);
+    });
+  }
+}
+
+test('GAP-08 SettingsHub carries no integration fiction', () => {
+  const body = readFileSync(new URL('../components/settings/SettingsHub.tsx', import.meta.url).pathname, 'utf8');
+  for (const phrase of [
+    'production KV-store',
+    '1,420 msgs/min',
+    'SCADA link healthy',
+    'handshake 200 OK',
+    'Live FX: Fixer.io',
+    'Updated 14 mins ago',
+    'GIS + roster rebound.',
+    'mTLS Enforced',
+    'draining to new broker',
+    'Backup Schedule Status: <strong>Active',
+    '842.6 MB (SHA-256)',
+    'DKIM / SPF Valid',
+    'message-id diag-8841',
+    'Oracle ERP</h3>',
+    'Synced ({erpSync})',
+    'next cron in 15 min.',
+    'Real-time message routing thresholds',
+    'HEALTHY ({buffer}%)',
+    '250,000 msg ring buffer allocated',
+    'backpressure 12% → 2%',
+  ]) {
+    assert.ok(!body.includes(phrase), `SettingsHub still contains "${phrase}"`);
+  }
+});
+
+test('GAP-08 SettingsHub states the honest qualifiers', () => {
+  const body = readFileSync(new URL('../components/settings/SettingsHub.tsx', import.meta.url).pathname, 'utf8');
+  for (const phrase of [
+    'not persisted',
+    'no live ingest',
+    'no backup job',
+    'not connected',
+    'no mail sent',
+    'not verified',
+    'no ERP sync performed',
+    'no delivery',
+    'not enforced (planned)',
+    'no live broker',
+  ]) {
+    assert.ok(body.includes(phrase), `SettingsHub missing honest qualifier "${phrase}"`);
+  }
+});
+
+test('GAP-08 critical-action dialog fails closed without an audit ID', () => {
+  const body = readFileSync(
+    new URL('../components/ui/critical-action-dialog.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(
+    body.includes('treated as NOT recorded'),
+    'dialog must fail closed with an honest message when onExecute returns no auditId',
+  );
+});

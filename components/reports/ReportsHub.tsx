@@ -101,7 +101,7 @@ export function ReportsHub() {
       ['dossier', 'meta', d.meta], ['dossier', 'last_generated', d.gen], ['dossier', 'owner', d.owner],
       ['dossier', 'cadence', d.cadence], ['dossier', 'compliance', d.status]];
     download(`${d.id}-manifest.csv`, rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n'));
-    push(true, 'Dossier manifest downloaded', `${d.id} · full extract streams from read replica.`);
+    push(true, 'Dossier manifest downloaded', `${d.id} · local extract (no replica).`);
   };
 
   const schedule = () => {
@@ -151,7 +151,7 @@ export function ReportsHub() {
       <section className="bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-labelledby="rep-h">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="apex-id text-muted">BI ENGINE v4.6-OLAP · READ REPLICA: SYNCED</p>
+            <p className="apex-id text-muted">BI ENGINE v4.6-OLAP · direct DB read · no replica</p>
             <h1 id="rep-h" className="text-2xl font-semibold tracking-tight">Reports &amp; Analytics Hub</h1>
             <p className="text-[13px] text-muted">Enterprise operational business intelligence, cost accounting, MTTR telemetry analysis, and custom report builder for multi-facility operations.</p>
           </div>

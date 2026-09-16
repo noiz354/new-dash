@@ -427,7 +427,7 @@ export function OrgHub() {
           {[
             { l: 'Active Personnel', v: '148', s: '100% Provisioned · 96 Field · 32 Eng · 14 Proc · 6 Admin' },
             { l: 'Defined Roles', v: String(CANON.roles), s: 'RBAC Matrix · 15 Modules · 74 granular capability toggles' },
-            { l: 'Compliance & MFA', v: '100%', s: 'MFA Enforced · Okta SCIM: 12ms · L30D 0 Breaches' },
+            { l: 'Compliance & MFA', v: '100%', s: 'MFA policy: local demo · Okta SCIM not configured' },
             { l: 'Field Sessions Telemetry', v: '42', s: `Active Terminals · Shift A (${CANON.shiftA})` },
           ].map((k) => (
             <div key={k.l} className="rounded-lg border border-border-subtle bg-surface p-3 flex flex-col gap-0.5">
