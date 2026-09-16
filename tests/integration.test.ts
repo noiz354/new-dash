@@ -33,6 +33,8 @@ import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '..
 import { addEvidence, listWoEvidence } from '../lib/services/task-service';
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
 import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
+import { createFacility, getFacility, listFacilities, updateFacility } from '../lib/services/facility-service';
+import { can } from '../lib/auth/rbac';
 import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
 import { provisionOrganization } from '../lib/services/onboarding-service';
 import { sequences } from '../db/schema';
@@ -1440,4 +1442,115 @@ test('retention (GAP-19/F25): wo.read permission stays enforced — unauth GET �
   assert.equal(res.status, 401, 'deprecated endpoint still requires a session');
   const env = (await res.json()) as { error?: { code?: string } };
   assert.equal(env.error?.code, 'UNAUTHENTICATED');
+});
+
+// ---------------------------------------------------------------------------
+// Facilities (GAP-20/F15 live backend)
+// ---------------------------------------------------------------------------
+test('facilities (GAP-20/F15): create persists code-recallably; idempotent replay; 409 dup; tenant guard; FACILITY_CREATE audit', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  // seed: canon row exists, unmapped
+  const before = await listFacilities(db, admin);
+  assert.ok(before.some((f) => f.code === 'B2-MECH-204'), 'seed canon facility present');
+  assert.equal(before.find((f) => f.code === 'B2-MECH-204')?.mapped, false, 'seed facility honestly unmapped');
+
+  const createsBefore = await countAudit('FACILITY_CREATE');
+  const f1 = await createFacility(db, admin, { name: '#B-216 RO Water Plant' }, { idempotencyKey: 'fac-create-it-01' });
+  assert.equal(f1.code, 'B-216-RO-WATER-PLANT', 'code derived server-side from the name');
+  assert.ok(f1.id.length > 8, 'opaque server id returned');
+  assert.equal(f1.mapped, false, 'no geojson → unmapped');
+  assert.equal(f1.defects.length, 0);
+  assert.equal(f1.transfers.length, 0);
+  const afterCreate = await countAudit('FACILITY_CREATE');
+  assert.equal(afterCreate - createsBefore, 1, 'exactly one FACILITY_CREATE audit row');
+
+  // replay with the same key + payload → same row, no second insert, no second audit
+  const replay = await createFacility(db, admin, { name: '#B-216 RO Water Plant' }, { idempotencyKey: 'fac-create-it-01' });
+  assert.equal(replay.code, f1.code);
+  assert.equal(replay.id, f1.id, 'replay returns the originally persisted row');
+  assert.equal(await countAudit('FACILITY_CREATE'), afterCreate, 'replay audited nothing new');
+  const mid = await listFacilities(db, admin);
+  assert.equal(mid.filter((f) => f.code === f1.code).length, 1, 'single row after replay');
+
+  // replay-scoped create of same name without the key → 409 conflict
+  await expectDomainError(
+    () => createFacility(db, admin, { name: 'B-216 RO Water Plant # ' }, { idempotencyKey: null }),
+    409, 'FACILITY_CODE_EXISTS',
+  );
+
+  // tenant guard: decoy sees only its own seeded DOCK-QA-01
+  const { ctx: decoy } = await gap14Decoy();
+  const decoyList = await listFacilities(db, decoy);
+  assert.ok(decoyList.some((f) => f.code === 'DOCK-QA-01'), 'decoy sees its seeded row');
+  assert.ok(!decoyList.some((f) => f.code.startsWith('B2-') || f.code.startsWith('B-216')), 'decoy cannot see canon facilities');
+  await expectDomainError(() => getFacility(db, decoy, f1.code), 404, 'FACILITY_NOT_FOUND');
+  await expectDomainError(() => getFacility(db, admin, 'B-999'), 404, 'FACILITY_NOT_FOUND');
+});
+
+test('facilities (GAP-20/F15): update stages defect + transfer in meta (idempotent); name patch; empty patch 400; FACILITY_UPDATE audit', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+
+  // transfer append — idempotent: replay with same key must NOT double-append
+  const t1 = await updateFacility(db, admin, 'B2-MECH-204', {
+    transfer: { assetCode: 'AST-HVAC-004', toCode: 'B-208-PRIMARY-PUMP-BAY' },
+  }, { idempotencyKey: 'fac-transfer-it-01' });
+  assert.equal(t1.transfers.length, 1, 'transfer request staged in meta');
+  assert.equal(t1.transfers[0]?.assetCode, 'AST-HVAC-004');
+  const tReplay = await updateFacility(db, admin, 'B2-MECH-204', {
+    transfer: { assetCode: 'AST-HVAC-004', toCode: 'B-208-PRIMARY-PUMP-BAY' },
+  }, { idempotencyKey: 'fac-transfer-it-01' });
+  assert.equal(tReplay.transfers.length, 1, 'replay did not double-append');
+
+  // defect append (no key)
+  const d1 = await updateFacility(db, admin, 'B2-MECH-204', {
+    defect: 'Condenser tube bundle fouling observed on boroscope inspection',
+  });
+  assert.equal(d1.defects.length, 1, 'defect staged in meta');
+  assert.equal(d1.defects[0]?.by, admin.name);
+  assert.match(d1.defects[0]?.text ?? '', /fouling/);
+
+  // persisted across a fresh read
+  const reread = await getFacility(db, admin, 'B2-MECH-204');
+  assert.equal(reread.defects.length, 1);
+  assert.equal(reread.transfers.length, 1);
+  assert.ok(reread.updatedAt >= reread.createdAt, 'updatedAt advanced');
+
+  // rename (code stays put), geojson patch flips mapped
+  const renamed = await updateFacility(db, admin, 'B2-MECH-204', { name: 'Centrifugal Chiller Plant Room #B-204 (CUP)' });
+  assert.equal(renamed.code, 'B2-MECH-204', 'code immutable on rename');
+  assert.match(renamed.name, /\(CUP\)$/);
+  const mapped = await updateFacility(db, admin, 'B2-MECH-204', { geojson: '{"type":"Polygon","coordinates":[[[101.73,2.51],[101.736,2.51],[101.736,2.518],[101.73,2.518],[101.73,2.51]]]}' });
+  assert.equal(mapped.mapped, true, 'geojson persisted → mapped');
+  const unmapped = await updateFacility(db, admin, 'B2-MECH-204', { geojson: null });
+  assert.equal(unmapped.mapped, false, 'geojson explicitly cleared');
+
+  // no-op → 400
+  await expectDomainError(() => updateFacility(db, admin, 'B2-MECH-204', {}), 400, 'VALIDATION_ERROR');
+
+  // unknown code → 404; decoy cannot touch canon rows
+  await expectDomainError(() => updateFacility(db, admin, 'B-999', { defect: 'irrelevant long enough note' }), 404, 'FACILITY_NOT_FOUND');
+  const { ctx: decoy } = await gap14Decoy();
+  await expectDomainError(
+    () => updateFacility(db, decoy, 'B2-MECH-204', { defect: 'cross-tenant tamper attempt should fail' }),
+    404, 'FACILITY_NOT_FOUND',
+  );
+
+  // audit: exactly 1 transfer-update + 1 defect-update + rename + map + unmap = ≥ 5 FACILITY_UPDATE rows
+  const updates = await countAudit('FACILITY_UPDATE');
+  assert.ok(updates >= 5, `expected ≥5 FACILITY_UPDATE audit rows, got ${updates}`);
+});
+
+test('facilities (GAP-20/F15): RBAC grants facilities.read to all roles and facilities.manage to vendor-managing roles', () => {
+  assert.ok(can('Read-Only Auditor', 'facilities.read'), 'read for every role');
+  assert.ok(can('Facility Director', 'facilities.manage'), 'Facility Director manages facilities');
+  assert.ok(can('Engineering Lead', 'facilities.manage'), 'Engineering Lead manages facilities');
+  assert.ok(can('Enterprise Admin', 'facilities.manage'), 'Enterprise Admin wildcard');
+  assert.equal(can('Senior Field Tech', 'facilities.manage'), false, 'Senior Field Tech read-only');
 });

@@ -280,3 +280,30 @@ test('GAP-18 worker preseed stays removed', () => {
     assert.ok(!body.includes(gone), `lib/queue/worker.ts still contains preseed fiction: "${gone}"`);
   }
 });
+
+test('GAP-20 facilities hub: fiction claims absent, honest labels + real API wiring present', () => {
+  const body = readFileSync(new URL('../components/facilities/FacilityHub.tsx', import.meta.url).pathname, 'utf8');
+  for (const gone of ['10.14.0.8', 'MODEL MATCHED']) {
+    assert.ok(!body.includes(gone), `FacilityHub still fabricates: "${gone}"`);
+  }
+  for (const want of [
+    "'/api/facilities'",
+    'local staging — not persisted',
+    'geometries unseeded',
+    'local counter — not persisted',
+    'design only — not connected',
+    'No GIS write',
+  ]) {
+    assert.ok(body.includes(want), `FacilityHub must disclose/wire: "${want}"`);
+  }
+});
+
+test('GAP-20 facilities backend: service uses org-scoped rows, transactional audit, idempotency scopes', () => {
+  const body = readFileSync(new URL('../lib/services/facility-service.ts', import.meta.url).pathname, 'utf8');
+  for (const want of ['FACILITY_CREATE', 'FACILITY_UPDATE', 'facility.create', 'facility.update', 'FACILITY_CODE_EXISTS']) {
+    assert.ok(body.includes(want), `facility-service must carry: "${want}"`);
+  }
+  for (const absent of ["'npr-api'", 'fixer.io']) {
+    assert.ok(!body.includes(absent), `facility-service leaked mock marker: "${absent}"`);
+  }
+});

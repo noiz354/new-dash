@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, ClipboardCheck, Download, Flame, Layers, MapPin, Plus, Printer, RefreshCw, Thermometer, Wind, X, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,24 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
 import { downloadText } from '@/lib/download';
+import { ApiError, apiFetch } from '@/lib/api/client';
+
+/** Mirrors the server's FacilityRow DTO (never imported — stays client-local). */
+interface FacilityRow {
+  id: string;
+  code: string;
+  name: string;
+  geojson: string | null;
+  mapped: boolean;
+  defects: { text: string; at: string; by: string }[];
+  transfers: { assetCode: string; toCode: string; at: string; by: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+const FAC_ROUTE = '/api/facilities';
+/** Seeded canon location (db/seed.ts) — the hub's #B-204 room maps to it. */
+const CANON_ROOM_CODE = 'B2-MECH-204';
 
 interface Room { id: string; name: string; counts: string; seeded: boolean }
 
@@ -69,6 +87,12 @@ export function FacilityHub() {
   const [reOpen, setReOpen] = useState(false);
   const [reAsset, setReAsset] = useState<string>(CANON.assetSeal);
   const [reDest, setReDest] = useState('#B-208 Primary Pump Bay');
+  // GAP-20/F15: server-backed facility directory (falls back to honest
+  // local staging when the API is unreachable — toasts say which is which).
+  const [facilities, setFacilities] = useState<FacilityRow[]>([]);
+  const [facLive, setFacLive] = useState<boolean | null>(null);
+  const [facCanManage, setFacCanManage] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   const push = (ok: boolean, title: string, msg: string) => {
     const id = toastSeq++;
@@ -76,10 +100,58 @@ export function FacilityHub() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 8000);
   };
 
+  const errMsg = (e: unknown) => (e instanceof ApiError ? `${e.message} (${e.code})` : 'Unexpected error — nothing persisted.');
+
+  const loadFacilities = async () => {
+    try {
+      const res = await apiFetch<{ facilities: FacilityRow[]; can: { manage: boolean } }>(FAC_ROUTE);
+      setFacilities(res.facilities);
+      setFacCanManage(res.can.manage);
+      setFacLive(true);
+    } catch {
+      setFacLive(false);
+    }
+  };
+
+  useEffect(() => { void loadFacilities(); }, []);
+
+  /** Row of the seeded canon room (#B-204) when the API is live. */
+  const canonFacility = facLive ? facilities.find((f) => f.code === CANON_ROOM_CODE) : undefined;
+
   const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
   const selRoom = ROOMS.find((r) => r.id === room) ?? ROOMS[1];
 
   const exportGeo = () => {
+    if (facLive) {
+      // GAP-20/F15: export the real server-persisted facilities. Rows without a
+      // stored geometry stay honest `geometry: null` (reported as unmapped).
+      const features = facilities.map((f) => {
+        let geometry: unknown = null;
+        if (f.geojson) {
+          try { geometry = JSON.parse(f.geojson); } catch { geometry = null; }
+        }
+        return {
+          type: 'Feature',
+          geometry,
+          properties: {
+            code: f.code, name: f.name, mapped: geometry !== null,
+            defects: f.defects.length, transfers: f.transfers.length,
+          },
+        };
+      });
+      const mapped = features.filter((f) => Boolean(f.properties.mapped)).length;
+      download('facility-room-index.geojson', JSON.stringify({
+        type: 'FeatureCollection',
+        site: CANON.tenant,
+        source: 'server /api/facilities',
+        generatedAt: new Date().toISOString(),
+        note: `${mapped} mapped, ${features.length - mapped} unmapped (geometry: null).`,
+        features,
+      }, null, 2));
+      push(true, 'Spatial exported', `facility-room-index.geojson · ${features.length} server facilities · ${mapped} mapped, ${features.length - mapped} unmapped.`);
+      return;
+    }
+    // Offline fallback: ROOMS carry no lat/lon — no GIS layer is pretended.
     const features = ROOMS.map((r) => ({
       type: 'Feature',
       geometry: null,
@@ -92,7 +164,7 @@ export function FacilityHub() {
       },
     }));
     download('basement-l2-spatial.geojson', JSON.stringify({ type: 'FeatureCollection', features }, null, 2));
-    push(true, 'Spatial exported', 'basement-l2-spatial.geojson · 4 rooms · geometries unseeded (properties + grid refs only).');
+    push(true, 'Spatial exported', 'basement-l2-spatial.geojson · 4 rooms · geometries unseeded (properties + grid refs only) · local staging — not persisted.');
   };
 
   const savePolygon = () => {
@@ -102,38 +174,90 @@ export function FacilityHub() {
     if (!Number.isFinite(a) || a <= 0 || !Number.isFinite(c) || c <= 0) return;
     setPolyOpen(false);
     setPolyTouched(false);
-    push(true, 'Polygon updated', `Room #B-204 · ${a} m² · clearance ${c}m · BIM overlay re-synced (local).`);
+    push(true, 'Polygon updated', `Room #B-204 · ${a} m² · clearance ${c}m · local staging — not persisted.`);
   };
 
   const dispatchAudit = () => {
     const n = audits + 1;
     setAudits(n);
-    push(true, 'Room audit logged', `AUD-2026-0${140 + n} · Room #B-204 · TMPL-HVAC-CHL-02 · crew notify logged (no pager) · local simulation.`);
+    push(true, 'Room audit logged', `AUD-2026-0${140 + n} (local counter — not persisted) · Room #B-204 · TMPL-HVAC-CHL-02 · crew notify logged (no pager) · local simulation.`);
   };
 
-  const addRoom = () => {
+  const addRoom = async () => {
     setAddTouched(true);
-    if (!addName.trim()) return;
-    setExtraRooms((r) => [...r, addName.trim()]);
+    const name = addName.trim();
+    if (!name) return;
+    if (facLive) {
+      setPosting(true);
+      try {
+        const f = await apiFetch<FacilityRow>(FAC_ROUTE, { method: 'POST', body: JSON.stringify({ name }) });
+        setFacilities((list) => [f, ...list]);
+        setAddOpen(false);
+        setAddName('');
+        setAddTouched(false);
+        push(true, 'Facility created — server', `${f.code} · ${f.name} · id ${f.id} · server-persisted (FACILITY_CREATE).`);
+      } catch (e) {
+        push(false, 'Facility create failed', errMsg(e));
+      } finally {
+        setPosting(false);
+      }
+      return;
+    }
+    setExtraRooms((r) => [...r, name]);
     setAddOpen(false);
     setAddName('');
     setAddTouched(false);
-    push(true, 'Sub-location staged', `${addName.trim()} · pending GIS survey + BIM binding.`);
+    push(true, 'Sub-location staged', `${name} · pending GIS survey + BIM binding · local staging — not persisted.`);
   };
 
-  const logDefect = () => {
+  const logDefect = async () => {
     setDefTouched(true);
-    if (defText.trim().length < 10) return;
-    setDefects((d) => [...d, defText.trim()]);
+    const text = defText.trim();
+    if (text.length < 10) return;
+    if (facLive && canonFacility) {
+      setPosting(true);
+      try {
+        const f = await apiFetch<FacilityRow>(`${FAC_ROUTE}/${encodeURIComponent(CANON_ROOM_CODE)}`, {
+          method: 'PATCH', body: JSON.stringify({ defect: text }),
+        });
+        setFacilities((list) => list.map((x) => (x.code === f.code ? f : x)));
+        setDefOpen(false);
+        setDefText('');
+        setDefTouched(false);
+        push(true, 'Defect persisted — server', `${f.code} · open server defects: ${f.defects.length} · FACILITY_UPDATE audited.`);
+      } catch (e) {
+        push(false, 'Log defect failed', errMsg(e));
+      } finally {
+        setPosting(false);
+      }
+      return;
+    }
+    setDefects((d) => [...d, text]);
     setDefOpen(false);
     setDefText('');
     setDefTouched(false);
-    push(true, 'Defect logged', `Room #B-204 · queued to triage · ${2 + defects.length + 1} open items.`);
+    push(true, 'Defect staged', `Room #B-204 · queued to triage · local staging — not persisted.`);
   };
 
-  const reassign = () => {
+  const reassign = async () => {
+    if (facLive && canonFacility) {
+      setPosting(true);
+      try {
+        const f = await apiFetch<FacilityRow>(`${FAC_ROUTE}/${encodeURIComponent(CANON_ROOM_CODE)}`, {
+          method: 'PATCH', body: JSON.stringify({ transfer: { assetCode: reAsset, toCode: reDest } }),
+        });
+        setFacilities((list) => list.map((x) => (x.code === f.code ? f : x)));
+        setReOpen(false);
+        push(true, 'Transfer staged — server', `${f.code} → ${reDest} · ${f.transfers.length} request(s) on record · ledger move not executed.`);
+      } catch (e) {
+        push(false, 'Reassign failed', errMsg(e));
+      } finally {
+        setPosting(false);
+      }
+      return;
+    }
     setReOpen(false);
-    push(true, 'Transfer staged', `${reAsset} → ${reDest} · pending receiving confirm + ledger move.`);
+    push(true, 'Transfer staged', `${reAsset} → ${reDest} · pending receiving confirm + ledger move · local staging — not persisted.`);
   };
 
   const selIsB204 = sel.c === 0 && sel.b === 1 && sel.f === 2 && sel.r === 1;
@@ -159,6 +283,13 @@ export function FacilityHub() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="apex-id text-muted">Spatial sync: local demo · no broker</p>
+            {facLive === null ? (
+              <p className="apex-id text-muted">Directory: connecting…</p>
+            ) : facLive ? (
+              <p className="apex-id text-pass">Directory: live · server-fed · {facilities.length} facilities</p>
+            ) : (
+              <p className="apex-id text-warn">Directory: demo offline — server unreachable · staging stays local</p>
+            )}
             <h1 id="fac-h" className="text-2xl font-semibold tracking-tight">Facility Locations &amp; Spatial Topology Hub</h1>
             <p className="text-[13px] text-muted">Multi-tier geospatial asset hierarchy, BIM node coordination, and live mechanical room occupancy.</p>
           </div>
@@ -173,13 +304,13 @@ export function FacilityHub() {
               </DialogTrigger>
               <DialogContent aria-labelledby="add-h">
                 <DialogTitle id="add-h">Add Sub-Location / Room</DialogTitle>
-                <DialogDescription>Stages a room node under Basement L2 — GIS survey + BIM binding follow.</DialogDescription>
+                <DialogDescription>Persists a server facility row when the API is live; otherwise stages locally (toast says which). The tree keeps local entries as STAGED.</DialogDescription>
                 <label className="text-xs font-semibold" htmlFor="add-name">Room label (required)</label>
                 <Input id="add-name" value={addName} onChange={(e) => setAddName(e.target.value)} invalid={addTouched && !addName.trim()} placeholder="e.g. #B-216 RO Water Plant" />
                 {addTouched && !addName.trim() && <p className="text-[11px] font-semibold text-fail">A room label is required.</p>}
                 <div className="flex justify-end gap-2">
                   <Button variant="secondary" onClick={() => setAddOpen(false)}>Cancel</Button>
-                  <Button onClick={addRoom}>Stage Room</Button>
+                  <Button onClick={() => void addRoom()} disabled={posting}>{posting ? 'Posting…' : facLive ? 'Create (server)' : 'Stage Room'}</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -254,9 +385,39 @@ export function FacilityHub() {
             )}
             <div className="flex items-center justify-between gap-2 pt-1">
               <p className="text-xs text-muted">GIS calibrated {calibrated}</p>
-              <Button variant="secondary" onClick={() => { setCalibrated('14 Sep 2026 14:05 WIB'); push(true, 'GIS recalibrated', '12 Sites · 34 Bldgs · 1,420 Rooms · drift 0.00m (local simulation).'); }}>
+              <Button variant="secondary" onClick={() => { setCalibrated('14 Sep 2026 14:05 WIB'); push(true, 'GIS recalibrate — local demo', 'No GIS write · seed counts 12 Sites / 34 Bldgs / 1,420 Rooms are static copy, not measured data.'); }}>
                 <RefreshCw size={14} /> Recalibrate GIS
               </Button>
+            </div>
+            {/* GAP-20/F15: real server-persisted facility directory (flat — no
+                fabricated hierarchy claimed here). */}
+            <div className="rounded border border-border-subtle bg-card p-3 flex flex-col gap-1.5" aria-labelledby="fac-dir-h">
+              <div className="flex items-center justify-between gap-2">
+                <h3 id="fac-dir-h" className="text-[13px] font-bold">Server locations</h3>
+                {facLive ? <Badge variant="pass">LIVE · SERVER</Badge> : <Badge variant="hold">OFFLINE</Badge>}
+              </div>
+              {facLive === null && <p className="text-xs text-muted">Loading facilities…</p>}
+              {facLive === false && <p className="text-xs text-muted">API unreachable — rows below are absent; staging actions stay local and unlabeled above.</p>}
+              {facLive === true && facilities.length === 0 && (
+                <p className="text-xs text-muted">No facilities persisted yet — create one via <strong>Add Sub-Location / Room</strong>.</p>
+              )}
+              {facLive === true && facilities.length > 0 && (
+                <ul className="flex flex-col gap-1 text-[13px]">
+                  {facilities.map((f) => (
+                    <li key={f.code} className="rounded border border-border-subtle bg-surface px-2 py-1.5 flex flex-col gap-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="apex-id font-bold">{f.code}</span>
+                        {f.mapped ? <Badge variant="info">GIS MAPPED</Badge> : <Badge variant="hold">UNMAPPED</Badge>}
+                      </div>
+                      <span>{f.name}</span>
+                      <span className="text-xs text-muted">
+                        <span className="apex-id">id {f.id.slice(0, 8)}…</span> · created {new Date(f.createdAt).toISOString().replace('T', ' ').slice(0, 16)} UTC
+                        {' · '}defects {f.defects.length} · transfers {f.transfers.length}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 
@@ -350,7 +511,7 @@ export function FacilityHub() {
                         {label}
                       </button>
                     ))}
-                    <span className="apex-id text-xs text-pass font-bold ml-auto self-center">BIM REVIT 2026.2 MODEL MATCHED</span>
+                    <span className="apex-id text-xs text-muted font-bold ml-auto self-center">BIM reference (design only — not connected)</span>
                   </div>
                   <svg viewBox="0 0 720 260" role="img" aria-label="Room B-204 equipment plan" className="w-full rounded border border-border-subtle bg-surface">
                     <rect x="8" y="8" width="704" height="244" fill="none" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" />
@@ -449,7 +610,7 @@ export function FacilityHub() {
                   </select>
                   <div className="flex justify-end gap-2">
                     <Button variant="secondary" onClick={() => setReOpen(false)}>Cancel</Button>
-                    <Button onClick={reassign}>Stage Transfer</Button>
+                    <Button onClick={() => void reassign()} disabled={posting}>{posting ? 'Posting…' : 'Stage Transfer'}</Button>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -502,7 +663,7 @@ export function FacilityHub() {
                     {defTouched && defText.trim().length < 10 && <p className="text-[11px] font-semibold text-fail">Min 10 chars — {10 - defText.trim().length} more needed.</p>}
                     <div className="flex justify-end gap-2">
                       <Button variant="secondary" onClick={() => setDefOpen(false)}>Cancel</Button>
-                      <Button onClick={logDefect}>Queue Defect</Button>
+                      <Button onClick={() => void logDefect()} disabled={posting}>{posting ? 'Posting…' : 'Queue Defect'}</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -526,9 +687,15 @@ export function FacilityHub() {
                   <p className="font-semibold">Semi-Annual Calibration of Pressure Relief Valve</p>
                   <p className="text-muted text-xs">Assigned: Shift Delta Team · Scheduled</p>
                 </li>
+                {facLive && canonFacility && canonFacility.defects.map((d, i) => (
+                  <li key={`srv-${i}`} className="rounded border border-cobalt-deep bg-card p-3 text-[13px]">
+                    <Badge variant="info">SERVER</Badge> <span className="font-medium">{d.text}</span>
+                    <span className="apex-id text-muted text-xs"> · {d.by} · {d.at.replace('T', ' ').slice(0, 16)} UTC</span>
+                  </li>
+                ))}
                 {defects.map((d, i) => (
                   <li key={i} className="rounded border border-warn bg-card p-3 text-[13px]">
-                    <Badge variant="warn">LOGGED</Badge> <span className="font-medium">{d}</span>
+                    <Badge variant="warn">LOGGED — LOCAL STAGING</Badge> <span className="font-medium">{d}</span>
                   </li>
                 ))}
               </ul>

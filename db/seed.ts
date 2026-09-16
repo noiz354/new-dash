@@ -12,7 +12,7 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from './client';
 import {
-  assets, findings, inspections, organizations, parts, purchaseOrders,
+  assets, facilities, findings, inspections, organizations, parts, purchaseOrders,
   sequences, serviceRequests, users, vendors, workOrderEvents, workOrders, woTasks,
 } from './schema';
 import { CANON } from '../lib/canon';
@@ -168,6 +168,14 @@ export async function seedAll(db: Db): Promise<void> {
     { organizationId: ORG, slug: 'johnson-controls-tyco-fire', name: 'Johnson Controls / Tyco Fire', tier: 'TIER-2', msaNumber: 'MSA-2023-JCI-07', msaExpiresOn: '2026-06-30', onTimePct: 94, scope: 'FM-200 Clean Agent & VESDA Aspirating', contact: 'Sarah Al-Mansoor (internal liaison)', phone: '+62-21-2995-5800' },
     { organizationId: ORG, slug: 'grainger-industrial-supply', name: 'Grainger Industrial Supply', tier: 'TIER-3', msaNumber: 'MSA-CATALOG-BLANKET', msaExpiresOn: null, onTimePct: 94, scope: 'MRO Hardware, Fasteners & Consumables', contact: 'B2B Corporate Account Desk', phone: '+62-21-5082-1111' },
     { organizationId: ORG, slug: 'grainger-industrial-supply', name: 'Grainger Industrial Supply', tier: 'TIER-3', msaNumber: null, msaExpiresOn: null, onTimePct: 96 },
+  ]).onConflictDoNothing();
+
+  // ---------------------------------------------- facilities (GAP-20/F15) --
+  // Canon facility row aligns with FacilityHub's seeded node (Room #B-204);
+  // geojson intentionally NULL (facility unmapped — UI says so honestly).
+  await db.insert(facilities).values([
+    { organizationId: ORG, code: 'B2-MECH-204', name: 'Centrifugal Chiller Plant Room #B-204', geojson: null, meta: JSON.stringify({ defects: [], transfers: [] }) },
+    { organizationId: DECOY_ORG, code: 'DOCK-QA-01', name: 'Decoy Dock QA Staging Room', geojson: null, meta: JSON.stringify({ defects: [], transfers: [] }) },
   ]).onConflictDoNothing();
 
   // ---------------------------------------------------- purchase orders --

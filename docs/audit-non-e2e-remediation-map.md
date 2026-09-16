@@ -186,7 +186,54 @@ onboard via UI 5→6 + dispatch WO-2026-0911 nyata.
 MISLEADING SUCCESS. Break: handler→backend. Persist: NOT PERSISTED. Tests:
 NONE. **Decision: HONEST PLACEHOLDER sekarang + NEED PRODUCT DECISION**
 (facilities backend vs hapus klaim). Target: FRONTEND-honest. Reason: klaim
-realtime tanpa broker = harus turun dulu. P2/S/MODULE.
+realtime tanpa broker = harus turun dulu. P2/S/MODULE. **[CLOSED GAP-16
+(F15=TASK 5) 2026-09-16 — backend dibangun 2 fase: tabel `facilities`
+(org+code PK, code turunan nama di server, geojson nullable, meta JSON
+staged defects/transfers); `facility-service.ts` (zod-validated list/get/
+create/update, audit FACILITY_CREATE/UPDATE transaksional, idempotency scopes
+facility.create/update, 404 FACILITY_NOT_FOUND + 409 FACILITY_CODE_EXISTS +
+400 empty patch); routes GET/POST /api/facilities + GET/PATCH
+/api/facilities/[id] dengan izin baru facilities.read/manage (read untuk semua
+role; manage = Facility Director / Engineering Lead / Enterprise Admin —
+pola vendors); FacilityHub di-wire: Server locations panel LIVE, POST add,
+PATCH defect/transfer, export GeoJSON dari rows server (null geometry →
+unmapped jujur), fallback offline berlabel `local staging — not persisted`/API
+unreachable, ID server di-noted di toast; test 3 integration + 2 guard
+truthfulness; runtime isolasi :3158 (dev :3157 PGlite pra-migrasi): create
+201·reload persist·PATCH meta 200·{}→400·409 dup·404 unknown·401 unauth·
+audit 2C+2U·/facilities 200 tanpa MODEL MATCHED/10.14.0.8 · tests 157/157 ·
+tsc bersih]**
+
+> **CLOSED GAP-16 TASK 5 (2026-09-16)** — keputusan produk: **bangun backend
+> facilities**, dua fase dalam satu task (spec `docs/remediation-gap-20-spec.md`;
+> r@a: PM/Eng Lead). FASE 1 copy honest: Recalibrate → "local demo — no GIS
+> write"; "BIM … MODEL MATCHED" → "BIM reference (design only — not connected)";
+> dispatchAudit AUD id label "local counter — not persisted"; prefix/labels
+> nomor staging tetap. FASE 2 backend nyata: tabel `facilities` (migrasi 0005;
+> PK org+code, `id` uuid opaque, `code` turunan slug UPPER dari nama TANPA
+> nomor canon, `geojson` TEXT NULL = unmapped, `meta` JSON staged
+> defective/transfer — PILIHAN: defect+transfer di-update facility/meta, BUKAN
+> tabel defect kecil) + seed idempoten (canon `B2-MECH-204` + decoy) +
+> `lib/services/facility-service.ts` (list/get/create/update; zod-validasi di
+> service; audit `FACILITY_CREATE`/`FACILITY_UPDATE` transaksional; idempoten
+> `facility.create`/`facility.update`; 409 `FACILITY_CODE_EXISTS`; 404
+> `FACILITY_NOT_FOUND`; patch kosong 400) + routes `app/api/facilities` +
+> `[id]` (GET/POST/PATCH; izin facilities.read/manage di RBAC — read untuk
+> semua, manage = peran vendors.manage) + UI `FacilityHub`: daftar lokasi
+> "Server locations" LIVE + provenance badge + wire addSub-location
+> (POST)/reassign (PATCH transfer)/logDefect (PATCH defect)/exportGeo (fitur
+> dari rows server, mapped/unmapped jujur) dengan fallback offline ber-label
+> `local staging — not persisted` + toast sukses memuat ID server; tree
+> struktural tetap demo ber-label. Test: 3 integrasi service-level (create
+> +replay+409+guard decoy+audit CREATE; update defect/transfer idempotent-no-
+> double-append+rename+map/unmap+400+404+audit UPDATE; RBAC) + 2 guard
+> truthfulness (fiction absent + backend honest markers) → 157/157; tsc → 0.
+> Runtime diverifikasi di instance dev ISOLASI :3158 (PGlite singleton dev
+> utama :3157 pra-migrasi — rute baru menunggu restart dev user; route lama
+> tetap 200): GET seed 1 → POST 201 → GET 2 → PATCH defect+transfer 200 →
+> PATCH kosong 400 → POST dup-nama 409 → GET unknown 404 → unauth 401 →
+> FACILITY_CREATE×2+UPDATE×2 di audit → /facilities 200 dengan copy honest.
+> [ASUMSI OTOMATIS-USER-ACTION: restart dev :3157 untuk memuat kode rute baru]
 
 **F16 — Field queue/run checklist.** Current: FRONTEND-ONLY + fake
 ("Submitted — WO auto-dispatched" tanpa WO, "audit-chained" tanpa write, PIN
@@ -372,7 +419,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 12 | Inventory | Transfer/adjust refs | REMOVED [CLOSED GAP-16-T2] | REFS DIHAPUS (was MISSING ROUTE) | NEED DECISION (decided: remove) | no-refs honest | P3 | S | LOCAL |
 | 13 | Purchasing | PO/GRN/authorize | BROKEN | FAKE SUCCESS + NOT WIRED | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 14 | Vendors | Onboard/amend/MSA | DEAD-END | BACKEND MISSING | MUST INTEGRATE | E2E | P2 | M | MODULE |
-| 15 | Facilities | Hub actions | FRONTEND-ONLY | BACKEND MISSING + fake | PLACEHOLDER+DECISION | FE-honest | P2 | S | MODULE |
+| 15 | Facilities | Hub actions | CLOSED [GAP-16-T5] | RESOLVED (backend built, 2 fase) | DECIDED: bangun backend facilities | END-TO-END | P2 | S | MODULE |
 | 16 | Field | Queue/run checklist | END-TO-END [CLOSED GAP-11] | WIRED (was FAKE+NOT WIRED) | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 17 | Field | Outbox auto-flush | PARTIAL | MISSING COVERAGE | COMPLETE PARTIAL ⭐ | E2E | P1 | S | MODULE |
 | 18 | Field | Runs Fase-2 cards | DEAD-END | MISSING UI honesty | HONEST PLACEHOLDER ⭐ | honest | P3 | S | LOCAL |

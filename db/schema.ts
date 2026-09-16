@@ -315,6 +315,32 @@ export const vendors = pgTable(
   (t) => [primaryKey({ columns: [t.organizationId, t.slug] })],
 );
 
+// ------------------------------------------------------------ facilities (GAP-20/F15) --
+
+/** Facility locations (rooms/sub-locations). Flat rows keyed by an org-unique
+ *  code derived server-side from the name (mirror vendor slug) — NO canon
+ *  numbering (product decision). `geojson` stays null until a facility is
+ *  mapped ("unmapped"); `meta` JSON holds server-staged entries the UI wires:
+ *  { defects: [{ text, at, by }], transfers: [{ assetCode, toCode, at, by }] }
+ *  (chosen over a separate defect table — see docs/remediation-gap-20-spec.md). */
+export const facilities = pgTable(
+  'facilities',
+  {
+    id: uuid('id').notNull().defaultRandom(), // opaque server id
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(), // org-unique: B2-MECH-204
+    name: text('name').notNull(),
+    geojson: text('geojson'), // raw GeoJSON geometry/feature JSON; null = unmapped
+    meta: text('meta'), // JSON blob: staged defects/transfers (see comment above)
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.code] }),
+    uniqueIndex('facilities_id_uq').on(t.id),
+  ],
+);
+
 export const PO_STATUSES = [
   'DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'DISPATCHED', 'PARTIAL', 'RECEIVED', 'REJECTED', 'CLOSED',
 ] as const;

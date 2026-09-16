@@ -37,7 +37,7 @@
 | Purchasing | PO list/detail/authorize/GRN | Dialog simulasi, nol fetch BYPASSED | po.list/create/receive ADA tak dipanggil | po-service + queue FOUND | DB (tak tersentuh) | Toast EDI sukses | BROKEN |
 | Purchasing | Print PO | Template statis | NOT FOUND | NOT FOUND | — | Halaman print | FRONTEND-ONLY |
 | Vendors | Onboard/amend/MSA/dispatch | Dialog lokal BYPASSED | Rute TAK ADA | NOT FOUND | — | Toast/sukses lokal | DEAD-END |
-| Facilities | Hub actions (reassign/defect/SLA) | Nol fetch, state lokal | Rute TAK ADA | NOT FOUND | — | UI interaktif lokal | FRONTEND-ONLY |
+| Facilities | Directory + hub actions (add/reassign/defect/export) | apiFetch → GET/POST /api/facilities, PATCH …/[code] [GAP-16-T5] | Routes FOUND + facilities-service FOUND | `facilities` table FOUND (migrasi 0005) | — | Wire + fallback offline ber-label | END-TO-END wired |
 | Field | Audit queue + run checklist | State lokal + INITIAL_* | NOT FOUND | NOT FOUND | — | Checklist lokal | FRONTEND-ONLY |
 | Field | Finding create (online/offline) | FindingCapture POST FOUND | POST /api/findings PERSISTED (fix GAP-1) | createFinding + canon FND seq + audit FOUND | DB findings FOUND | Toast + SYNCED valid | END-TO-END |
 | Field | Finding convert → WO | [CLOSED GAP-4] POST convert + Idempotency-Key, badge WO server | finding.convert DIPANGGIL | convert FOUND | WO + FINDING_CONVERT_WO | toast WO server | END-TO-END |
@@ -102,7 +102,7 @@
 
 ## 3. SEMUA FRONTEND TANPA BACKEND INTEGRATION
 
-SSO · jobs page · reports hub · PM hub · shifts plan · profile sessions [CLOSED GAP-5 — END-TO-END] · facilities hub · vendors flows · PO dialogs · print pages (WO/PO/badge/permit) · field audit queue/run (kecuali evidence upload) · settings hub · inventory ledger UI · dashboard? TIDAK (dashboard server-fed, END-TO-END).
+SSO · jobs page · reports hub · PM hub · shifts plan · profile sessions [CLOSED GAP-5 — END-TO-END] · facilities hub [CLOSED GAP-16-T5 — END-TO-END] · vendors flows · PO dialogs · print pages (WO/PO/badge/permit) · field audit queue/run (kecuali evidence upload) · settings hub · inventory ledger UI · dashboard? TIDAK (dashboard server-fed, END-TO-END).
 
 ## 4. SEMUA BACKEND TANPA FRONTEND CONSUMER
 
