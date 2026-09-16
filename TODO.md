@@ -78,6 +78,15 @@
 - [x] Tambah reusable print templates untuk Work Permit, Badge/QR, dan domain print artifacts di luar PO print.
 - [x] Pertimbangkan dev-only UI state gallery route dari `ui_state_variants_patterns` bila dibutuhkan untuk QA komponen.
 
+## Truth Map FE↔BE — backlog integrasi (detail: `docs/audit-fe-be-truth-map.md`, spec: `docs/audit-mocked-deadend-unintegrated-spec.md`)
+
+- [ ] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1)
+- [ ] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (kini 201 tanpa simpan; TASK-25 FAIL) (G2)
+- [ ] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (G3)
+- [ ] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5)
+- [ ] P1: agregat server untuk KPI inventory atau label scope jujur (ganti konstanta 4,218/1,840/`MOV_TOTAL`) (G6)
+- [ ] P2: bersihkan klaim Live/WS-PUSH/SYNCED-hash, EVT-fallback, seed-tanpa-badge, perm `assets.read`→tulis, rute transfers/adjustments/runs, export-scope label (G7–G12)
+
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
 ## Fase A — Tutup Kanon ✅ Selesai (2026-09-13)

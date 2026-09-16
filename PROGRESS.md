@@ -156,3 +156,8 @@
 - Sorotan DONE baru: routing WO/PO/field/PM/reports/SR (rute ada), wo/sr/audit/notif/inspections/pm/po/org-users/reports/search/queue/telemetry/auth ops (backend ada), anti-artifak bulk (ref batch 1-3), Retry outbox.
 - Sorotan PROMOTE terbesar: backend vendors/assets/settings/locations/live-queue/dispatch/read-all-preferences/webhook-vendor/wo-draft/authorize (TAK ADA backend); wire-up UI→endpoint nyata (`inventory.mutate`, `po.receive`, reports, parts); rute transfers/adjustments/runs; PIN supervisor nyata.
 - USANG: usulan `verify-root` (dihapus by design) + konvensi `/api/v1/*`. (U) = 4 (wiring reports/inventory, auto-flush, impersonate, PR-vs-PO naming).
+
+### Audit FE↔BE truth map (2026-09-16)
+- Spec (`docs/audit-mocked-deadend-unintegrated-spec.md`, §1–70) + laporan (`docs/audit-fe-be-truth-map.md`, 228 baris, §56–§70).
+- Temuan: P0 = Deactivate palsu (G1) + Finding palsu (G2); P1 = mutasi inventory lokal + PIN 2468 (G3), purchasing lokal (G4), jobs tanpa fetch (G5), KPI fiktif (G6); P2 = klaim Live/WS-PUSH (G7), EVT-fallback (G8), rute hilang (G9), seed-tanpa-badge (G10), perm baca-untuk-tulis (G11), export parsial (G12).
+- End-to-end nyata: auth/RBAC/logout, WO/SR+audit, verify-chain, windowing, PWA/SW/offline, SSE+fallback, push-subscribe, tenant isolation. Backlog masuk TODO.md §Truth Map FE↔BE.
