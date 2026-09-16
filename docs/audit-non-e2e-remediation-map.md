@@ -44,6 +44,9 @@ defaults bisa divergen). Break: request revalidation. Canon: DB users.
 Persist: PERSISTED. Contract: MATCH. Tests: PRESENT. **Decision: COMPLETE
 PARTIAL** (`QUICK CLOSE`). Target: END-TO-END. Reason: 1 baris `refresh()`
 setelah POST. P1/S/LOCAL.
+**[CLOSED GAP-12 2026-09-16]** — OrgHub provision kini GET ulang
+`/api/organization/users` pasca-POST (RFID line ditempel ulang, local-display-only);
+refetch-gagal → fallback append + toast jujur. Runtime MCP: roster 6→7 + RFID-1212.
 
 **F4 — Clone-policy/deploy/matrix.** Current: FRONTEND-ONLY. Gap: no
 roles/policy table, `deploy` toast "simulated" (jujur). Break: PRODUCT
@@ -58,6 +61,12 @@ caller. Canon: DB wo_tasks. Persist: PERSISTED (unused). Contract: MATCH
 (uncalled). Tests: NONE. **Decision: MUST INTEGRATE** (`QUICK CLOSE` — wire
 WO detail checklist ke GET/POST tasks). Target: END-TO-END. Reason:
 capability DB-driven nganggur di domain inti. P1/S/MODULE.
+**[CLOSED GAP-12 2026-09-16]** — seed 7 `wo_tasks` canon (DONE×4/IN_PROGRESS/PENDING/LOCKED,
+photo-gate di T01+T04); WO detail render `WoChecklist` live (ganti `<ol>` statis +
+header "4/7" hardcode → hitung server); advance via POST + pesan 422 jujur
+(SEQUENCE_VIOLATION/PHOTO_REQUIRED); 1 test service-level (sequence + photo + audit);
+130/130; runtime MCP: advance 05→DONE + unlock 06 + Start 06→IN_PROGRESS tanpa crash,
+console bersih. Bug envelope `updated.data` tertangkap runtime → diperbaiki.
 
 **F6 — Evidence serve.** Current: PARTIAL. Nyata: POST upload → magic-byte
 +sha256 → writeFile `.data/evidence` + row DB. Belum: serving (header route:
@@ -94,6 +103,11 @@ constants). Gap: FRONTEND NOT WIRED — `GET /api/reports/aggregates`
 component→API. Canon: seharusnya aggregates. Persist: n/a (derive). Tests:
 NONE. **Decision: MUST INTEGRATE** (`QUICK CLOSE`). Target: END-TO-END.
 Reason: agregat server nganggur; angka tampil tanpa sumber. P1/S/MODULE.
+**[CLOSED GAP-12 2026-09-16]** — `runQuery` kini GET `/api/reports/aggregates` +
+tampilkan hitungan nyata + latensi terukur (hanya field count; 3 field derivasi
+fiktif endpoint tak ditampilkan); gagal → banner jujur tanpa angka; builder SQL
+diberi label local-preview; bug envelope `res.data` tertangkap runtime → diperbaiki.
+Runtime MCP: "Live aggregates in 29ms · WO 8 · assets 5 · SKUs 5 · SR 5".
 
 **F11 — Export CSV.** Current: PARTIAL (local rows only; toast provenance
 jujur; label "CSV/XLS" tapi hanya CSV). Gap: no server export + label
@@ -155,6 +169,9 @@ IDB apex-outbox. Persist: PERSISTED (IDB+server). Tests: NONE. **Decision:
 COMPLETE PARTIAL** (`QUICK CLOSE`: flush-on-online di FieldShell + daftarkan
 produser WO-evidence). Target: END-TO-END. Reason: S-effort, reliability core
 offline. P1/S/MODULE.
+**[CLOSED GAP-12 2026-09-16]** — FieldShell handler `online` kini
+`flushOutbox({})` silent + refresh badge (toast tetap milik Sync tab);
+verified-by-construction (import langsung + try/catch; tanpa test baru).
 
 **F18 — Runs INS-0415/0418 TODO Fase 2.** Current: DEAD-END (200 →
 EmptyState, tanpa affordance di kartu). Gap: MISSING UI honesty. Break:

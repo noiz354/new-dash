@@ -7,7 +7,7 @@ import { ClipboardList, CloudUpload, ListChecks, TriangleAlert } from 'lucide-re
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
 import { subscribeAuthSignals } from '@/lib/auth/broadcast';
-import { listOutbox, subscribeOutbox } from '@/lib/offline/outbox';
+import { listOutbox, flushOutbox, subscribeOutbox } from '@/lib/offline/outbox';
 
 const RUN_HREF = `/field/audits/${CANON.inspection}/run`;
 
@@ -25,13 +25,23 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
       const items = await listOutbox();
       setPending(items.filter((i) => i.status !== 'SYNCED' && i.status !== 'EXPIRED').length);
     };
+    // GAP-12/F17: flush queued items when connectivity returns (silent — the
+    // Sync tab owns the "Back online" toast; the badge updates via subscribe).
+    const onOnline = async () => {
+      try {
+        await flushOutbox({});
+      } catch {
+        // Replay failures stay queued with FAILED status — badge still refreshes.
+      }
+      await refresh();
+    };
     void refresh();
     const unsub = subscribeOutbox(() => void refresh());
-    window.addEventListener('online', refresh);
+    window.addEventListener('online', onOnline);
     window.addEventListener('offline', refresh);
     return () => {
       unsub();
-      window.removeEventListener('online', refresh);
+      window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', refresh);
     };
   }, []);

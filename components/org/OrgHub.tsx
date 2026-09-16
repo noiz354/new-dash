@@ -250,13 +250,31 @@ export function OrgHub() {
           title: `${prov.dept} · ${prov.role}`,
         },
       });
-      const np = { ...toPerson(created), line: `${prov.rfid.trim()} · ${created.email}` };
-      setPeople((p) => [...p, np]);
-      setFocus(np.focus);
+      // GAP-12/F3: revalidate the roster from the server instead of trusting the
+      // local append; re-attach the RFID line (local display only) to the new row.
+      const rfidLine = `${prov.rfid.trim()} · ${created.email}`;
+      const createdEmail = created.email;
+      try {
+        const fresh = await apiFetch<DirectoryUser[]>('/api/organization/users');
+        const people = fresh.map((u) =>
+          u.email === createdEmail ? { ...toPerson(u), line: rfidLine } : toPerson(u),
+        );
+        setPeople(people);
+        setFocus(people.find((p) => p.line === rfidLine)?.focus ?? toPerson(created).focus);
+      } catch {
+        const np = { ...toPerson(created), line: rfidLine };
+        setPeople((p) => [...p, np]);
+        setFocus(np.focus);
+        push(true, 'User provisioned', `${np.name} · directory record created, but roster refresh failed — showing local copy (RFID badge is local display only).`);
+        setProvOpen(false);
+        setProv({ name: '', email: '', role: 'Engineering Lead', dept: DEPTS[0], rfid: '' });
+        setProvTouched(false);
+        return;
+      }
       setProvOpen(false);
       setProv({ name: '', email: '', role: 'Engineering Lead', dept: DEPTS[0], rfid: '' });
       setProvTouched(false);
-      push(true, 'User provisioned', `${np.name} · ${np.role} · directory record created (RFID badge is local display only).`);
+      push(true, 'User provisioned', `${prov.name.trim()} · ${prov.role} · roster revalidated from the directory (RFID badge is local display only).`);
     } catch (e) {
       push(false, 'Provision failed', `${failMsg(e)} — no directory record created.`);
     } finally {

@@ -294,3 +294,11 @@ Frontend: AuditQueue live GET (mapping status→kartu; demo fallback AUDITS_DEMO
 Tests: 3 service-level baru (create+canon+audit+tenant; dispatch+replay-idempoten+404/409+progress-preserved; progress COMPLETED+clamp+audit); npm test 129/129; tsc exit 0.
 Runtime proof (MCP browser dev :3145, m.vance): /field/audits 2 baris live + badge sync 0 nyata → POST create INS-2026-1093 SCHEDULED → force-dispatch 200 IN_PROGRESS + audit-trail diff SCHEDULED→IN_PROGRESS+reason → 404 nomor asing jujur → run canon submit via UI → COMPLETED server-confirmed + reload persists → dispatch completed → 409 ALREADY_COMPLETED → /field-inspections hub live (2 baris + COMPLETED badge); console 0 JS error (1×409 = artefak probe negatif sendiri). Artefak dev: INS-2026-1093 SCHEDULED→IN_PROGRESS + INS-2026-0412 COMPLETED di .data/pg (scratch).
 NEXT GAP: #12 (4 quick-close: F5 WO tasks + F10 inventory KPI + F3 provision-refetch + F17 outbox-flush).
+
+## GAP CLOSED #12 — 4 quick-close F5/F10/F3/F17 (2026-09-16)
+- F5 WO tasks BACKEND-ONLY→E2E: seed 7 wo_tasks canon (WOSEAL-T01..T07, DONE×4/IN_PROGRESS/PENDING/LOCKED, photo T01+T04); `WoChecklist.tsx` baru ganti `<ol>` statis + header 4/7 hardcode; advance POST + 422 jujur; 1 test (sequence + photo-gate + audit); runtime MCP advance 05→DONE→unlock 06→Start 06 IN_PROGRESS.
+- F10 reports runQuery→GET aggregates nyata (WO 8/assets 5/SKUs 5/SR 5/valuasi $9019.00, 29ms) + banner-gagal-jujur; builder SQL dilabeli local-preview.
+- F3 OrgHub provision→GET refetch + RFID re-attach; runtime roster 6→7 + RFID-1212.
+- F17 FieldShell online→flushOutbox silent + refresh (verified-by-construction).
+- 2 bug envelope apiFetch (`updated.data`/`res.data` — apiFetch sudah unwrap) TERTANGKAP RUNTIME via error boundary + alert jujur → diperbaiki; pelajaran: pola `apiFetch<{rows…}>` yang benar = T adalah bentuk data, bukan envelope.
+- npm test 130/130, tsc exit 0, console 0 error. Artefak dev scratch: WO-2026-0894 tasks 05 DONE/06 IN_PROGRESS, user gap12.probe@apexops.io.

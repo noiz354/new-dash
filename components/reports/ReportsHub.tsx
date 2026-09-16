@@ -9,6 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { downloadText } from '@/lib/download';
+import { apiFetch } from '@/lib/api/client';
+
+interface Aggregates {
+  workOrders: { total: number; open: number; completed: number };
+  assets: { totalRegistered: number };
+  inventory: { totalSkus: number; lowStockSkus: number; valuationUsd: string };
+  serviceRequests: { total: number; converted: number };
+}
 
 const MONTHS = [
   { m: 'JAN', v: 292 }, { m: 'FEB', v: 298 }, { m: 'MAR', v: 275 },
@@ -86,6 +94,9 @@ export function ReportsHub() {
   const [mets, setMets] = useState<string[]>(['Labor Hours', 'Parts Cost']);
   const [out, setOut] = useState<string>(OUTPUTS[2]);
   const [ran, setRan] = useState(false);
+  const [agg, setAgg] = useState<Aggregates | null>(null);
+  const [aggMs, setAggMs] = useState<number | null>(null);
+  const [aggError, setAggError] = useState<string | null>(null);
 
   const push = (ok: boolean, title: string, msg: string) => {
     const id = toastSeq++;
@@ -122,22 +133,43 @@ export function ReportsHub() {
     : range === 'Q1 2026' ? `BETWEEN '2026-01-01' AND '2026-03-31'` : `BETWEEN '2026-01-01' AND '${isoDay(today)}'`;
   const sql = `SELECT ${DIM_SQL[DIMS.indexOf(dim as (typeof DIMS)[number])]}, ${mets.map((m) => METRICS.find((x) => x.n === m)?.sql).join(', ') || 'COUNT(*)'} FROM telemetry_mart WHERE facility_id = '${FAC_IDS[FACS.indexOf(fac as (typeof FACS)[number])]}' AND log_timestamp ${rangeSql}`;
 
-  const runQuery = () => {
+  // GAP-12/F10: the builder SQL is a local design preview (telemetry_mart does not
+  // exist); "Run" executes the REAL server aggregate query and reports live counts.
+  const runQuery = async () => {
     if (mets.length === 0) {
       push(false, 'No metrics selected', 'Pick at least one telemetry metric.');
       return;
     }
-    setRan(true);
-    push(true, 'Query executed in 46ms', '412 Records Processed · replica read · plan cached.');
+    setAggError(null);
+    const t0 = performance.now();
+    try {
+      // apiFetch unwraps the { data } envelope — the resolved value IS the aggregates.
+      const aggData = await apiFetch<Aggregates>('/api/reports/aggregates');
+      setAgg(aggData);
+      setAggMs(Math.round(performance.now() - t0));
+      setRan(true);
+      const total = aggData.workOrders.total + aggData.assets.totalRegistered
+        + aggData.inventory.totalSkus + aggData.serviceRequests.total;
+      push(true, 'Aggregate query executed', `${total} live records · server aggregates (this database).`);
+    } catch (e) {
+      setAgg(null);
+      setAggMs(null);
+      const msg = e instanceof Error ? e.message : 'Aggregate query failed';
+      setAggError(`${msg} — showing no figures rather than estimates.`);
+      push(false, 'Aggregate query failed', `${msg} — no figures shown.`);
+    }
   };
 
   const dossierCsv = () => {
+    const live = agg
+      ? `live · WO ${agg.workOrders.total} / assets ${agg.assets.totalRegistered} / SKUs ${agg.inventory.totalSkus} / SR ${agg.serviceRequests.total}`
+      : 'no live aggregate loaded — run the aggregate query first';
     const rows = [['section', 'key', 'value'],
       ['query', 'temporal_scope', range], ['query', 'facility', fac], ['query', 'dimension', dim],
       ['query', 'metrics', mets.join(' | ') || '(none)'], ['query', 'output', out],
-      ['receipt', 'records', '412'], ['receipt', 'exec_ms', '46'], ['receipt', 'engine', 'BI v4.6-OLAP']];
+      ['receipt', 'records', live], ['receipt', 'exec_ms', aggMs === null ? 'n/a' : String(aggMs)], ['receipt', 'engine', 'server aggregates (this database)']];
     download('custom-query-dossier.csv', rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n'));
-    push(true, 'Dossier downloaded', `${out} · 412 records · manifest + receipt attached.`);
+    push(true, 'Dossier downloaded', `${out} · ${live} · manifest + receipt attached.`);
   };
 
   return (
@@ -354,11 +386,19 @@ export function ReportsHub() {
               ))}
             </div>
           </fieldset>
-          <pre className="rounded border border-border-subtle bg-card p-2 text-[11px] apex-id overflow-x-auto" aria-label="Generated SQL">{sql}</pre>
+          <p className="text-[11px] text-muted">Builder preview (local only — Run executes the server aggregate query, not this SQL):</p>
+          <pre className="rounded border border-border-subtle bg-card p-2 text-[11px] apex-id overflow-x-auto" aria-label="Generated SQL (local design preview — not executed)">{sql}</pre>
           <div className="flex flex-wrap gap-2 items-center">
-            <Button variant="secondary" onClick={runQuery}><Play size={15} /> Run Simulation / Live Preview</Button>
+            <Button variant="secondary" onClick={() => void runQuery()}><Play size={15} /> Run Aggregate Query (live)</Button>
             <Button onClick={dossierCsv}><FileText size={15} /> Generate &amp; Download Dossier</Button>
-            {ran && <span className="text-[13px] font-semibold text-pass" role="status">Query Executed in 46ms · 412 Records Processed</span>}
+            {aggError && <span className="text-[13px] font-semibold text-fail" role="alert">{aggError}</span>}
+            {ran && agg && aggMs !== null && (
+              <span className="text-[13px] font-semibold text-pass" role="status">
+                Live aggregates in {aggMs}ms · WO {agg.workOrders.total} (open {agg.workOrders.open})
+                {' '}· assets {agg.assets.totalRegistered} · SKUs {agg.inventory.totalSkus} (low {agg.inventory.lowStockSkus})
+                {' '}· valuation ${agg.inventory.valuationUsd} · SR {agg.serviceRequests.total} (converted {agg.serviceRequests.converted})
+              </span>
+            )}
           </div>
         </div>
       </section>

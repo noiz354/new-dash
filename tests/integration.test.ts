@@ -25,6 +25,7 @@ import {
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { convertFindingToWo, createFinding, createInspection, dismissFinding, forceDispatchInspection, getFinding, getInspection, listFindings, listInspections, updateInspectionProgress } from '../lib/services/inspection-service';
+import { listWoTasks, updateWoTask } from '../lib/services/task-service';
 import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
@@ -1133,4 +1134,39 @@ test('inspections (GAP-11): progress persists COMPLETED + audit; clamps; unknown
   assert.ok(ledger.rows.some((e) => e.action === 'INSPECTION_PROGRESS' && e.entityId === ins.number), 'INSPECTION_PROGRESS audited');
 
   await expectDomainError(() => updateInspectionProgress(db, admin, 'INS-2099-9999', 10), 404, 'INSPECTION_NOT_FOUND');
+});
+
+test('wo-tasks (GAP-12/F5): seed 7 steps → advance 05 DONE unlocks 06 → 07 early is 422 → photo gate on T01', async () => {
+  const tasks = await listWoTasks(db, admin, CANON.workOrderSeal);
+  assert.equal(tasks.length, 7, 'canon seal WO seeds 7 execution tasks');
+  assert.deepEqual(tasks.map((t) => t.status), ['DONE', 'DONE', 'DONE', 'DONE', 'IN_PROGRESS', 'PENDING', 'LOCKED']);
+
+  // Jumping to the locked final step first violates the sequence gate.
+  const t07 = tasks.find((t) => t.stepOrder === 7)!;
+  await expectDomainError(() => updateWoTask(db, admin, { taskId: t07.id, woNumber: CANON.workOrderSeal, status: 'DONE' }), 422, 'SEQUENCE_VIOLATION');
+
+  // Completing the in-progress step 05 unlocks step 06.
+  const t05 = tasks.find((t) => t.stepOrder === 5)!;
+  const done05 = await updateWoTask(db, admin, { taskId: t05.id, woNumber: CANON.workOrderSeal, status: 'DONE' });
+  assert.equal(done05.status, 'DONE');
+  assert.equal(done05.verifiedBy, 'Marcus Vance');
+  const after = await listWoTasks(db, admin, CANON.workOrderSeal);
+  assert.equal(after.find((t) => t.stepOrder === 6)!.status, 'PENDING', 'next LOCKED step unlocks on DONE');
+
+  // Photo gate: create a fresh WO + photo-required task, completing without evidence is 422.
+  const woNo = 'WO-2026-0911';
+  await db.insert((await import('../db/schema')).workOrders).values({
+    organizationId: admin.orgId, number: woNo, title: 'Photo gate probe', assetCode: null,
+    location: 'Probe Bay', priority: 'P3', status: 'IN_PROGRESS', holdReason: null,
+    slaDueAt: new Date(Date.now() + 3600_000), assignedTo: null,
+  }).onConflictDoNothing();
+  const { woTasks } = await import('../db/schema');
+  await db.insert(woTasks).values({
+    organizationId: admin.orgId, id: 'PROBE-T01', workOrderNumber: woNo, stepOrder: 1,
+    title: 'Photo-gated step', instruction: '', status: 'IN_PROGRESS', requiresPhoto: true,
+  }).onConflictDoNothing();
+  await expectDomainError(() => updateWoTask(db, admin, { taskId: 'PROBE-T01', woNumber: woNo, status: 'DONE' }), 422, 'PHOTO_REQUIRED');
+
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'WO_TASK_UPDATE'), 'WO_TASK_UPDATE audited');
 });
