@@ -191,5 +191,5 @@ Frontend: roster live dari GET (badge Live directory / Demo offline); provision/
 Runtime proof (MCP dev :3145, m.vance): roster 7 live; provision gap2.ui → 200; self-deactivate → 403 + toast jujur; deactivate → server isActive:false; reactivate → true; reset-MFA → 0 sesi + note; 0 console error. 2 bug UI (ternary terbalik, focus key) ditemukan & diperbaiki saat verifikasi.
 Tests: 2 test integrasi baru (provision→edit→deactivate→login-401→reactivate + audit; reset-mfa revoke sesi + self-403 + 404); npm test 69/69; tsc nol error baru.
 Artefak dev: user gap2.ui@apexops.io aktif di .data/pg (scratch, abaikan).
-Commit: (menyusul di bawah)
+Commit: ea83bd9 (pushed, sinkron origin).
 NEXT GAP: #3 (dokumen CLOSE ALL GAPS — urutan berikut)
