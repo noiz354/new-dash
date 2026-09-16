@@ -61,7 +61,6 @@ const SKU_DATA: Record<string, SkuDetail> = {
     ledger: [
       { id: 'TXN-901', ts: '2026-05-24 14:35 UTC', type: 'WO_DISPENSE', ref: CANON.workOrderSeal, refUrl: `/work-orders/${CANON.workOrderSeal}`, qtyDelta: -1, balance: 1, actor: 'Marcus Kowalski' },
       { id: 'TXN-872', ts: '2026-05-20 10:15 UTC', type: 'GRN_RECEIVE', ref: 'PO-2026-0285', refUrl: '/purchasing/PO-2026-0285', qtyDelta: +2, balance: 2, actor: 'Sarah Al-Mansoor' },
-      { id: 'TXN-811', ts: '2026-04-10 08:30 UTC', type: 'CYCLE_ADJUST', ref: 'ADJ-2026-Q1', qtyDelta: 0, balance: 0, actor: 'Sarah Al-Mansoor' },
     ],
   },
   'PART-FLTR-401': {

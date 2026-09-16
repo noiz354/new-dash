@@ -38,13 +38,16 @@ const LEVELS = ['All Stock Levels', 'Critical Low Stock (< Safety)', 'Below Reor
 type MovKind = 'IN' | 'OUT' | 'ADJ' | 'TRF';
 interface Mov { kind: MovKind; delta: string; doc: string; ts: string; part: string; detail: string }
 
-/** Demo fallback feed — shown ONLY when the server movement feed is unreachable. */
+/** Demo fallback feed — shown ONLY when the server movement feed is unreachable.
+ *  GAP-17/F12: every doc ref here is resolvable by the link branches below
+ *  (WO / PO / PM canon). The fictional transfer/adjustment doc rows were
+ *  removed (product decision 2026-09-16 — never fabricate a doc that has no
+ *  backend); genuine server-side adjustment/transfer rows still render via
+ *  the kept plain-text branch. */
 const MOV_SEED: Mov[] = [
   { kind: 'OUT', delta: '−1 ea', doc: CANON.workOrderSeal, ts: 'Today 14:32 UTC', part: `${CANON.sealSku} (Mechanical Shaft Seal)`, detail: `AST-HVAC-004 · ${CANON.sealBin} · dispatched to M. Kowalski (Lead Tech) · auth:mvance` },
   { kind: 'IN', delta: '+2 ea', doc: `${CANON.purchaseOrder} · GRN Rec`, ts: 'Today 11:15 UTC', part: `${CANON.sealSku} (Mechanical Shaft Seal Kit)`, detail: 'Trane Supply Co · dock bay-02 · barcode verified' },
   { kind: 'OUT', delta: '−2 pails', doc: `${CANON.pmPlan} · Quarterly PM`, ts: 'Yest 16:40 UTC', part: 'PART-LUB-09 (Synthetic POE ISO 68)', detail: 'CRIB-CHEM · recipient HVAC Shift Team A · ref:PM-Q1' },
-  { kind: 'TRF', delta: '+5 ea [TRF]', doc: 'TRF-2026-0044', ts: 'May 18 09:12 UTC', part: 'PART-VALV-GT2 (Bronze Gate Valve)', detail: 'North Depot → Central · Internal Courier #02 · waybill #772' },
-  { kind: 'ADJ', delta: '−2 pcs [ADJ]', doc: 'ADJ-2026-0019', ts: 'May 17 18:00 UTC', part: 'PART-FUSE-600V (Class J Fuse 30A)', detail: 'Terminal pin defect · scrap write-off VP Operations · cc:QA-SCRAP' },
 ];
 
 const MOV_TABS = ['All', 'Receipts', 'WO Out', 'Adjust', 'Transfers'] as const;

@@ -143,6 +143,18 @@ render teks, bukan link). Gap: MISSING ROUTE + PRODUCT DECISION MISSING.
 Break: UI→route. Tests: NONE. **Decision: NEED PRODUCT DECISION** (buat rute
 vs hapus refs; sementara biarkan teks — tak ada link menggantung). Target:
 TBD. P3/S/LOCAL.
+**[CLOSED GAP-16 TASK 2 2026-09-16]:** DECISION hapus-refs dieksekusi (tanpa
+backend transfer) — 2 entri fiktif `MOV_SEED` dihapus dari
+`InventoryLedger.tsx` (`TRF-2026-0044` kurir/waybill + `ADJ-2026-0019`
+scrap/cc-QA) beserta baris statis `ADJ-2026-Q1` (situs ke-2:
+`app/(ops)/inventory/[sku]/page.tsx` TXN-811). Fallback feed kini 3 entri
+kanon WO/PO/PM yang semuanya resolvable sebagai link; cabang teks-biasa
+dipertahankan untuk ADJ/TRF sah dari server. Grep components/+app/+lib:
+nol `TRF-`/`ADJ-`. Guard-test absence di audit-truthfulness (2 test;
+143/143; tsc exit 0). Runtime curl :3157: `/inventory` SSR nol fiksi + canon
+link live; `/inventory/PART-SEAL-8821` nol ADJ-; feed server honest (kosong)
+; unauth → 307/401. Out-of-scope eksplisit: tabel transfers + rute
+transfers/adjustments.
 
 **F13 — Purchasing authorize/GRN.** Current: BROKEN. Gap: FAKE SUCCESS penuh
 (endorse/GRN-9941/match/RFQ toast tanpa 1 request) sementara `po-service`+
@@ -343,7 +355,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 9 | Inventory | Ledger fallback | PARTIAL | — (honest) | KEEP BY DESIGN | PARTIAL-honest | P3 | S | LOCAL |
 | 10 | Inventory | KPI cards | PARTIAL | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P1 | S | MODULE |
 | 11 | Inventory | Export CSV | PARTIAL | MISSING BACKEND + label | COMPLETE PARTIAL ⭐ | PARTIAL-honest | P2 | S | LOCAL |
-| 12 | Inventory | Transfer/adjust refs | DEAD-END | MISSING ROUTE | NEED DECISION | TBD | P3 | S | LOCAL |
+| 12 | Inventory | Transfer/adjust refs | REMOVED [CLOSED GAP-16-T2] | REFS DIHAPUS (was MISSING ROUTE) | NEED DECISION (decided: remove) | no-refs honest | P3 | S | LOCAL |
 | 13 | Purchasing | PO/GRN/authorize | BROKEN | FAKE SUCCESS + NOT WIRED | MUST INTEGRATE 🪨 | E2E | P1 | M/L | X-MOD |
 | 14 | Vendors | Onboard/amend/MSA | DEAD-END | BACKEND MISSING | MUST INTEGRATE | E2E | P2 | M | MODULE |
 | 15 | Facilities | Hub actions | FRONTEND-ONLY | BACKEND MISSING + fake | PLACEHOLDER+DECISION | FE-honest | P2 | S | MODULE |

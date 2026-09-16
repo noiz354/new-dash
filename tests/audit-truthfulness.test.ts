@@ -219,3 +219,35 @@ test('GAP-15 audit queue cards disclose the Phase-2 run gate', () => {
     'Phase-2 badge must be gated on non-canonical ids, not shown on the runnable audit',
   );
 });
+
+// ---------------------------------------------------------------------------
+// GAP-17 (GAP-16 TASK 2 / F12): fictional transfer/adjustment doc refs must
+// never return to the inventory ledger UI (movement feed + SKU detail page).
+// ---------------------------------------------------------------------------
+test('GAP-17 inventory UI shows no fictional TRF-/ADJ- doc refs', () => {
+  const files: Array<[string, string]> = [
+    ['components/inventory/InventoryLedger.tsx', new URL('../components/inventory/InventoryLedger.tsx', import.meta.url).pathname],
+    ['app/(ops)/inventory/[sku]/page.tsx', new URL('../app/(ops)/inventory/[sku]/page.tsx', import.meta.url).pathname],
+  ];
+  for (const [label, path] of files) {
+    const body = readFileSync(path, 'utf8');
+    for (const gone of ['TRF-', 'ADJ-', 'Internal Courier #02', 'waybill #772', 'cc:QA-SCRAP', 'Terminal pin defect']) {
+      assert.ok(!body.includes(gone), `${label} still fabricates movement doc fiction: "${gone}"`);
+    }
+  }
+});
+
+test('GAP-17 ledger fallback feed keeps only link-resolvable canon refs', () => {
+  const body = readFileSync(
+    new URL('../components/inventory/InventoryLedger.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(
+    body.includes('CANON.workOrderSeal') && body.includes('CANON.purchaseOrder') && body.includes('CANON.pmPlan'),
+    'MOV_SEED fallback must reference WO/PO/PM canon docs that the link branches resolve',
+  );
+  assert.ok(
+    body.includes('Demo offline'),
+    'fallback feed must stay labeled as demo (server-unreachable) provenance',
+  );
+});

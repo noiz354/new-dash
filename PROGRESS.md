@@ -339,3 +339,12 @@ Spec: docs/remediation-gap-16-spec.md (sumber keputusan: 2026-09-16-PROMPT.md TA
 - Runtime proof (curl dev :3157, tanpa MCP browser — dicatat jujur): GET /signup 200 markup form; POST org baru "Galaxy Marina Yard" → 201 {organizationId APX-GALAXYMA-92,...} + cookie apex_session → GET `/` 200 authed (bukan redirect login); org kedua "Harbor North Terminal" → 201 + GET /api/organization/users hanya admin sendiri (isolasi); GET /api/work-orders tenant baru = rows kosong; negatif: duplikat → 409 EMAIL_EXISTS, password pendek/email invalid → 400 VALIDATION_ERROR, API tanpa sesi → 401. Log server hanya structured request log (warn 4xx = instrumen probe negatif yang disengaja), nol 500/stack.
 - Artefak dev scratch: 2 org probe (APX-GALAXYMA-92, APX-HARBORNO-66) di .data/pg lokal sandbox.
 NEXT GAP: #16 TASK 2/7 — F12 hapus refs TRF-/ADJ- fiktif di ledger.
+
+## GAP CLOSED #16 TASK 2/7 — hapus refs TRF-/ADJ- fiktif (F12) (2026-09-16)
+Spec: docs/remediation-gap-17-spec.md (keputusan: hapus refs, TANPA backend transfer).
+- `InventoryLedger.tsx` MOV_SEED: 2 entri fiktif dihapus (`TRF-2026-0044` North Depot/Internal Courier #02/waybill #772; `ADJ-2026-0019` Terminal pin defect/scrap/cc:QA-SCRAP), nol pengganti. Fallback feed kini 3 entri kanon (WO/PO/PM) yang semuanya resolvable lewat cabang link; cabang teks-biasa untuk ADJ/TRF server dipertahankan; REASONS form mutation (backend nyata) tak disentuh.
+- **Situs ke-2** (re-grep non-filter saat implementasi — koreksi audit): `app/(ops)/inventory/[sku]/page.tsx` TXN-811 `CYCLE_ADJUST ref: 'ADJ-2026-Q1'` dihapus.
+- Tests: 2 guard-test baru di audit-truthfulness.test.ts (absence TRF-/ADJ-+teks pendukung di KEDUA file; presence fallback canon + label Demo offline). npm test 143/143; tsc --noEmit exit 0.
+- Runtime proof (curl dev :3157, sesi seed via login+TOTP dev-hint): `/inventory` SSR HTML 200 — nol TRF-/ADJ-/waybill #772, canon WO-2026-0894 live; `/inventory/PART-SEAL-8821` 200 — nol ADJ- (TXN-811 hilang); `GET /api/parts/movements` → movements kosong jujur; negatif: tanpa cookie → 307→/login, API unauth → 401.
+- Catatan sandbox: antar-turn snapshot memulihkan node_modules + .data + meng-rewind HEAD lokal; pulih via git fetch + reset ke remote (commit TASK 1 d259703 utuh di origin) + stash pop — tak ada kerja hilang.
+NEXT GAP: #16 TASK 3/7 — F23 jobs page jujur + wire ke queue nyata.
