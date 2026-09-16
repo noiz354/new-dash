@@ -346,6 +346,7 @@ Spec: docs/remediation-gap-17-spec.md (keputusan: hapus refs, TANPA backend tran
 - **Situs ke-2** (re-grep non-filter saat implementasi — koreksi audit): `app/(ops)/inventory/[sku]/page.tsx` TXN-811 `CYCLE_ADJUST ref: 'ADJ-2026-Q1'` dihapus.
 - Tests: 2 guard-test baru di audit-truthfulness.test.ts (absence TRF-/ADJ-+teks pendukung di KEDUA file; presence fallback canon + label Demo offline). npm test 143/143; tsc --noEmit exit 0.
 - Runtime proof (curl dev :3157, sesi seed via login+TOTP dev-hint): `/inventory` SSR HTML 200 — nol TRF-/ADJ-/waybill #772, canon WO-2026-0894 live; `/inventory/PART-SEAL-8821` 200 — nol ADJ- (TXN-811 hilang); `GET /api/parts/movements` → movements kosong jujur; negatif: tanpa cookie → 307→/login, API unauth → 401.
+- Re-verifikasi browser (chrome-devtools MCP 2026-09-16, sesi Enterprise Admin): DOM `/inventory` — 7 string fiksi absent, countTRF=0/countADJ=0; SSR curl ulang `/inventory` + `/inventory/PART-SEAL-8821` — 6 marker false, WO-2026-0894 present; `GET /api/parts/movements` → 1 movement GRN asli (PO-2026-0298), nol fiksi. Verdict: PASS.
 - Catatan sandbox: antar-turn snapshot memulihkan node_modules + .data + meng-rewind HEAD lokal; pulih via git fetch + reset ke remote (commit TASK 1 d259703 utuh di origin) + stash pop — tak ada kerja hilang.
 NEXT GAP: #16 TASK 3/7 — F23 jobs page jujur + wire ke queue nyata.
 
@@ -356,6 +357,7 @@ Spec: docs/remediation-gap-18-spec.md (keputusan: jujurkan + wire; out-of-scope 
 - Route (app/api/queue/jobs/route.ts): fix terbukti-kurang — retry jobId tak ada kini 404 JOB_NOT_FOUND via DomainError (dulu 200 `data:null` tak jujur). CommandPalette hint `S3 snapshot & WAL restore` → `Live in-memory dispatch queue (ephemeral)`.
 - Tests: 4 unit (tests/unit.test.ts): empty-store tanpa preseed, enqueue tenant-scoped + filter topic/status/limit, run_cycle summary konsisten + COMPLETED attempts/timestamps, retry reset + unknown→null. 2 guard-test audit-truthfulness (absence SOC2/AUDIT READY/auditHash/JOB-2026-08/482/842.6/11 min/100% Success Rate/S3 Glacier/audit-trail?search=JOB; preseed gone). npm test 149/149; tsc --noEmit exit 0.
 - Runtime proof (curl dev :3157, sesi seed): GET jobs [] → enqueue 201 (job_… PENDING payload PM-RUNTIME-PROBE) → filter pm_generator 1 baris → filter webhook_fanout KOSONG (bukan preseed) → run_cycle {processed:1,completed:1,failed:0} → job COMPLETED attempts 1 → retry job_does_not_exist 404 JOB_NOT_FOUND → topic hacker_topic 400 VALIDATION_ERROR → unauth 401. HTML /settings/jobs 200: nol SOC2/DAEMON/482, marker Ephemeral/Background Job Queue/Run cycle live.
+- Re-verifikasi browser (chrome-devtools MCP 2026-09-16): DOM + SSR `/settings/jobs` — 7 marker fiksi absent, banner "Ephemeral · in-memory store"; siklus API ulang LIST=0 → ENQUEUE 201 → FILTER 1 → RUN_CYCLE {1,1,0} → COMPLETED 1/3; retry unknown 404, topik invalid 400, unauth 401; reload UI menampilkan job COMPLETED (paritas UI↔API); console nol JS error. Verdict: PASS.
 NEXT GAP: #16 TASK 4/7 — F25 deprecate retention digest eksplisit.
 
 ## GAP CLOSED #16 TASK 4/7 — retention digest deprecated eksplisit (F25) (2026-09-16)
@@ -364,6 +366,7 @@ Spec: docs/remediation-gap-19-spec.md (keputusan: deprecate; endpoint TIDAK diha
 - `lib/services/retention-service.ts`: konstanta tunggal `RETENTION_DIGEST_SUNSET`/`RETENTION_DIGEST_NOTE` (satu sumber, diuji tanpa HTTP); compute digest tak disentuh. Sunset = eksekusi 2026-09-16 + 90 hari = 2026-12-15 (dicatat di peta audit F25).
 - Tests: 3 baru di tests/integration.test.ts — regression compute (shape digest lama utuh, tenant-scoped), metadata (sunset tepat 90 hari + note menyebut no trigger/scheduler/consumer), GET handler tanpa sesi → 401 UNAUTHENTICATED (pola NextRequest langsung). npm test 152/152; tsc --noEmit exit 0.
 - Runtime proof (curl dev :3157): GET authed → 200 `deprecated:true, sunset:'2026-12-15', note…` + shape digest lama (urgentSlaThreats/healthScorePct) utuh; GET unauth → 401. Tanpa UI (endpoint backend-only) sesuai PROMPT.
+- Re-verifikasi API (2026-09-16): GET authed → 200 `deprecated:true`, `sunset:'2026-12-15'`, note menyebut no trigger/scheduler/cron/consumer; shape utuh (healthScorePct:70, urgentSlaThreats[8]); unauth → 401. Verdict: PASS.
 - Reminder follow-up: setelah 2026-12-15 endpoint boleh dihapus bila tetap tanpa konsumen.
 NEXT GAP: #16 TASK 5/7 — F15 facilities hub honest-first + backend facilities.
 
