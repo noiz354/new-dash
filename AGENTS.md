@@ -3,6 +3,60 @@
 > Dokumen instruksi untuk semua AI agent yang bekerja di repo ini.
 > Bahasa kerja: Indonesia. Kode & komentar: English.
 
+## 0. WAJIB — CodeGraph adalah alat PERTAMA untuk membaca kode
+
+Repo ini terindeks CodeGraph (`.codegraph/` ada di root: 245 file, ~2.6k node).
+**Sebelum** memakai `grep` / `glob` / `read` / pencarian apa pun untuk memahami
+atau melacak kode, **pakai CodeGraph lebih dulu**.
+
+- **Alat MCP (utama, panggil pertama):** `codegraph_explore`
+
+  ```ts
+  codegraph_explore({
+    query: "SignupForm apiFetch provisionOrganization",   // nama simbol/file ATAU pertanyaan biasa
+    projectPath: "/home/norman2/16-9-26-aligner-new-dash",
+  })
+  ```
+
+  Satu panggilan mengembalikan **sumber verbatim bernomor baris** dari simbol/file
+  relevan + jalur pemanggilan antar-simbol + ringkasan blast-radius, termasuk
+  lompatan *dynamic dispatch* (render komponen, registry) yang tidak terlihat oleh grep.
+
+- **Shell (selalu tersedia, output sama):**
+
+  ```bash
+  codegraph explore "<nama simbol / pertanyaan>"
+  codegraph query "<kata kunci>"
+  codegraph callers <simbol>   # siapa yang memanggil
+  codegraph callees <simbol>   # simbol ini memanggil apa
+  codegraph impact  <simbol>   # apa yang terpengaruh bila diubah
+  codegraph node <simbol>      # satu simbol: sumber + jejak caller/callee
+  codegraph affected <file>    # test apa yang terdampak perubahan file ini
+  ```
+
+Aturan pemakaian:
+
+1. Pertanyaan "di mana X", "bagaimana X bekerja", atau **sebelum mengedit sebuah
+   simbol** → `codegraph_explore` **lebih dulu**, bukan grep.
+2. Sumber yang dikembalikan `codegraph_explore` **setara hasil `read`** pada file
+   tersebut — **jangan buka ulang file yang sama** dengan `read`.
+3. `grep` / `glob` / `read` dipakai hanya untuk yang **tidak dicakup** CodeGraph:
+   file non-kode (`.md`, `.sql`, `.json`, `.css`), file di luar indeks (termasuk
+   arsip beku `stitch_facility_maintenance_platform_ui/`), atau verifikasi baris persis.
+4. Data indeks bersifat **lokal per mesin** (`.codegraph/codegraph.db` di-`.gitignore`):
+   jangan pernah commit DB itu; yang boleh ter-commit hanya `.codegraph/.gitignore`.
+5. Setelah `git pull` atau perubahan besar, **segarkan indeks** supaya hasil
+   eksplorasi tidak basi:
+
+   ```bash
+   codegraph sync    # inkremental — pilihan default
+   codegraph index   # bangun ulang penuh (bila sync bermasalah)
+   codegraph status  # cek jumlah file/node
+   ```
+
+6. Jangan hapus/ubah `codegraph.db` secara manual. Bila ada lock nyangkut:
+   `codegraph unlock`.
+
 ## 1. Konteks Proyek
 
 Ekspor UI dari **Stitch** untuk platform **Facility Maintenance / CMMS** bernama
@@ -69,6 +123,8 @@ aplikasi produksi (mis. Next.js + Tailwind + shadcn) dengan Stitch HTML sebagai
 
 ## 6. Aturan Kerja Agent (WAJIB)
 
+0. **CodeGraph dulu** (lihat §0): semua pembacaan/pelacakan kode dimulai dari
+   `codegraph_explore`; `grep`/`glob`/`read` hanya pelengkap.
 1. **Jangan edit** isi `stitch_facility_maintenance_platform_ui/` — itu arsip beku.
    Semua kode produksi ditulis di folder baru (mis. `app/` / `web/`), bukan menimpa referensi.
 2. **Jangan hapus** file `.zip`, `.png`, atau `DESIGN.md`.
@@ -84,6 +140,7 @@ aplikasi produksi (mis. Next.js + Tailwind + shadcn) dengan Stitch HTML sebagai
    konvensi framework yang dipilih.
 9. Dilarang menambahkan dependensi/backend tanpa persetujuan user. Tanyakan dulu
    pilihan stack (lihat TODO Fase 0) bila belum diputuskan.
+10. Setelah `git pull` / perubahan besar: `codegraph sync` supaya §0 tidak basi.
 
 ## 7. Cara Preview Cepat
 
