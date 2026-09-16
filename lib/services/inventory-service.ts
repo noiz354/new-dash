@@ -5,9 +5,10 @@
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db, Tx } from '../../db/client';
-import { auditEvents, parts, workOrders } from '../../db/schema';
+import { auditEvents, parts, users, workOrders } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
-import { DomainError, notFound } from '../domain/errors';
+import { DomainError, forbiddenOp, notFound } from '../domain/errors';
+import { verifyTotp } from '../auth/totp';
 import { requestHash, withIdempotency } from './idempotency';
 
 export interface PartRow {
@@ -93,11 +94,40 @@ export interface StockMutationInput {
   reason?: string | null;
 }
 
+/**
+ * Step-up approval (GAP-3): every stock mutation must carry a fresh TOTP code
+ * from the acting user's own authenticator, verified server-side. Replaces the
+ * old client-side supervisor PIN ('2468'). Users without enrolled MFA get an
+ * honest 403 instead of a bypassable gate. Returns the approval timestamp for
+ * the audit trail.
+ */
+export async function verifyStepUpCode(db: Db, ctx: AuthContext, code: string): Promise<string> {
+  const rows = await db
+    .select({ totpSecret: users.totpSecret })
+    .from(users)
+    .where(and(eq(users.organizationId, ctx.orgId), eq(users.id, ctx.userId)))
+    .limit(1);
+  const secret = rows[0]?.totpSecret ?? null;
+  if (!secret) {
+    throw forbiddenOp(
+      'STEP_UP_UNAVAILABLE',
+      'Approver MFA is not enrolled — enroll an authenticator before approving stock mutations.',
+    );
+  }
+  if (!verifyTotp(secret, code)) {
+    throw forbiddenOp(
+      'STEP_UP_INVALID',
+      'Approver code rejected — enter the current 6-digit code from your authenticator app.',
+    );
+  }
+  return new Date().toISOString();
+}
+
 export async function mutateStock(
   db: Db,
   ctx: AuthContext,
   input: StockMutationInput,
-  opts: { idempotencyKey?: string | null; requestId?: string } = {},
+  opts: { idempotencyKey?: string | null; requestId?: string; stepUpAt?: string | null } = {},
 ): Promise<PartRow> {
   if (input.qty <= 0) {
     throw new DomainError(422, 'INVALID_QUANTITY', 'Mutation quantity must be positive');
@@ -175,6 +205,7 @@ export async function mutateStock(
         reserved: newReserved,
         ref: input.refNumber ?? null,
         reason: input.reason ?? null,
+        stepUpAt: opts.stepUpAt ?? null,
       },
     });
 

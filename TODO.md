@@ -83,7 +83,7 @@
 - [ ] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1)
 - [x] P0: wire `PATCH /api/organization/users/[id]` + reset-MFA ke OrgHub (GAP-2 CLOSED 2026-09-16: org-service baru — list/create/update/resetMfa + self-guard 403 + revoke sesi + audit USER_*; roster live dari GET; 69/69 test; runtime MCP: provision→deactivate→reactivate + reset-MFA + self-403, 0 console error)
 - [x] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (GAP-1 CLOSED 2026-09-16: route via inspection-service, perm finding.create/read, severity adapter, idempotensi; 67/67 test; runtime MCP terverifikasi)
-- [ ] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (G3)
+- [x] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (GAP-3 CLOSED 2026-09-16: step-up TOTP wajib di POST movements — verifyStepUpCode + 403 STEP_UP_UNAVAILABLE/INVALID + stepUpAt di audit; rows live GET /api/parts + feed GET movements dari audit PART_*; PIN 2468 dihapus total; non-katalog disabled; 72/72 test; runtime MCP: receive+mutasi persist, kode salah → STEP_UP_INVALID, reload OK, 0 JS error)
 - [ ] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5)
 - [ ] P1: agregat server untuk KPI inventory atau label scope jujur (ganti konstanta 4,218/1,840/`MOV_TOTAL`) (G6)
 - [ ] P2: bersihkan klaim Live/WS-PUSH/SYNCED-hash, EVT-fallback, seed-tanpa-badge, perm `assets.read`→tulis, rute transfers/adjustments/runs, export-scope label (G7–G12)
@@ -411,7 +411,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 
 - [ ] Rute hilang: `inventory/transfers/[id]`, `inventory/adjustments/[id]`, halaman `field/runs*`
 - [ ] Backend belum ada: vendors (+MSA +summary), assets/registry (+telemetri/BOM), settings/system, locations/facilities, live-queue/steps/time-entries, dispatch-queue/batch, notifications read-all/preferences, webhook vendor (billing.webhook hanya Stripe inbound), wo-draft, purchase authorize flow (terpisah dari `po.create`)
-- [ ] Wire-up UI → endpoint nyata yang SUDAH ADA: `inventory.mutate` (mutasi kini lokal), `po.receive` (GRN kini pesan lokal), `reports.aggregates`, `inventory.*`/parts (wiring belum terverifikasi)
+- [x] Wire-up UI → endpoint nyata yang SUDAH ADA: `inventory.mutate` (GAP-3 CLOSED: receive/mutasi/issue → POST movements + step-up; rows + feed live), `po.receive` (GRN kini pesan lokal — GAP-6), `reports.aggregates` (GAP-9), `inventory.*`/parts (GAP-3 CLOSED)
 - [ ] Temuan TASK-25 tetap: persist findings (ref, tak diduplikasi); PIN supervisor nyata (kini `2468`)
 - [ ] (U): wiring UI reports/inventory, pemicu auto-flush reconnect, impersonate enforcement (ref batch 3)
 - [ ] USANG: usulan endpoint `verify-root` (dihapus by design; pakai `verify-chain`); konvensi path `/api/v1/*` (API = `/api/*`)

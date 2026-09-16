@@ -193,3 +193,15 @@ Tests: 2 test integrasi baru (provision→edit→deactivate→login-401→reacti
 Artefak dev: user gap2.ui@apexops.io aktif di .data/pg (scratch, abaikan).
 Commit: ea83bd9 (pushed, sinkron origin).
 NEXT GAP: #3 (dokumen CLOSE ALL GAPS — urutan berikut)
+
+## GAP CLOSED #3 — Inventory receive/mutasi + approver PIN (2026-09-16)
+
+Domain: Inventory | Feature: receive/mutation/issue + approval | Previous: BROKEN (local-only false success + PIN '2468' hardcoded & printed) | New: END-TO-END
+Root cause: InventoryLedger setRows/setMovs lokal + PIN client-side; POST /api/parts/movements (dengan idempotensi) ADA tak dipanggil.
+Spec: docs/remediation-gap-3-spec.md (ditulis dulu — spec-driven).
+Backend: verifyStepUpCode() di inventory-service (TOTP vs users.totpSecret; 403 STEP_UP_UNAVAILABLE/INVALID); POST movements wajib stepUpCode + catat after.stepUpAt; GET movements baru (feed dari audit PART_*, tanpa tabel baru).
+Frontend: rows live GET /api/parts merge ke katalog display; feed audit-server; KPI jujur dari baris termuat; SEMUA '2468' dihapus; SKU non-katalog (VALV-GT2/FUSE-600V) jujur + disabled; SKU DB luar seed (BRG-6204) append live; Issue 2-klik + step-up; guard offline/canMutate.
+Tests: 3 integrasi baru (403 INVALID, 403 UNAVAILABLE, happy RECEIVE+ISSUE + audit stepUpAt + replay idempoten + 422 over-issue); npm test 72/72; tsc nol error baru.
+Runtime proof (MCP dev :3145, m.vance): badge Live server-fed; mutasi seal −1 → on-hand 1; reload → OUT OF STOCK + feed audit "by Marcus Vance"; kode salah → toast STEP_UP_INVALID; console 0 JS error (1×403 = artefak penolakan disengaja).
+Out of scope (tercatat): Reorder PR/PO draft, rute transfers/adjustments, enrich kolom katalog.
+NEXT GAP: #4 finding convert/dismiss.

@@ -29,7 +29,8 @@
 | Asset | Dossier detail + BIM link | Server-fed FOUND | — (server comp) | getAssetDossier FOUND | DB FOUND | Dossier | END-TO-END |
 | Asset | BIM viewer refresh | setTimeout lokal MOCKED | NOT FOUND | NOT FOUND | — | "live" + timestamp | MOCKED |
 | Inventory | Ledger read (seed) | MOV_SEED tanpa badge MOCKED | — | — | Seed, bukan DB | Feed + KPI | MOCKED |
-| Inventory | Receive/mutasi + PIN | setRows/setMovs lokal, PIN `2468` BYPASSED | inventory.mutate ADA tak dipanggil | mutate FOUND | DB (tak tersentuh) | Toast sukses | BROKEN |
+| Inventory | Receive/mutasi + step-up TOTP (fix GAP-3, PIN '2468' dihapus) | apiFetch POST + stepUpCode; rows live GET; demo fallback jujur | POST /api/parts/movements CALLED | mutate + verifyStepUpCode + audit STEP_UP + stepUpAt FOUND | DB parts + audit PART_* FOUND | Toast server + refetch valid | END-TO-END |
+[CLOSED GAP-3]
 | Inventory | KPI cards + valuasi | Konstanta hardcoded MOCKED | NOT FOUND | NOT FOUND | — | 4.218 SKU, $1,4jt | MOCKED |
 | Inventory | Export CSV | Worker CSV dari rows FOUND | NOT FOUND | NOT FOUND | — | File terunduh | PARTIAL |
 | Inventory | Transfer/adjustment refs | Link TO-8891/ADJ-… | Rute TAK ADA | NOT FOUND | — | Klik buntu | DEAD-END |

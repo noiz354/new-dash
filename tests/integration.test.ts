@@ -25,6 +25,7 @@ import {
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { createFinding, getFinding, listFindings } from '../lib/services/inspection-service';
+import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -582,4 +583,68 @@ test('org: reset-mfa clears totp, revokes live sessions, audited; self-targets �
     () => resetUserMfa(db, admin, '00000000-0000-0000-0000-000000000000'),
     404, 'USER_NOT_FOUND',
   );
+});
+
+// ---------------------------------------------------------------------------
+// Inventory mutations (GAP #3: receive/mutasi were local-only + PIN '2468';
+// now POST /api/parts/movements with server-verified step-up TOTP)
+// ---------------------------------------------------------------------------
+test('inventory (GAP-3): wrong step-up code → 403 STEP_UP_INVALID, stock untouched', async () => {
+  const before = await getPart(db, admin, 'PART-BRG-6205');
+  const code = totpNow(SEED_TOTP_SECRET) === '000000' ? '000001' : '000000';
+  await expectDomainError(() => verifyStepUpCode(db, admin, code), 403, 'STEP_UP_INVALID');
+  const after = await getPart(db, admin, 'PART-BRG-6205');
+  assert.equal(after.onHand, before.onHand, 'rejected step-up mutates nothing');
+});
+
+test('inventory (GAP-3): user without enrolled MFA → 403 STEP_UP_UNAVAILABLE', async () => {
+  const created = await createUser(db, admin, {
+    email: 'gap3.nomfa@apexops.io',
+    name: 'Gap Three NoMfa',
+    role: 'Senior Field Tech',
+  });
+  assert.equal(created.hasMfa, false);
+  const ctx: AuthContext = { ...admin, userId: created.id, email: created.email, name: created.name };
+  await expectDomainError(() => verifyStepUpCode(db, ctx, totpNow(SEED_TOTP_SECRET)), 403, 'STEP_UP_UNAVAILABLE');
+});
+
+test('inventory (GAP-3): RECEIVE + ISSUE with step-up persist, audited with stepUpAt; replay idempotent; over-issue → 422', async () => {
+  const sku = 'PART-BRG-6205';
+  const start = await getPart(db, admin, sku);
+  const key = `gap3-${Date.now()}`;
+
+  const received = await mutateStock(
+    db, admin,
+    { sku, type: 'RECEIVE', qty: 4, refNumber: 'PO-2026-0999', reason: 'GAP-3 probe receipt' },
+    { idempotencyKey: key, stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(received.onHand, start.onHand + 4);
+
+  // Idempotent replay: same key + same payload → same result, no double mutation.
+  const replay = await mutateStock(
+    db, admin,
+    { sku, type: 'RECEIVE', qty: 4, refNumber: 'PO-2026-0999', reason: 'GAP-3 probe receipt' },
+    { idempotencyKey: key, stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(replay.onHand, start.onHand + 4, 'replay must not double-apply');
+
+  const issued = await mutateStock(
+    db, admin,
+    { sku, type: 'ISSUE', qty: 1, refNumber: 'WO-2026-0894', reason: 'GAP-3 probe issue' },
+    { stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(issued.onHand, start.onHand + 3);
+
+  // Over-issue is refused and changes nothing.
+  await expectDomainError(
+    () => mutateStock(db, admin, { sku, type: 'ISSUE', qty: 9999, refNumber: 'WO-2026-0894' }, {}),
+    422, 'INSUFFICIENT_STOCK',
+  );
+  assert.equal((await getPart(db, admin, sku)).onHand, start.onHand + 3);
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'part' });
+  const recv = ledger.rows.find((e) => e.action === 'PART_RECEIVE' && e.entityId === sku);
+  assert.ok(recv, 'PART_RECEIVE audited');
+  assert.ok((recv.after as { stepUpAt?: string })?.stepUpAt, 'step-up approval timestamp recorded');
+  assert.ok(ledger.rows.some((e) => e.action === 'PART_ISSUE' && e.entityId === sku), 'PART_ISSUE audited');
 });
