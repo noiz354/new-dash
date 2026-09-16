@@ -276,6 +276,20 @@ page→API + no cron. Persist: NOT PERSISTED (keduanya). Tests: NONE.
 **Decision: NEED PRODUCT DECISION** (monitor beneran vs hapus) + **MUST FIX**
 link auditHash fiktif sementara. Target: TBD. Reason: klaim SOC2/audit-hash
 tanpa write = compliance-adjacent. P2/M/MODULE.
+**[CLOSED GAP-16 TASK 3 2026-09-16]:** DECISION jujur+wire dieksekusi — page
+ditulis ulang sebagai klien atas `GET /api/queue/jobs` (kolom yang didukung
+API saja); JOBS const + `DAEMON OPERATIONAL`/`SOC2 AUDIT READY` + 4 KPI +
+auditHash/link Inspect Chain + narasi snapshot DIHAPUS; banner ephemeral
+in-memory + tombol nyata Run cycle (confirm)/Retry/Enqueue (izin org.manage;
+403 tampil apa adanya). Worker preseed 3 job: **PILIHAN = HAPUS** (bukan
+label) — preseed lama bocorkan baris APX-NUSA-01 ke semua tenant+filter;
+komentar pilhan di kode. Route fix terbukti-kurang: retry jobId tak ada → 404
+`JOB_NOT_FOUND` (dulu 200 data:null). CommandPalette hint dijujurkan. Test:
+4 unit worker (empty-store/no-preseed, tenant+filter, run_cycle, retry/null)
++ 2 guard-test fiksi (149/149; tsc exit 0). Runtime curl :3157: GET [], enqueue
+201, filter jujur (webhook_fanout kosong bukan preseed), run_cycle
+{processed:1,completed:1}, retry-unknown 404, topic-invalid 400, unauth 401;
+page HTML 200 tanpa SOC2/DAEMON/482.
 
 **F24 — Billing.** Current: BACKEND-ONLY. Gap: `catch{}` telan BAD_SIGNATURE
 (**auth/security BROKEN**), checkout stub `cs_${Date.now()}` tanpa Stripe SDK,
@@ -366,7 +380,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 20 | Insp | CRUD+force-dispatch | END-TO-END [CLOSED GAP-11] | FIXED (was SERVICE BYPASS + no UI) | MUST FIX+INTEGRATE 🪨 | E2E | P1 | M | MODULE |
 | 21 | Reports | Hub+builder | FRONTEND-ONLY | FRONTEND NOT WIRED | MUST INTEGRATE ⭐ | E2E | P2 | M | MODULE |
 | 22 | Telemetry | Ingest/metrics | BACKEND-ONLY | — (infra) | KEEP BY DESIGN | BE by design | P3 | S | LOCAL |
-| 23 | Jobs | Dua dunia | FE-ONLY+BE-ONLY | DUAL SOURCE | NEED DECISION + FIX links | TBD | P2 | M | MODULE |
+| 23 | Jobs | Dua dunia | END-TO-END [CLOSED GAP-16-T3] | WIRED (was DUAL SOURCE) | NEED DECISION (decided: honest+wire) | E2E-ephemeral | P2 | M | MODULE |
 | 24 | Billing | HMAC/checkout | BACKEND-ONLY | AUTH BYPASS (catch) | MUST FIX | BE-hardened | P0 | M | MODULE |
 | 25 | Retention | Digest orphan | BACKEND-ONLY | NO TRIGGER | NEED DECISION | TBD | P3 | S | LOCAL |
 | 26 | Settings | Keys/rotate/maint | FRONTEND-ONLY | BACKEND MISSING + fake | FIX copy + DECISION | FE-honest | P2 | S→L | MODULE |

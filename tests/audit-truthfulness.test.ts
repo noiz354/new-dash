@@ -251,3 +251,32 @@ test('GAP-17 ledger fallback feed keeps only link-resolvable canon refs', () => 
     'fallback feed must stay labeled as demo (server-unreachable) provenance',
   );
 });
+
+// ---------------------------------------------------------------------------
+// GAP-18 (GAP-16 TASK 3 / F23): settings/jobs page — zero compliance fiction,
+// every row from the queue API.
+// ---------------------------------------------------------------------------
+test('GAP-18 jobs page carries zero compliance/fabrication claims', () => {
+  const body = readFileSync(
+    new URL('../app/(ops)/settings/jobs/page.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  for (const gone of [
+    'DAEMON OPERATIONAL', 'SOC2 AUDIT READY', 'auditHash', 'Inspect Chain',
+    'JOB-2026-08', '482', '842.6', '11 min', '100% Success Rate',
+    'S3 Glacier', 'audit-trail?search=JOB', 'Point-in-Time',
+  ]) {
+    assert.ok(!body.includes(gone), `settings/jobs/page.tsx still fabricates: "${gone}"`);
+  }
+  assert.ok(
+    body.includes('/api/queue/jobs') && body.includes('Ephemeral · in-memory store'),
+    'jobs page must fetch the queue API and disclose the ephemeral in-memory store',
+  );
+});
+
+test('GAP-18 worker preseed stays removed', () => {
+  const body = readFileSync(new URL('../lib/queue/worker.ts', import.meta.url).pathname, 'utf8');
+  for (const gone of ['job_batch_0894_pm', 'job_esc_0314_vnd', 'job_merkle_tree_root', 'rootBlock']) {
+    assert.ok(!body.includes(gone), `lib/queue/worker.ts still contains preseed fiction: "${gone}"`);
+  }
+});
