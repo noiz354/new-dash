@@ -218,3 +218,15 @@ Tests: 2 integrasi baru (convert happy + 409 kedua + replay idempoten + audit + 
 Runtime proof (MCP dev :3145, m.vance): desk kanon tampil CONVERTED → WO-2026-0894 dari server; API: create FND-2026-0190 → convert 201 WO-2026-0910 → convert-again 409; create FND-2026-0191 → dismiss-pendek 400 → dismiss 200 DISMISSED; klik PM → rule PM-HVAC-750 nyata; console 0 JS error (409/400 = artefak probe negatif disengaja).
 Out of scope (tercatat): BOM staging nyata, PM hub (GAP-8), desk non-kanon (masih EmptyState wave-2).
 NEXT GAP: #5 sessions revoke-all.
+
+## GAP CLOSED #5 — ProfileSessions live wiring (2026-09-16)
+
+Domain: Auth | Feature: ProfileSessions list + revoke | Previous: BROKEN (SESSIONS const statis + revoke setState lokal + copy "SCIM v2.4 (mock)") | New: END-TO-END
+Root cause: GET/POST /api/auth/sessions nyata tapi nol caller; UI memalsukan 3 sesi.
+Spec: docs/remediation-gap-5-spec.md (ditulis dulu — spec-driven).
+Backend: GET kini tandai `current` via hash cookie sendiri (prefix 8-char saja, full hash tak pernah keluar); POST terima `{mode:'all'|'others'}` (default all = perilaku lama); `revokeOtherUserSessions()` baru; audit AUTH_SESSIONS_REVOKE_OTHERS; fail-closed 401 SESSION_UNKNOWN bila cookie tak teridentifikasi; op diganti `auth.sessions.revoke`.
+Frontend: SESSIONS const + revoke() lokal DIHAPUS; GET on mount (loading/error/empty jujur); baris live (user-agent + last-seen + expiry + badge THIS DEVICE); "Sign Out Other Devices" → POST others + refetch + toast count server; "Sign Out Everywhere" → POST all → /login; copy mock diganti jujur; per-session single revoke DITUNDA by design (prefix ambigu — dinyatakan di UI + spec, bukan dipalsukan).
+Tests: 3 integrasi baru (current-flag tepat-1 + prefix-only; others bunuh sisanya + caller selamat; all bunuh semua + restore fixture); npm test 77/77; tsc nol error baru.
+Runtime proof (MCP dev :3145, m.vance): 2 sesi live (browser THIS DEVICE + curl/8.5.0) → Sign Out Others → 1 sesi + toast "1 device(s) signed out" + tombol disabled di 0 others; console bersih (hanya Fast Refresh log).
+Out of scope (tercatat): Rotate Key, Impersonate, per-session single revoke (butuh desain opaque id).
+NEXT GAP: #6 purchasing authorize/GRN.

@@ -72,7 +72,7 @@
 3. **Finding create (BROKEN):** FindingCapture → POST /api/findings → route kembalikan 201 + id acak **tanpa insert** → outbox tandai SYNCED → **PUTUS di layer Service/DB**. Data hilang berwajah sukses.
 4. **Inventory receive (BROKEN):** InventoryLedger → setRows/setMovs + PIN `2468` → toast sukses → **PUTUS di layer Request** (inventory.mutate BYPASSED). Stok fiktif.
 5. **Finding convert (BROKEN):** FindingDesk doConvert → setTimeout 1200ms → badge CONVERTED → **PUTUS di layer Handler** (finding.convert BYPASSED).
-6. **Sessions revoke-all (BROKEN):** ProfileSessions SEED statis → **PUTUS di layer Request** (GET/POST /api/auth/sessions BYPASSED); revoke butuh konfirmasi tapi tak memanggil apa pun.
+6. **Sessions revoke-all (BROKEN):** ProfileSessions SEED statis → **PUTUS di layer Request** (GET/POST /api/auth/sessions BYPASSED); revoke butuh konfirmasi tapi tak memanggil apa pun. [CLOSED GAP-5]
 7. **Inspections (BACKEND-ONLY):** POST /api/inspections + force-dispatch FOUND → **PUTUS di layer FE** (nol caller UI). Kemampuan nyata yang tak terjangkau user.
 8. **Reports (FRONTEND-ONLY):** ReportsHub interaktif → **PUTUS di layer Request** (reports/aggregates BYPASSED). Angka di layar bukan dari server.
 9. **Signup (BACKEND-ONLY):** POST /api/auth/signup FOUND → **PUTUS di layer FE** (nol form pemanggil). Provisioning tenant hanya via API langsung.
@@ -89,7 +89,7 @@
 - Seed ledger MOV_SEED sebagai movement feed tanpa badge.
 - BIM refresh ("live" + timestamp via setTimeout).
 - Klaim copy: `Live Sync Active`, `WS-PUSH: 12ms`, `SYNCED · sha256:…`, badge CONVERTED, `EVT-<acak>` fallback.
-- Jobs page (JOBS const), ProfileSessions (SESSIONS const), PM/audit-queue/shifts/reports/facilities/vendors state lokal.
+- Jobs page (JOBS const), ProfileSessions (SESSIONS const [CLOSED GAP-5 — kini live GET + revoke-others/all]), PM/audit-queue/shifts/reports/facilities/vendors state lokal.
 
 ## 2. SEMUA DEAD-END USER FLOW
 
@@ -102,7 +102,7 @@
 
 ## 3. SEMUA FRONTEND TANPA BACKEND INTEGRATION
 
-SSO · jobs page · reports hub · PM hub · shifts plan · profile sessions · facilities hub · vendors flows · PO dialogs · print pages (WO/PO/badge/permit) · field audit queue/run (kecuali evidence upload) · settings hub · inventory ledger UI · dashboard? TIDAK (dashboard server-fed, END-TO-END).
+SSO · jobs page · reports hub · PM hub · shifts plan · profile sessions [CLOSED GAP-5 — END-TO-END] · facilities hub · vendors flows · PO dialogs · print pages (WO/PO/badge/permit) · field audit queue/run (kecuali evidence upload) · settings hub · inventory ledger UI · dashboard? TIDAK (dashboard server-fed, END-TO-END).
 
 ## 4. SEMUA BACKEND TANPA FRONTEND CONSUMER
 

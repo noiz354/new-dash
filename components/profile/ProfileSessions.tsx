@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BadgeCheck, CheckCircle2, Printer, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,23 +8,39 @@ import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON } from '@/lib/canon';
 import { cn } from '@/lib/utils';
 
-interface Session { id: string; label: string; current?: boolean; meta?: string }
-const SESSIONS: Session[] = [
-  { id: 'sess-dispatch-01', label: 'Dispatch Console · Chrome', current: true, meta: '10.14.0.21 · current · since 07:02 WIB' },
-  { id: 'sess-field-tab-07', label: 'Rugged Tablet-07', meta: `field · ${CANON.inspection} run attached` },
-  { id: 'sess-SSO-02', label: 'SSO token · Analytics', meta: 'expires 16:00 WIB' },
-];
+interface LiveSession {
+  idHashPrefix: string;
+  userAgent: string | null;
+  lastSeenAt: string;
+  expiresAt: string;
+  current: boolean;
+}
 
 interface Toast { id: number; title: string; msg: string }
 let toastSeq = 500;
 
+function fmtDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
 /**
  * Profile & Sessions — L2 port (reference: web/user-profile.html).
  * [ASUMSI-OTOMATIS] Profil = Marcus Vance (persona header desktop H1/M1/M2).
+ *
+ * Sessions are LIVE server data (GET /api/auth/sessions, Postgres sessions
+ * table). Per-session single revoke is not offered: the API exposes only
+ * hash prefixes, so targeting one row would be ambiguous — the UI says so
+ * honestly instead of faking per-row revoke (GAP-5 spec).
  */
 export function ProfileSessions() {
-  const [sessions, setSessions] = useState(SESSIONS);
-  const [sessState, setSessState] = useState('3 sessions · revoke requires confirmation.');
+  const [sessions, setSessions] = useState<LiveSession[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [sessState, setSessState] = useState('Loading live sessions…');
+  const [busy, setBusy] = useState(false);
   const [impersonating, setImpersonating] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -34,11 +50,79 @@ export function ProfileSessions() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 7000);
   };
 
-  const revoke = (id: string) => {
-    setSessions((s) => s.filter((x) => x.id !== id));
-    setSessState(`Revoked ${id} · remaining sessions stay valid.`);
-    push('Session revoked', id);
+  const refresh = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const res = await fetch('/api/auth/sessions', { credentials: 'same-origin' });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.error?.code ? `${body.error.code}: ${body.error.message}` : `HTTP ${res.status}`);
+      }
+      const rows: LiveSession[] = body.data.sessions ?? [];
+      setSessions(rows);
+      const others = rows.filter((r) => !r.current).length;
+      setSessState(
+        rows.length === 0
+          ? 'No active sessions found (unexpected — you are signed in).'
+          : `${rows.length} active session${rows.length === 1 ? '' : 's'} · ${others} other device${others === 1 ? '' : 's'} · per-session revoke unavailable (hash prefixes only).`,
+      );
+    } catch (err) {
+      setSessions(null);
+      const msg = err instanceof Error ? err.message : String(err);
+      setLoadError(`Could not load sessions: ${msg}`);
+      setSessState('Session list unavailable — actions disabled until the server responds.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const revokeOthers = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/sessions', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'others' }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.error?.code ? `${body.error.code}: ${body.error.message}` : `HTTP ${res.status}`);
+      }
+      const n: number = body.data.revokedCount ?? 0;
+      setSessState(`Signed out ${n} other device${n === 1 ? '' : 's'} · this device stays signed in.`);
+      push('Other sessions revoked', `${n} device(s) signed out.`);
+      await refresh();
+    } catch (err) {
+      push('Revoke failed', err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const revokeAll = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch('/api/auth/sessions', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mode: 'all' }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.error?.code ? `${body.error.code}: ${body.error.message}` : `HTTP ${res.status}`);
+      }
+      window.location.href = '/login';
+    } catch (err) {
+      push('Sign-out-all failed', err instanceof Error ? err.message : String(err));
+      setBusy(false);
+    }
+  };
+
+  const others = sessions?.filter((s) => !s.current).length ?? 0;
 
   return (
     <>
@@ -81,33 +165,65 @@ export function ProfileSessions() {
         <section className="bg-card border border-border-subtle rounded-lg p-5 flex flex-col gap-3" aria-labelledby="sess-h">
           <div className="flex items-center justify-between">
             <h2 id="sess-h" className="font-semibold">Active Sessions</h2>
-            <span className="text-xs text-muted">Demo identity · simulated MFA · SCIM v2.4 (mock)</span>
+            <span className="text-xs text-muted">Live server sessions · MFA: real TOTP</span>
           </div>
-          <ul className="flex flex-col divide-y divide-surface-subtle text-sm">
-            {sessions.map((s) => (
-              <li key={s.id} className="py-2 flex flex-wrap items-center justify-between gap-2">
-                <span>
-                  <strong>{s.label}</strong> · {s.meta}{' '}
-                  {s.current && <span className="text-xs text-pass font-bold">THIS DEVICE</span>}
-                </span>
-                {!s.current ? (
-                  <ConfirmDialog
-                    title="Revoke this session?"
-                    description={`${s.id} — the device is signed out immediately. Field drafts stay in its local outbox.`}
-                    confirmLabel="Revoke Now"
-                    onConfirm={() => revoke(s.id)}
-                  >
-                    <button type="button" className="h-8 px-3 rounded bg-fail-bg text-fail border border-[#FECACA] text-xs font-bold hover:bg-fail hover:text-white">
-                      Revoke Session
-                    </button>
-                  </ConfirmDialog>
-                ) : (
-                  <span className="text-xs text-muted">protected</span>
-                )}
-              </li>
-            ))}
-          </ul>
+          {loadError ? (
+            <p className="text-sm rounded border border-fail bg-fail-bg text-fail-ink p-3" role="alert">
+              {loadError}
+            </p>
+          ) : sessions === null ? (
+            <p className="text-sm text-muted" role="status">Loading sessions…</p>
+          ) : sessions.length === 0 ? (
+            <p className="text-sm text-muted" role="status">No active sessions found.</p>
+          ) : (
+            <ul className="flex flex-col divide-y divide-surface-subtle text-sm">
+              {sessions.map((s) => (
+                <li key={s.idHashPrefix} className="py-2 flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <strong className="apex-id">sess:{s.idHashPrefix}</strong> · {s.userAgent ?? 'unknown device'}{' '}
+                    {s.current && <span className="text-xs text-pass font-bold">THIS DEVICE</span>}
+                    <span className="block text-xs text-muted">last seen {fmtDate(s.lastSeenAt)} · expires {fmtDate(s.expiresAt)}</span>
+                  </span>
+                  {s.current ? (
+                    <span className="text-xs text-muted">protected</span>
+                  ) : (
+                    <span className="text-xs text-muted">use “Sign out other devices” below</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="text-xs text-muted" role="status">{sessState}</p>
+          <div className="flex flex-wrap gap-2">
+            <ConfirmDialog
+              title="Sign out other devices?"
+              description={`${others} other session(s) will be signed out immediately. This device stays signed in. Field drafts stay in each device's local outbox.`}
+              confirmLabel="Sign Out Others"
+              onConfirm={() => revokeOthers()}
+            >
+              <button
+                type="button"
+                disabled={busy || sessions === null || others === 0}
+                className="h-8 px-3 rounded bg-fail-bg text-fail border border-[#FECACA] text-xs font-bold hover:bg-fail hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sign Out Other Devices
+              </button>
+            </ConfirmDialog>
+            <ConfirmDialog
+              title="Sign out ALL devices?"
+              description="Every session including this device is revoked and you return to the login screen."
+              confirmLabel="Sign Out Everywhere"
+              onConfirm={() => revokeAll()}
+            >
+              <button
+                type="button"
+                disabled={busy || sessions === null}
+                className="h-8 px-3 rounded border border-border-subtle text-xs font-bold text-muted hover:text-fail disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Sign Out Everywhere
+              </button>
+            </ConfirmDialog>
+          </div>
         </section>
 
         <section className="bg-card border border-border-subtle rounded-lg p-5 flex flex-col gap-3" aria-label="API access">

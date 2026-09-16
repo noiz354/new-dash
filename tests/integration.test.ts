@@ -30,6 +30,13 @@ import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
+import {
+  createSession,
+  hashToken,
+  listUserSessions,
+  revokeAllUserSessions,
+  revokeOtherUserSessions,
+} from '../lib/auth/session';
 
 const TEST_DIR = `.data/test-integration-${Date.now()}`;
 let db: Db;
@@ -727,4 +734,45 @@ test('inventory (GAP-3): RECEIVE + ISSUE with step-up persist, audited with step
   assert.ok(recv, 'PART_RECEIVE audited');
   assert.ok((recv.after as { stepUpAt?: string })?.stepUpAt, 'step-up approval timestamp recorded');
   assert.ok(ledger.rows.some((e) => e.action === 'PART_ISSUE' && e.entityId === sku), 'PART_ISSUE audited');
+});
+
+// ---------------------------------------------------------------------------
+// Sessions (GAP #5: ProfileSessions showed a hardcoded SESSIONS const with
+// local-only revoke; now GET lists live rows with a current-device flag and
+// POST supports revoke-others + revoke-all)
+// ---------------------------------------------------------------------------
+test('sessions (GAP-5): list marks exactly the caller current; prefixes only, never full hashes', async () => {
+  const other = await createSession(db, admin.userId, admin.orgId, 'gap5-test tablet');
+  const rows = await listUserSessions(db, admin.userId, admin.orgId, hashToken(adminToken));
+  assert.ok(rows.length >= 2, 'caller session + probe session listed');
+  const current = rows.filter((r) => r.current);
+  assert.equal(current.length, 1, 'exactly one row is current');
+  assert.equal(current[0].idHashPrefix, hashToken(adminToken).slice(0, 8));
+  assert.ok(rows.every((r) => r.idHashPrefix.length === 8), 'only 8-char prefixes exposed');
+  assert.ok(!('idHash' in current[0]), 'full hash never leaves the server');
+  assert.ok(rows.some((r) => r.userAgent === 'gap5-test tablet' && !r.current));
+  await logout(db, other);
+  assert.equal(await verifySession(db, other), null, 'probe session cleaned up');
+});
+
+test('sessions (GAP-5): revoke-others keeps the caller, kills the rest', async () => {
+  const doomed = await createSession(db, admin.userId, admin.orgId, 'gap5-doomed device');
+  assert.ok(await verifySession(db, doomed), 'probe session live before revoke');
+
+  const n = await revokeOtherUserSessions(db, admin.userId, admin.orgId, hashToken(adminToken));
+  assert.ok(n >= 1, 'at least the probe session revoked');
+  assert.ok(await verifySession(db, adminToken), 'caller session survives revoke-others');
+  assert.equal(await verifySession(db, doomed), null, 'other session revoked');
+});
+
+test('sessions (GAP-5): revoke-all kills everything incl. caller', async () => {
+  const probe = await createSession(db, admin.userId, admin.orgId, 'gap5-revoke-all probe');
+  const n = await revokeAllUserSessions(db, admin.userId, admin.orgId);
+  assert.ok(n >= 2, 'caller + probe revoked');
+  assert.equal(await verifySession(db, adminToken), null, 'caller gone after revoke-all');
+  assert.equal(await verifySession(db, probe), null, 'probe gone after revoke-all');
+  // Restore the shared admin fixture for any later tests.
+  const fresh = await sessionFor('m.vance@apexops.io');
+  admin = fresh.ctx;
+  adminToken = fresh.token;
 });
