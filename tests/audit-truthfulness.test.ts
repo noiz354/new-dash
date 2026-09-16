@@ -56,6 +56,51 @@ test('fabricated verify-root endpoint stays deleted', () => {
   );
 });
 
+// ---------------------------------------------------------------------------
+// GAP-07: impersonation theater removed — no fake "audit-chained" claims.
+// Both files must carry only the honest disabled placeholder.
+// ---------------------------------------------------------------------------
+const PROFILE_SESSIONS = new URL('../components/profile/ProfileSessions.tsx', import.meta.url).pathname;
+const ORG_HUB = new URL('../components/org/OrgHub.tsx', import.meta.url).pathname;
+
+const IMPERSONATION_FICTION = [
+  'audit chain on',
+  'reason logged',
+  'fully logged',
+  'Impersonation session started',
+  'Impersonating',
+  'IMPERSONATING',
+  '30-min tablet window',
+];
+
+for (const [label, file] of [['ProfileSessions', PROFILE_SESSIONS], ['OrgHub', ORG_HUB]] as const) {
+  for (const phrase of IMPERSONATION_FICTION) {
+    test(`GAP-07 ${label} contains no impersonation fiction: "${phrase}"`, () => {
+      const body = readFileSync(file, 'utf8');
+      assert.ok(!body.includes(phrase), `${label} still contains "${phrase}"`);
+    });
+  }
+  test(`GAP-07 ${label} carries the honest disabled placeholder`, () => {
+    const body = readFileSync(file, 'utf8');
+    assert.ok(
+      body.includes('server-issued impersonation session') && body.includes('disabled rather than simulated'),
+      `${label} must explain impersonation needs a server-issued session and is disabled, not simulated`,
+    );
+  });
+}
+
+test('GAP-07 ProfileSessions claims no audit chaining at all', () => {
+  const body = readFileSync(PROFILE_SESSIONS, 'utf8');
+  assert.ok(!body.includes('audit-chained'), 'ProfileSessions must not claim audit-chained (no writer exists)');
+});
+
+test('GAP-07 OrgHub audit-chained survives ONLY on the server-audited activate/deactivate path', () => {
+  const body = readFileSync(ORG_HUB, 'utf8');
+  const hits = body.split('audit-chained').length - 1;
+  // setActive() → PATCH /api/organization/users → org-service writes USER_DEACTIVATE/USER_UPDATE audit rows (GAP-2).
+  assert.equal(hits, 2, `expected exactly the 2 activate/deactivate toasts, found ${hits}`);
+});
+
 test('verify-chain route delegates to real server recomputation', () => {
   const route = readFileSync(VERIFY_CHAIN_ROUTE, 'utf8');
   assert.ok(

@@ -41,7 +41,6 @@ export function ProfileSessions() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sessState, setSessState] = useState('Loading live sessions…');
   const [busy, setBusy] = useState(false);
-  const [impersonating, setImpersonating] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const push = (title: string, msg: string) => {
@@ -126,13 +125,6 @@ export function ProfileSessions() {
 
   return (
     <>
-      {impersonating && (
-        <div className="no-print fixed top-7 left-0 right-0 z-[95] bg-warn-ink text-white text-sm font-semibold text-center py-2">
-          IMPERSONATING Field Tech — actions are audit-chained ·{' '}
-          <button type="button" className="underline font-bold" onClick={() => setImpersonating(false)}>Exit</button>
-        </div>
-      )}
-
       <div className="no-print max-w-[900px] w-full flex flex-col gap-4">
         <nav className="flex items-center gap-2 text-sm" aria-label="Breadcrumb">
           <Link className="text-muted hover:text-cobalt font-medium" href={`/work-orders/${CANON.workOrderSeal}`}>{CANON.workOrderSeal}</Link>
@@ -241,19 +233,24 @@ export function ProfileSessions() {
           </div>
         </section>
 
-        <section className="bg-card border-2 border-warn-dot rounded-lg p-5 flex flex-col gap-2" aria-label="Impersonation">
+        <section className="bg-card border border-border-subtle rounded-lg p-5 flex flex-col gap-2" aria-label="Impersonation">
           <h2 className="font-semibold">Audit Impersonate</h2>
-          <p className="text-sm text-muted">View the app as a technician for support. Every impersonated action is bannered + audit-chained.</p>
+          <p className="text-sm text-muted">
+            Requires a server-issued impersonation session. Not available in
+            this build — the action is disabled rather than simulated, so no
+            fake audit claims are shown.
+          </p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => { setImpersonating(true); push('Impersonating', 'Field Tech view · banner + audit chain on.'); }}
-              className="h-9 px-4 rounded bg-warn-bg border border-warn-dot text-warn-ink text-sm font-bold"
+              disabled
+              title="Requires a server-issued impersonation session (not available in this build)"
+              className="h-9 px-4 rounded bg-surface border border-border-subtle text-sm font-bold text-muted cursor-not-allowed"
             >
-              Impersonate Field Tech
+              Impersonate Field Tech (disabled)
             </button>
             <Link href="/audit-trail" className="h-9 px-4 rounded bg-cobalt-tint text-sm font-semibold inline-flex items-center">
-              Verify in Audit Trail
+              Open Audit Trail
             </Link>
           </div>
         </section>

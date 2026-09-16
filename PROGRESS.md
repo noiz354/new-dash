@@ -249,3 +249,13 @@ Backend: `verifyWebhookSignature()` atas RAW body (skema t,v1 Stripe) — secret
 Tests: 4 integrasi baru (valid→processed+1 audit; replay→replayed+audit tetap 1+plan ACTIVE; bad/tampered/missing/invalid-json→400/401 tanpa mutasi; missing secret→503; checkout tanpa key→503 tanpa ubah subscription row); npm test 81/81; tsc nol error baru.
 Runtime proof (curl dev :3145, tanpa secret): webhook→`BILLING_NOT_CONFIGURED` fail-closed (dulu: diproses diam-diam!); checkout unauth→401 (auth boundary utuh). Positive-path route-level TIDAK di-curl di dev DB agar tak mengotori data sharing (plan org) — positive path terbukti di integration test (PGlite riil + HMAC riil); plumbing route terbukti via path 503 (req.text→service→envelope).
 NEXT GAP: #7 impersonate.
+
+## GAP CLOSED #7 — Impersonation fake-audit → honest placeholder (2026-09-16)
+
+Domain: AuthZ | Feature: Audit Impersonate (profile + org) | Previous: MOCKED (banner "actions are audit-chained", toast "audit chain on"/"reason logged · 30-min tablet window", PIN 2468 — nol write, nol session change) | New: HONEST PLACEHOLDER (disabled, jujur)
+Root cause: FAKE SUCCESS di fitur security-sensitif; tak ada endpoint audit-write generik (membuatnya agar klien tulis audit arbitrer = security smell); impersonasi server-side asli = big rock + butuh product decision → opsi "cabut klaim".
+Spec: docs/remediation-gap-7-spec.md (ditulis dulu — spec-driven).
+Frontend: teater dihapus total di kedua file (impersonating state + banner + dialog + impReason/impPin state + toast); diganti tombol disabled + copy "Requires a server-issued impersonation session… disabled rather than simulated".
+Tests: guard di tests/audit-truthfulness.test.ts — 7 frasa fiksi hilang dari kedua file; placeholder jujur hadir di keduanya; "audit-chained" tersisa TEPAT 2 (toast activate/deactivate OrgHub yang memang server-audited via GAP-2 PATCH→audit); npm test 99/99; tsc nol error baru.
+Runtime proof (MCP browser dev :3145, m.vance): /profile → "Impersonate Field Tech (disabled)" + copy jujur + sesi live THIS DEVICE; /organization → "Audit Impersonate (disabled)"; 0 console error; reload persist (disabled statis — tak ada state palsu); screenshot /tmp/opencode/evidence/gap07/.
+NEXT GAP: #8 copy cluster + EVT.

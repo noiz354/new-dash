@@ -151,17 +151,13 @@ export function OrgHub() {
   const [editOpen, setEditOpen] = useState(false);
   const [editRole, setEditRole] = useState('Senior Field Tech');
   const [editDept, setEditDept] = useState<string>(DEPTS[0]);
-  const [impOpen, setImpOpen] = useState(false);
-  const [impReason, setImpReason] = useState('');
-  const [impPin, setImpPin] = useState('');
-  const [impTouched, setImpTouched] = useState(false);
+  const [acting, setActing] = useState(false);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloneName, setCloneName] = useState('');
   const [cloneTouched, setCloneTouched] = useState(false);
   const [ssoOpen, setSsoOpen] = useState(false);
   const [mfaNote, setMfaNote] = useState('');
   const [dirState, setDirState] = useState<'loading' | 'live' | 'demo'>('loading');
-  const [acting, setActing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Roster source of truth: GET /api/organization/users. Seed rows stay only
@@ -336,16 +332,6 @@ export function OrgHub() {
     } finally {
       setActing(false);
     }
-  };
-
-  const impersonate = () => {
-    setImpTouched(true);
-    if (impReason.trim().length < 10 || impPin.trim() !== '2468') return;
-    setImpOpen(false);
-    setImpReason('');
-    setImpPin('');
-    setImpTouched(false);
-    push(true, 'Impersonation session started', `${focusP.name} · reason logged · 30-min tablet window.`);
   };
 
   const deploy = () => {
@@ -538,26 +524,14 @@ export function OrgHub() {
               <ConfirmDialog title="Reset MFA / Key?" description={`${focusP.name} must re-enroll TOTP/FIDO2 at next login. All live sessions are revoked immediately.`} confirmLabel="Revoke Key" onConfirm={resetMfa}>
                 <Button variant="secondary" disabled={acting}><KeyRound size={15} /> Reset MFA / Key</Button>
               </ConfirmDialog>
-              <Dialog open={impOpen} onOpenChange={setImpOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="secondary"><PersonStanding size={15} /> Audit Impersonate</Button>
-                </DialogTrigger>
-                <DialogContent aria-labelledby="imp-h">
-                  <DialogTitle id="imp-h">Audit Impersonate — {focusP.name}</DialogTitle>
-                  <DialogDescription>Time-boxed session. Reason + approver PIN required; fully logged.</DialogDescription>
-                  <label className="text-xs font-semibold" htmlFor="imp-reason">Business reason (min 10 chars)</label>
-                  <textarea id="imp-reason" rows={2} value={impReason} onChange={(e) => setImpReason(e.target.value)} className="w-full p-3 border border-border-strong rounded text-[13px] outline-none focus:border-cobalt" placeholder="e.g. Reproduce dispatcher 403 on WO close…" />
-                  <label className="text-xs font-semibold" htmlFor="imp-pin">Approver PIN — M. Vance (demo: 2468)</label>
-                  <Input id="imp-pin" type="password" inputMode="numeric" autoComplete="off" value={impPin} onChange={(e) => setImpPin(e.target.value)} invalid={impTouched && impPin.trim() !== '2468'} />
-                  {impTouched && (impReason.trim().length < 10 || impPin.trim() !== '2468') && (
-                    <p className="text-[11px] font-semibold text-fail">Reason ≥ 10 chars + approver PIN 2468 are required.</p>
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <Button variant="secondary" onClick={() => setImpOpen(false)}>Cancel</Button>
-                    <Button onClick={impersonate}>Start Session</Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <button
+                type="button"
+                disabled
+                title="Requires a server-issued impersonation session (not available in this build) — disabled rather than simulated"
+                className="h-9 px-3 rounded border border-border-subtle text-xs font-bold text-muted cursor-not-allowed inline-flex items-center gap-1"
+              >
+                <PersonStanding size={15} /> Audit Impersonate (disabled)
+              </button>
               <ConfirmDialog title={`${focusP.status === 'Deactivated' ? 'Reactivate' : 'Deactivate'} ${focusP.name}?`} description={focusP.status === 'Deactivated' ? 'Login is re-enabled for this directory account.' : 'Directory login is disabled immediately. Roster history is kept for audit.'} confirmLabel={focusP.status === 'Deactivated' ? 'Reactivate User' : 'Deactivate User'} onConfirm={() => setActive(focusP.status === 'Deactivated')}>
                 <Button variant={focusP.status === 'Deactivated' ? 'secondary' : 'destructive'} disabled={acting}><UserX size={15} /> {focusP.status === 'Deactivated' ? 'Reactivate User' : 'Deactivate User'}</Button>
               </ConfirmDialog>
