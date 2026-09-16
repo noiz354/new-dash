@@ -97,6 +97,23 @@
 - [ ] DEAD-END: buat rute `/inventory/transfers`, `/inventory/adjustments`, `/field/runs` atau cabut referensinya (TO-8891/ADJ/INS-… menggantung)
 - [ ] OrgHub provision: daftar roster masih SEED meski POST nyata → refetch setelah provision (PARTIAL → END-TO-END)
 
+## Audit non-E2E 32 fitur — remediation order (detail: `docs/audit-non-e2e-remediation-map.md`)
+
+> 2026-09-16, read-only, 32 fitur terverifikasi (bukan 37 — lihat §22). Eksekusi GAP-06→GAP-17 satu-per-satu, spec-driven, commit+push per gap.
+
+- [ ] GAP-06 P0: billing HMAC fail-closed + dedup + Stripe call/hapus stub (F24)
+- [ ] GAP-07 P0: impersonate — audit event nyata atau cabut klaim "audit-chained" (F29)
+- [ ] GAP-08 P1: copy cluster jujur + EVT-fallback wajib-auditId + perluas grep-test (F31/F32)
+- [ ] GAP-09 P1: purchasing wire list/detail/GRN → po-service (F13, big rock M/L)
+- [ ] GAP-10 P1: PM hub wire list+generate nyata (F19)
+- [ ] GAP-11 P1: force-dispatch route→service+audit, lalu field queue←inspections (F20→F16, big rock)
+- [ ] GAP-12 P1: 4 quick-close paralel — WO tasks + inventory KPI + provision-refetch + outbox-flush (F5/F10/F3/F17)
+- [ ] GAP-13 P1: evidence GET ter-otentikasi + viewer; rotate-key endpoint nyata / honest placeholder (F6/F30)
+- [ ] GAP-14 P2: reports + vendors + BIM wire ke backend yang sudah ada (F21/F14/F8)
+- [ ] GAP-15 P2/P3: export label "CSV (loaded rows)" + badge "Fase 2" di kartu runs (F11/F18)
+- [ ] GAP-16: NEED PRODUCT DECISION — signup-UI? transfer-routes? jobs-satu-dunia? digest-cron? facilities-KV? settings-KV? handover-backend? (F2/F12/F23/F25/F15/F26/F27)
+- [ ] GAP-17: KEEP batch no-op — SSO, clone-policy, print, ledger-fallback, telemetry-infra, import-defer (F1/F4/F7/F9/F22/F28)
+
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
 ## Fase A — Tutup Kanon ✅ Selesai (2026-09-13)

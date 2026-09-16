@@ -230,3 +230,12 @@ Tests: 3 integrasi baru (current-flag tepat-1 + prefix-only; others bunuh sisany
 Runtime proof (MCP dev :3145, m.vance): 2 sesi live (browser THIS DEVICE + curl/8.5.0) → Sign Out Others → 1 sesi + toast "1 device(s) signed out" + tombol disabled di 0 others; console bersih (hanya Fast Refresh log).
 Out of scope (tercatat): Rotate Key, Impersonate, per-session single revoke (butuh desain opaque id).
 NEXT GAP: #6 purchasing authorize/GRN.
+
+## AUDIT non-E2E 32 fitur — remediation map (2026-09-16)
+
+Perintah user: kerjakan semua 37 fitur non-E2E satu-per-satu secara spec-driven (34 langkah, tanpa perbaiki code). Dieksekusi read-only via 4 subagen explore paralel (batch A: SSO/signup/sessions/OrgHub/WO-tasks/evidence/print; B: inventory/aset/purchasing/vendors/facilities; C: field/PM/inspections/reports/telemetry/jobs; D: settings/shifts/billing/retention/import/copy/clone/impersonate).
+Hasil: klaim "37" dikoreksi → **32 fitur terverifikasi** (2 drifted→E2E: sessions GAP-5, ledger-read GAP-3; 3 baris print merge→1; import-CSV ternyata NOT FOUND bukan fitur; +5 split baru: clone-policy, impersonate, rotate-key, copy-cluster, EVT-fallback).
+Verdict: bug/gap benar = 20 (8 must-fix + 8 must-integrate + 4 complete-partial); valid by design = 3 + 4 honest-placeholder; quick close = 9; big rock = 7; need product decision = 4 primer + 3 sekunder; remove = 0.
+Temuan tajam: F24 billing `catch{}` telan BAD_SIGNATURE (P0 keamanan); F29 impersonate klaim "audit-chained" fiktif (P0-adjacent); F20 force-dispatch bypass service (tanpa zod/audit/idempotency); F23 jobs dua dunia + link auditHash fiktif; F8 BIM "live" padahal GET /api/telemetry/ingest nyata nganggur.
+Dokumen: `docs/audit-non-e2e-remediation-map.md` (§19 32 blok + §22 master table + §23–§30: by-decision, by-gap, order GAP-06→GAP-17, quick-close 9, big-rock 7, dependency map, counts).
+NEXT: eksekusi GAP-06 (billing HMAC) → GAP-17 satu-per-satu dalam build mode (butuh persetujuan user per pola CLOSE ALL GAPS).
