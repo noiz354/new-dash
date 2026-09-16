@@ -25,6 +25,8 @@ import {
 export const organizations = pgTable('organizations', {
   id: text('id').primaryKey(), // canon tenant id, e.g. APX-NUSA-01
   name: text('name').notNull(),
+  plan: text('plan').notNull().default('ENTERPRISE'),
+  activatedAt: timestamp('activated_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -133,6 +135,8 @@ export const auditEvents = pgTable(
     before: jsonb('before'),
     after: jsonb('after'),
     requestId: text('request_id'),
+    prevHash: text('prev_hash'),
+    entryHash: text('entry_hash'),
   },
   (t) => [index('audit_org_ts_idx').on(t.organizationId, t.ts), index('audit_entity_idx').on(t.organizationId, t.entityType, t.entityId)],
 );
@@ -331,3 +335,160 @@ export const purchaseOrders = pgTable(
     check('po_number_ck', sql`${t.number} ~ '^(PO|PR)-[0-9]{4}-[0-9]{4}$'`),
   ],
 );
+
+export const WO_TASK_STATUSES = ['LOCKED', 'PENDING', 'IN_PROGRESS', 'DONE'] as const;
+
+export const woTasks = pgTable(
+  'wo_tasks',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    workOrderNumber: text('work_order_number').notNull(),
+    stepOrder: integer('step_order').notNull(),
+    title: text('title').notNull(),
+    instruction: text('instruction').notNull().default(''),
+    status: text('status').notNull().default('PENDING'),
+    requiresPhoto: boolean('requires_photo').notNull().default(false),
+    verifiedBy: text('verified_by'),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('wo_tasks_wo_idx').on(t.organizationId, t.workOrderNumber),
+    check('wo_tasks_status_ck', sql`${t.status} IN ('LOCKED','PENDING','IN_PROGRESS','DONE')`),
+  ],
+);
+
+export const evidence = pgTable(
+  'evidence',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    workOrderNumber: text('work_order_number').notNull(),
+    taskId: text('task_id'),
+    fileName: text('file_name').notNull(),
+    filePath: text('file_path').notNull(),
+    mimeType: text('mime_type').notNull(),
+    fileSize: integer('file_size').notNull(),
+    sha256Hash: text('sha256_hash').notNull(),
+    uploadedBy: text('uploaded_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('evidence_wo_idx').on(t.organizationId, t.workOrderNumber),
+  ],
+);
+
+export const poLineItems = pgTable(
+  'po_line_items',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    documentNumber: text('document_number').notNull(), // PO-2026-0298 or PR-2026-0314
+    sku: text('sku').notNull(),
+    description: text('description').notNull(),
+    quantity: integer('quantity').notNull().default(1),
+    unitPriceCents: bigint('unit_price_cents', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('po_lines_doc_idx').on(t.organizationId, t.documentNumber),
+    check('po_line_qty_ck', sql`${t.quantity} > 0`),
+  ],
+);
+
+export const goodsReceiptNotes = pgTable(
+  'goods_receipt_notes',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // GRN-9941
+    poNumber: text('po_number').notNull(),
+    waybill: text('waybill').notNull().default(''),
+    dockLocation: text('dock_location').notNull().default('Dock Bay 02'),
+    status: text('status').notNull().default('RECEIVED'),
+    verifiedBy: text('verified_by').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    index('grn_po_idx').on(t.organizationId, t.poNumber),
+    check('grn_status_ck', sql`${t.status} IN ('RECEIVED','DISPUTED')`),
+  ],
+);
+
+export const pmRules = pgTable(
+  'pm_rules',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(), // PM-CHL-001
+    title: text('title').notNull(),
+    assetCode: text('asset_code').notNull(),
+    intervalDays: integer('interval_days').notNull().default(90),
+    priority: text('priority').notNull().default('P2'),
+    status: text('status').notNull().default('ACTIVE'), // ACTIVE | PAUSED
+    lastGeneratedAt: timestamp('last_generated_at', { withTimezone: true }),
+    nextDueAt: timestamp('next_due_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('pm_rules_asset_idx').on(t.organizationId, t.assetCode),
+    check('pm_rules_status_ck', sql`${t.status} IN ('ACTIVE','PAUSED')`),
+    check('pm_rules_priority_ck', sql`${t.priority} IN ('P1','P2','P3')`),
+  ],
+);
+
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    organizationId: text('organization_id').primaryKey().references(() => organizations.id, { onDelete: 'cascade' }),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    plan: text('plan').notNull().default('ENTERPRISE'), // COMMUNITY | GROWTH | ENTERPRISE
+    status: text('status').notNull().default('ACTIVE'), // ACTIVE | TRIALING | PAST_DUE | CANCELED
+    currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('sub_plan_ck', sql`${t.plan} IN ('COMMUNITY','GROWTH','ENTERPRISE')`),
+    check('sub_status_ck', sql`${t.status} IN ('ACTIVE','TRIALING','PAST_DUE','CANCELED')`),
+  ],
+);
+
+export const sensorReadings = pgTable(
+  'sensor_readings',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    assetCode: text('asset_code').notNull(),
+    sensorType: text('sensor_type').notNull(), // VIBRATION | TEMPERATURE | REFRIGERANT_PPM | VOLTAGE_KV | PRESSURE_PSI
+    value: text('value').notNull(),
+    unit: text('unit').notNull(),
+    status: text('status').notNull().default('NORMAL'), // NORMAL | WARNING | CRITICAL
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('sensor_readings_asset_idx').on(t.organizationId, t.assetCode, t.recordedAt),
+    check('sensor_status_ck', sql`${t.status} IN ('NORMAL','WARNING','CRITICAL')`),
+  ],
+);
+
+export const rateLimits = pgTable(
+  'rate_limits',
+  {
+    key: text('key').primaryKey(),
+    count: integer('count').notNull().default(1),
+    resetAt: timestamp('reset_at', { withTimezone: true }).notNull(),
+  },
+);
+
+
+
+
+
+

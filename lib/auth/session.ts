@@ -97,3 +97,46 @@ export async function revokeSession(db: Db, token: string | undefined | null): P
   if (!token) return;
   await db.delete(sessions).where(eq(sessions.idHash, hashToken(token)));
 }
+
+export async function revokeAllUserSessions(
+  db: Db,
+  userId: string,
+  organizationId: string,
+): Promise<number> {
+  const deleted = await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.organizationId, organizationId)))
+    .returning();
+  return deleted.length;
+}
+
+export interface UserSessionSummary {
+  idHashPrefix: string;
+  userAgent: string | null;
+  lastSeenAt: string;
+  expiresAt: string;
+}
+
+export async function listUserSessions(
+  db: Db,
+  userId: string,
+  organizationId: string,
+): Promise<UserSessionSummary[]> {
+  const rows = await db
+    .select({
+      idHash: sessions.idHash,
+      userAgent: sessions.userAgent,
+      lastSeenAt: sessions.lastSeenAt,
+      expiresAt: sessions.expiresAt,
+    })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.organizationId, organizationId)))
+    .orderBy(sql`${sessions.lastSeenAt} desc`);
+
+  return rows.map((r) => ({
+    idHashPrefix: r.idHash.slice(0, 8),
+    userAgent: r.userAgent,
+    lastSeenAt: r.lastSeenAt.toISOString(),
+    expiresAt: r.expiresAt.toISOString(),
+  }));
+}

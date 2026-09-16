@@ -6,7 +6,7 @@
  */
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db, Tx } from '../../db/client';
-import { auditEvents, users, workOrderEvents, workOrders } from '../../db/schema';
+import { auditEvents, organizations, users, workOrderEvents, workOrders } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
 import { DomainError, invalidTransition, notFound, staleState } from '../domain/errors';
 import {
@@ -65,10 +65,42 @@ const byPriorityThenDue = [
   asc(workOrders.slaDueAt),
 ];
 
-export async function listWorkOrders(db: Db, ctx: AuthContext): Promise<WoRow[]> {
-  const rows = (await selectWo(db)
-    .where(eq(workOrders.organizationId, ctx.orgId))
-    .orderBy(...byPriorityThenDue)) as WoJoinRow[];
+export interface ListWoOpts {
+  status?: string;
+  priority?: 'P1' | 'P2' | 'P3';
+  assetCode?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listWorkOrders(
+  db: Db,
+  ctx: AuthContext,
+  opts?: ListWoOpts,
+): Promise<WoRow[]> {
+  const conditions = [eq(workOrders.organizationId, ctx.orgId)];
+  if (opts?.status && opts.status !== 'ALL') {
+    conditions.push(eq(workOrders.status, opts.status));
+  }
+  if (opts?.priority && opts.priority !== 'ALL') {
+    conditions.push(eq(workOrders.priority, opts.priority));
+  }
+  if (opts?.assetCode) {
+    conditions.push(eq(workOrders.assetCode, opts.assetCode));
+  }
+
+  let query = selectWo(db)
+    .where(and(...conditions))
+    .orderBy(...byPriorityThenDue);
+
+  if (opts?.offset) {
+    query = query.offset(opts.offset) as any;
+  }
+  if (opts?.limit) {
+    query = query.limit(opts.limit) as any;
+  }
+
+  const rows = (await query) as WoJoinRow[];
   return rows.map((r) => toDto(r));
 }
 
@@ -236,6 +268,14 @@ export async function transitionWorkOrder(
           after: { status: nextStatus, assignedTo: assigneeId, reason: input.reason ?? null },
           requestId: opts.requestId ?? null,
         });
+
+        // Phase 3 C.2: Activation event instrumentation — first closed WO activates org
+        if (input.action === 'complete') {
+          await tx
+            .update(organizations)
+            .set({ activatedAt: new Date() })
+            .where(and(eq(organizations.id, ctx.orgId), sql`${organizations.activatedAt} IS NULL`));
+        }
 
         const fresh = { ...updated[0], status: nextStatus };
         const name = assigneeName ?? (assigneeId ? (await tx.select({ name: users.name }).from(users).where(eq(users.id, assigneeId)).limit(1))[0]?.name ?? null : null);

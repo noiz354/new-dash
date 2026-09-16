@@ -80,17 +80,28 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
             <span className="apex-id text-muted">{asset.totalWos} work orders all-time on this asset</span>
           </div>
         </div>
-        {isSeal && (
-          <div className="flex flex-wrap gap-2 rounded-lg border border-border-subtle bg-surface p-3 items-center">
-            <span className="text-[13px] font-semibold">Canon chain (seeded):</span>
-            <Link href={`/field/findings/${CANON.finding}`}><Button variant="secondary">{CANON.finding}</Button></Link>
-            <Link href={`/service-requests/${CANON.serviceRequest}`}><Button variant="secondary">{CANON.serviceRequest}</Button></Link>
-            <Link href={`/work-orders/${CANON.workOrderSeal}`}><Button variant="secondary">{CANON.workOrderSeal}</Button></Link>
-            <Link href={`/assets/${asset.code}/bim`}>
-              <Button variant="ghost">BIM view (simulated)</Button>
-            </Link>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2 rounded-lg border border-border-subtle bg-surface p-3 items-center">
+          <span className="text-[13px] font-semibold">Asset Operations &amp; Schematic:</span>
+          {isSeal ? (
+            <>
+              <Link href={`/field/findings/${CANON.finding}`}><Button variant="secondary">{CANON.finding}</Button></Link>
+              <Link href={`/service-requests/${CANON.serviceRequest}`}><Button variant="secondary">{CANON.serviceRequest}</Button></Link>
+              <Link href={`/work-orders/${CANON.workOrderSeal}`}><Button variant="secondary">{CANON.workOrderSeal}</Button></Link>
+            </>
+          ) : (
+            <>
+              <Link href={`/work-orders/new?asset=${asset.code}&location=${encodeURIComponent(asset.location)}`}>
+                <Button variant="secondary">Dispatch Work Order</Button>
+              </Link>
+              <Link href={`/field-inspections/new?asset=${asset.code}&location=${encodeURIComponent(asset.location)}`}>
+                <Button variant="secondary">Schedule Inspection</Button>
+              </Link>
+            </>
+          )}
+          <Link href={`/assets/${asset.code}/bim`}>
+            <Button variant="ghost">BIM &amp; Telemetry Schematic →</Button>
+          </Link>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

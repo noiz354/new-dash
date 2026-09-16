@@ -17,7 +17,7 @@ export function FieldShell({ children }: { children: React.ReactNode }) {
   const tabs = [
     { href: '/field/audits', label: 'Audits', Icon: ClipboardList, badge: 3, badgeTone: 'bg-fail', active: path === '/field/audits' },
     { href: RUN_HREF, label: 'Checklist', Icon: ListChecks, badge: 0, badgeTone: '', active: path.endsWith('/run') },
-    { href: `${RUN_HREF}#finding-capture`, label: 'Finding', Icon: TriangleAlert, badge: 0, badgeTone: '', active: false },
+    { href: '/field/findings/new', label: 'Finding', Icon: TriangleAlert, badge: 0, badgeTone: '', active: path.startsWith('/field/findings') },
     { href: '/field/sync', label: 'Sync', Icon: CloudUpload, badge: 2, badgeTone: 'bg-warn', active: path === '/field/sync' },
   ];
   return (

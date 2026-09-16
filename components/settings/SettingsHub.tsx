@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, Database, Download, Eye, EyeOff, FlaskConical, KeyRound, Lock, Mail, Radio, RefreshCw, Ruler, ShieldCheck, Trash2, Webhook, Wrench, X, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Database, Download, Eye, EyeOff, FlaskConical, KeyRound, Lock, Mail, Radio, RefreshCw, Ruler, ShieldCheck, Trash2, Webhook, Wrench, X, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -445,7 +445,12 @@ export function SettingsHub() {
             <div className="rounded-lg border border-border-subtle bg-surface p-4 flex flex-col gap-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-semibold">Automated Database Backup &amp; Point-in-Time Restore</h2>
-                <Button onClick={snapshot}><Database size={15} /> Create Ad-hoc Snapshot Now</Button>
+                <div className="flex flex-wrap gap-2">
+                  <Link href="/settings/jobs">
+                    <Button variant="secondary"><Clock size={15} /> View Job &amp; Snapshot History</Button>
+                  </Link>
+                  <Button onClick={snapshot}><Database size={15} /> Create Ad-hoc Snapshot Now</Button>
+                </div>
               </div>
               <p className="text-xs text-muted -mt-1">Hourly differential write-ahead-logs and encrypted cold storage images in compliance with SOC2 Type II standard.</p>
               <p className="text-[13px]">Backup Schedule Status: <strong>Active • Hourly Diff + Daily Full (02:00 UTC)</strong></p>

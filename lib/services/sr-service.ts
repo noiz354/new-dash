@@ -57,12 +57,36 @@ const srOrder = [
   asc(serviceRequests.slaDueAt),
 ];
 
-export async function listServiceRequests(db: Db, ctx: AuthContext): Promise<SrRow[]> {
-  const rows = await db
+export interface ListSrOpts {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listServiceRequests(
+  db: Db,
+  ctx: AuthContext,
+  opts?: ListSrOpts,
+): Promise<SrRow[]> {
+  const conditions = [eq(serviceRequests.organizationId, ctx.orgId)];
+  if (opts?.status && opts.status !== 'ALL') {
+    conditions.push(eq(serviceRequests.status, opts.status));
+  }
+
+  let query = db
     .select()
     .from(serviceRequests)
-    .where(eq(serviceRequests.organizationId, ctx.orgId))
+    .where(and(...conditions))
     .orderBy(...srOrder);
+
+  if (opts?.offset) {
+    query = query.offset(opts.offset) as any;
+  }
+  if (opts?.limit) {
+    query = query.limit(opts.limit) as any;
+  }
+
+  const rows = await query;
   return rows.map((r) => toSrDto(r));
 }
 
