@@ -38,6 +38,45 @@
 - [x] Pass-2 batch aset & resource (6): `asset-registry.md`, `asset-detail.md`, `facilities.md`, `inventory.md`, `purchasing.md`, `vendors.md`
 - [x] Pass-2 batch governance & sistem (7): `reports.md`, `audit-trail.md`, `notifications.md`, `organization-rbac.md`, `settings.md`, `ui-state-patterns.md`, `logo.md`
 - [x] Koreksi atas pass-1 dicatat (§7 tiap file): cabut klaim "Kowalski ganda", revisi ui-state-patterns §2, kalibrasi label MISSING→aksi inline
+- [x] Prompt audit visual semua `screen.png` → `stitch_facility_maintenance_platform_ui/PROMPT.md`
+- [x] Jalankan audit visual semua PNG → `stitch_facility_maintenance_platform_ui/screen-audits/*.md` + `summary.md`
+
+## Second-Pass Product Architecture Audit ✅ Selesai — output `stitch_facility_maintenance_platform_ui/screen-audits/second-pass*.md`
+
+- [x] Audit second-pass route/screen/flow/state → `second-pass.md` + `second-pass-summary.md`
+
+### NEW actionable findings — P0
+
+- [ ] Lengkapi generic detail coverage untuk semua linked Work Order ID; saat ini dynamic route ada, tetapi non-seed WO masih jatuh ke `EmptyState`.
+- [ ] Bangun flow global `New Dispatch / Create Work Order` dari topbar/palette: draft → validation → review → submit → success/failure.
+- [ ] Jadikan Field `Finding` sebagai route first-class (`/field/findings/new` atau setara), bukan fragment `#finding-capture`.
+- [ ] Lengkapi generic Purchase/PR/PO detail coverage untuk semua row list/notifikasi; saat ini route ada, tetapi beberapa PR/PO non-seed masih `EmptyState`.
+- [ ] Buat shared critical-action result pattern: confirmation + loading + success/failure + audit-link; perlu varian reason/PIN/spend approval.
+
+### NEW actionable findings — P1
+
+- [ ] Tambah Report Dossier Detail / Generated Result page (`/reports/[id]` atau setara) untuk preview/query result sebelum export.
+- [ ] Tambah PM Plan detail/create/edit flow untuk plan rows dan New PM Plan action.
+- [ ] Tambah Inventory SKU detail page untuk ledger, reorder, reserved stock, dan movement history per SKU.
+- [ ] Tambah Facility Room detail page untuk room metrics, linked assets, work orders, blueprint state, dan audit/defect flow.
+- [ ] Tambah Audit Event detail/proof permalink untuk ledger hash, proof download, flag review, dan entity cross-link.
+- [ ] Tambah Organization user detail / role-history view untuk MFA, impersonation, deactivation, deployed rule history.
+- [ ] Tambah Settings job history untuk save/restore/reset/purge/credential issue result states.
+- [ ] Lengkapi Service Request detail coverage untuk semua rows di list, bukan hanya canonical seeded request.
+
+### NEW actionable findings — P2
+
+- [ ] Lengkapi Vendor detail coverage untuk semua seeded vendors, termasuk expired/renewal/suspended states.
+- [ ] Lengkapi Asset detail/BIM coverage untuk non-canonical assets dari registry.
+- [ ] Tambah Vendor document/MSA detail lifecycle jika amendment/signature flow perlu audit permalink.
+- [ ] Tambah Purchase invoice / 3-way-match result view untuk match/dispute/exception history.
+- [ ] Tambah Asset document detail lifecycle untuk technical docs/upload/signed/expired states.
+- [ ] Tambah Shift handover detail untuk accepted/rejected/stale handover states.
+
+### NEW actionable findings — P3
+
+- [ ] Tambah reusable print templates untuk Work Permit, Badge/QR, dan domain print artifacts di luar PO print.
+- [ ] Pertimbangkan dev-only UI state gallery route dari `ui_state_variants_patterns` bila dibutuhkan untuk QA komponen.
 
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
