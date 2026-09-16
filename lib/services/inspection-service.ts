@@ -401,3 +401,79 @@ export async function convertFindingToWo(
     return res.body;
   });
 }
+
+export interface DismissFindingInput {
+  justification: string;
+}
+
+function toFindingDto(r: typeof findings.$inferSelect): FindingRow {
+  return {
+    number: r.number,
+    title: r.title,
+    severity: r.severity as FindingRow['severity'],
+    status: r.status as FindingRow['status'],
+    inspectionNumber: r.inspectionNumber,
+    assetCode: r.assetCode,
+    convertedWoNumber: r.convertedWoNumber,
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
+/**
+ * Dismiss a finding with a written justification (min 10 chars, enforced
+ * server-side). Terminal states are final: CONVERTED/DISMISSED → 409.
+ * Writes FINDING_DISMISS to the audit ledger in the same transaction.
+ */
+export async function dismissFinding(
+  db: Db,
+  ctx: AuthContext,
+  findingNumber: string,
+  input: DismissFindingInput,
+  opts: { requestId?: string } = {},
+): Promise<{ finding: FindingRow }> {
+  const justification = input.justification?.trim() ?? '';
+  if (justification.length < 10) {
+    throw new DomainError(400, 'VALIDATION_ERROR',
+      `Dismissal justification must be at least 10 characters (got ${justification.length})`);
+  }
+
+  return db.transaction(async (tx) => {
+    const fndRows = await tx
+      .select()
+      .from(findings)
+      .where(and(eq(findings.organizationId, ctx.orgId), eq(findings.number, findingNumber)))
+      .limit(1);
+
+    if (!fndRows[0]) throw notFound('FINDING', findingNumber);
+    const fnd = fndRows[0];
+
+    if (fnd.status === 'CONVERTED') {
+      throw new DomainError(409, 'ALREADY_CONVERTED',
+        `Finding ${findingNumber} has already been converted to ${fnd.convertedWoNumber} and cannot be dismissed`);
+    }
+    if (fnd.status === 'DISMISSED') {
+      throw new DomainError(409, 'ALREADY_DISMISSED',
+        `Finding ${findingNumber} has already been dismissed`);
+    }
+
+    const [updated] = await tx
+      .update(findings)
+      .set({ status: 'DISMISSED' })
+      .where(and(eq(findings.organizationId, ctx.orgId), eq(findings.number, findingNumber)))
+      .returning();
+
+    await tx.insert(auditEvents).values({
+      organizationId: ctx.orgId,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: 'FINDING_DISMISS',
+      entityType: 'finding',
+      entityId: findingNumber,
+      before: { status: fnd.status },
+      after: { status: 'DISMISSED', justification: justification.slice(0, 1000) },
+      requestId: opts.requestId ?? null,
+    });
+
+    return { finding: toFindingDto(updated) };
+  });
+}

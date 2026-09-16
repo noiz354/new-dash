@@ -205,3 +205,16 @@ Tests: 3 integrasi baru (403 INVALID, 403 UNAVAILABLE, happy RECEIVE+ISSUE + aud
 Runtime proof (MCP dev :3145, m.vance): badge Live server-fed; mutasi seal −1 → on-hand 1; reload → OUT OF STOCK + feed audit "by Marcus Vance"; kode salah → toast STEP_UP_INVALID; console 0 JS error (1×403 = artefak penolakan disengaja).
 Out of scope (tercatat): Reorder PR/PO draft, rute transfers/adjustments, enrich kolom katalog.
 NEXT GAP: #4 finding convert/dismiss.
+
+## GAP CLOSED #4 — Finding convert/dismiss + desk PM (2026-09-16)
+
+Domain: Field | Feature: FindingDesk convert/dismiss/PM | Previous: BROKEN (setTimeout 1200ms + setState + klaim "audit-chained"/"PM-PLN-0104") | New: END-TO-END
+Root cause: doConvert/doDismiss/doPm fiktif lokal; POST convert ADA tak dipanggil; endpoint dismiss TAK ADA.
+Spec: docs/remediation-gap-4-spec.md (ditulis dulu — spec-driven).
+Backend: dismissFinding() di inspection-service (validasi justification min-10 server-side → 400; terminal guard → 409 ALREADY_CONVERTED/ALREADY_DISMISSED; audit FINDING_DISMISS transaksional); POST /api/findings/[id]/dismiss (zod min10, perm finding.dismiss); RBAC finding.dismiss → Director/EngLead/Senior Field Tech.
+Frontend: desk muat live-status via GET /api/findings (badge mengikuti server; gagal → banner jujur + aksi disabled); convert via POST + Idempotency-Key (409 → re-sync); dismiss via POST; PM via pm.create (toast id rule server). NOL setTimeout simulasi; NOL klaim "paged"/fiksi.
+Bug saat runtime ditemukan & diperbaiki: GET list berbentuk {rows,total} bukan array (rows.find crash → honest error banner membuktikan guard bekerja; fix refreshLive).
+Tests: 2 integrasi baru (convert happy + 409 kedua + replay idempoten + audit + tenant; dismiss happy + 400 pendek + 409 ganda + 409 pasca-convert + tenant); npm test 74/74; tsc nol error baru.
+Runtime proof (MCP dev :3145, m.vance): desk kanon tampil CONVERTED → WO-2026-0894 dari server; API: create FND-2026-0190 → convert 201 WO-2026-0910 → convert-again 409; create FND-2026-0191 → dismiss-pendek 400 → dismiss 200 DISMISSED; klik PM → rule PM-HVAC-750 nyata; console 0 JS error (409/400 = artefak probe negatif disengaja).
+Out of scope (tercatat): BOM staging nyata, PM hub (GAP-8), desk non-kanon (masih EmptyState wave-2).
+NEXT GAP: #5 sessions revoke-all.

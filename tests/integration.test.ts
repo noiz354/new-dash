@@ -24,7 +24,7 @@ import {
 } from '../lib/services/sr-service';
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
-import { createFinding, getFinding, listFindings } from '../lib/services/inspection-service';
+import { convertFindingToWo, createFinding, dismissFinding, getFinding, listFindings } from '../lib/services/inspection-service';
 import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { totpNow } from '../lib/auth/totp';
@@ -520,6 +520,86 @@ test('findings: idempotent create replays without a second row', async () => {
     title: 'After idempotency', severity: 'MINOR', assetCode: 'AST-HVAC-003',
   });
   assert.equal(after.number, 'FND-2026-0191', 'sequence advanced only for real inserts');
+});
+
+// ---------------------------------------------------------------------------
+// Finding convert/dismiss (GAP #4: FindingDesk convert/dismiss + PM button
+// were setTimeout/setState fake success; now wired to real endpoints)
+// ---------------------------------------------------------------------------
+test('findings: convert creates WO transactionally, second convert 409, replay idempotent', async () => {
+  const fnd = await createFinding(db, admin, {
+    title: 'Gap-4 convert probe', severity: 'CRITICAL', assetCode: 'AST-HVAC-004',
+  });
+  assert.equal(fnd.status, 'OPEN');
+
+  const wosBefore = await listWorkOrders(db, admin);
+  const key = 'finding-convert-key-0001';
+  const res = await convertFindingToWo(db, admin, fnd.number,
+    { woPriority: 'P1', reason: 'Gap-4 probe' }, { idempotencyKey: key });
+  assert.equal(res.finding.status, 'CONVERTED');
+  assert.ok(res.finding.convertedWoNumber, 'WO number linked');
+  assert.equal(res.wo.number, res.finding.convertedWoNumber);
+  assert.equal(res.wo.status, 'OPEN');
+
+  // WO really exists + finding row updated + audit chained.
+  const wo = await getWorkOrder(db, admin, res.wo.number);
+  assert.equal(wo.title, `Corrective Action: ${fnd.title}`);
+  const refetched = await getFinding(db, admin, fnd.number);
+  assert.equal(refetched.convertedWoNumber, res.wo.number);
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'FINDING_CONVERT_WO' && e.entityId === fnd.number), 'FINDING_CONVERT_WO audited');
+
+  // One-time conversion: second attempt without key → 409.
+  await expectDomainError(
+    () => convertFindingToWo(db, admin, fnd.number, { woPriority: 'P1' }),
+    409, 'ALREADY_CONVERTED',
+  );
+
+  // Replay with the same key returns the stored result, no second WO.
+  const replay = await convertFindingToWo(db, admin, fnd.number,
+    { woPriority: 'P1', reason: 'Gap-4 probe' }, { idempotencyKey: key });
+  assert.equal(replay.wo.number, res.wo.number, 'replay returns stored conversion');
+  const wosAfter = await listWorkOrders(db, admin);
+  assert.equal(wosAfter.length, wosBefore.length + 1, 'exactly one WO created');
+});
+
+test('findings: dismiss writes DISMISSED + audit; guards enforced', async () => {
+  const fnd = await createFinding(db, admin, {
+    title: 'Gap-4 dismiss probe', severity: 'MODERATE', assetCode: 'AST-HVAC-003',
+  });
+
+  // Short justification rejected server-side.
+  await expectDomainError(
+    () => dismissFinding(db, admin, fnd.number, { justification: 'too short' }),
+    400, 'VALIDATION_ERROR',
+  );
+  assert.equal((await getFinding(db, admin, fnd.number)).status, 'OPEN', 'rejected dismiss changes nothing');
+
+  const done = await dismissFinding(db, admin, fnd.number,
+    { justification: 'Duplicate of earlier evidence pack, verified by lead' });
+  assert.equal(done.finding.status, 'DISMISSED');
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'FINDING_DISMISS' && e.entityId === fnd.number), 'FINDING_DISMISS audited');
+
+  // Terminal: dismiss twice → 409 ALREADY_DISMISSED.
+  await expectDomainError(
+    () => dismissFinding(db, admin, fnd.number, { justification: 'Another long enough justification here' }),
+    409, 'ALREADY_DISMISSED',
+  );
+
+  // Dismiss after convert → 409 ALREADY_CONVERTED.
+  const conv = await createFinding(db, admin, {
+    title: 'Gap-4 convert-then-dismiss probe', severity: 'MAJOR', assetCode: 'AST-HVAC-004',
+  });
+  await convertFindingToWo(db, admin, conv.number, { woPriority: 'P2' });
+  await expectDomainError(
+    () => dismissFinding(db, admin, conv.number, { justification: 'Too late, already a work order now' }),
+    409, 'ALREADY_CONVERTED',
+  );
+
+  // Cross-tenant isolation holds for lifecycle ops too.
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  await expectDomainError(() => dismissFinding(db, decoy, fnd.number, { justification: 'Decoy attempt with long text' }), 404, 'FINDING_NOT_FOUND');
 });
 
 // ---------------------------------------------------------------------------

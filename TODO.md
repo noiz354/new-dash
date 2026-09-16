@@ -90,7 +90,7 @@
 
 ## Audit Full-App — temuan baru di luar truth map lama (detail: `docs/audit-full-app-truth-map.md`)
 
-- [ ] BROKEN baru: wire `finding.convert` ke FindingDesk convert + dismiss ke endpoint nyata (kini setTimeout/setState + klaim "audit-chained")
+- [x] BROKEN baru: wire `finding.convert` ke FindingDesk convert + dismiss ke endpoint nyata (GAP-4 CLOSED 2026-09-16: `dismissFinding()` + POST dismiss + perm finding.dismiss; desk live-status + convert/dismiss/PM via API nyata; 74/74 test; runtime MCP terverifikasi)
 - [ ] BROKEN baru: wire `GET/POST /api/auth/sessions` ke ProfileSessions (kini SESSIONS const; revoke-all backend nganggur)
 - [ ] BACKEND-ONLY → putuskan expose atau kunci: inspections CRUD + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing UI, signup form
 - [ ] FRONTEND-ONLY → wire atau label jujur: reports hub, PM hub, shifts plan, facilities hub, vendors flows, settings hub, jobs page (SEED), print templates (WO/PO/badge/permit: nyatakan sumber CANON)

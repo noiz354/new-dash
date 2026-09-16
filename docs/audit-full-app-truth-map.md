@@ -40,8 +40,8 @@
 | Facilities | Hub actions (reassign/defect/SLA) | Nol fetch, state lokal | Rute TAK ADA | NOT FOUND | — | UI interaktif lokal | FRONTEND-ONLY |
 | Field | Audit queue + run checklist | State lokal + INITIAL_* | NOT FOUND | NOT FOUND | — | Checklist lokal | FRONTEND-ONLY |
 | Field | Finding create (online/offline) | FindingCapture POST FOUND | POST /api/findings PERSISTED (fix GAP-1) | createFinding + canon FND seq + audit FOUND | DB findings FOUND | Toast + SYNCED valid | END-TO-END |
-| Field | Finding convert → WO | setTimeout 1200ms MOCKED | finding.convert ADA tak dipanggil | convert FOUND | DB (tak tersentuh) | "Dispatched ✓" | BROKEN |
-| Field | Finding dismiss | setState + klaim audit MOCKED | NOT FOUND | NOT FOUND | — | "audit-chained" | BROKEN |
+| Field | Finding convert → WO | [CLOSED GAP-4] POST convert + Idempotency-Key, badge WO server | finding.convert DIPANGGIL | convert FOUND | WO + FINDING_CONVERT_WO | toast WO server | END-TO-END |
+| Field | Finding dismiss | [CLOSED GAP-4] POST dismiss nyata + audit FINDING_DISMISS | dismissal endpoint BARU | dismiss FOUND | DISMISSED + audit | toast server | END-TO-END |
 | Field | Sync outbox (enqueue/retry) | IDB outbox + key FOUND | (via findings/WO API) | outbox klien FOUND | IDB FOUND | Badge + halaman sync | PARTIAL |
 | Field | field/runs hasil audit | Link INS-… | Rute TAK ADA | NOT FOUND | — | Buntu | DEAD-END |
 | PM | Plans/dispatch/batch | PmHub nol fetch | pm/* + generate ADA tak dipanggil | pm-service FOUND | DB (tak tersentuh) | UI lokal | FRONTEND-ONLY |
