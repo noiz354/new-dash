@@ -8,7 +8,7 @@ import type { Db } from '../../db/client';
 import { auditEvents, mfaChallenges, users } from '../../db/schema';
 import { DomainError } from '../domain/errors';
 import { log } from '../log';
-import { rateLimit } from '../auth/limits';
+import { rateLimitShared } from '../auth/limits';
 import { verifyPassword } from '../auth/password';
 import { totpNow, verifyTotp } from '../auth/totp';
 import { createSession, revokeSession, verifySession, type AuthContext } from '../auth/session';
@@ -43,8 +43,8 @@ export async function login(
 ): Promise<LoginResult> {
   const email = input.email.trim().toLowerCase();
 
-  const byEmail = rateLimit(`login:${email}`, 8, 10 * 60 * 1000);
-  const byIp = rateLimit(`login-ip:${input.ip}`, 24, 10 * 60 * 1000);
+  const byEmail = await rateLimitShared(db, `login:${email}`, 8, 10 * 60 * 1000);
+  const byIp = await rateLimitShared(db, `login-ip:${input.ip}`, 24, 10 * 60 * 1000);
   if (!byEmail.ok || !byIp.ok) {
     throw new DomainError(429, 'RATE_LIMITED', 'Too many sign-in attempts — try again later', {
       retryAfterSec: Math.max(byEmail.retryAfterSec, byIp.retryAfterSec),

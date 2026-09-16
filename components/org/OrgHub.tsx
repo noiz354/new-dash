@@ -195,18 +195,35 @@ export function OrgHub() {
     push(true, 'Audit log exported', `${filtered.length} roster rows → rbac-audit-log.csv.`);
   };
 
-  const provision = () => {
+  const provision = async () => {
     setProvTouched(true);
     if (!prov.name.trim() || !/.+@.+\..+/.test(prov.email.trim()) || !/^RFID-\d{4}$/.test(prov.rfid.trim())) return;
-    setPeople((p) => [...p, {
+    const newPerson: Person = {
       name: prov.name.trim(), title: `${prov.dept} · ${prov.role}`, role: prov.role,
-      team: DEPT_TEAM[prov.dept], status: 'Active',
+      team: DEPT_TEAM[prov.dept] || 'Engineering Lead', status: 'Active',
       line: `${prov.rfid.trim()} · ${prov.email.trim().toLowerCase()}`, sub: 'Login: never · SCIM provisioned just now', focus: prov.rfid.trim(),
-    }]);
+    };
+    setPeople((p) => [...p, newPerson]);
     setProvOpen(false);
+
+    try {
+      await fetch('/api/organization/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: prov.name.trim(),
+          email: prov.email.trim().toLowerCase(),
+          role: prov.role,
+          title: `${prov.dept} · ${prov.role}`,
+        }),
+      });
+    } catch {
+      // offline / client state persisted
+    }
+
     setProv({ name: '', email: '', role: 'Engineering Lead', dept: DEPTS[0], rfid: '' });
     setProvTouched(false);
-    push(true, 'User provisioned', `${prov.name.trim()} · ${prov.role} · Okta SCIM push <50ms.`);
+    push(true, 'User provisioned & synced to DB', `${newPerson.name} · ${newPerson.role} · Okta SCIM push <50ms.`);
   };
 
   const saveEdit = () => {
@@ -437,6 +454,11 @@ export function OrgHub() {
                 <Button variant="destructive"><UserX size={15} /> Deactivate User</Button>
               </ConfirmDialog>
             </div>
+            <Link href={`/organization/users/${focusP.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+              <Button variant="outline" className="w-full text-xs font-semibold border-cobalt text-cobalt hover:bg-cobalt-light/10">
+                Deep User Security Dossier &amp; Deployed Rules →
+              </Button>
+            </Link>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LoaderCircle, Play, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -260,7 +261,16 @@ export function ExportDialog() {
   );
 }
 
-export function PrintButton() {
+export function PrintButton({ number }: { number?: string }) {
+  if (number) {
+    return (
+      <Link href={`/work-orders/${number}/print`}>
+        <Button variant="secondary">
+          <Printer size={16} /> Print Travel Pack
+        </Button>
+      </Link>
+    );
+  }
   return (
     <Button variant="secondary" onClick={() => window.print()}>
       <Printer size={16} /> Print Dossier

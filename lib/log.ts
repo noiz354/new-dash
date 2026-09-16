@@ -1,12 +1,22 @@
 /**
- * Structured JSON logging (audit §G, minimal-but-real).
- * One line per event: { ts, level, msg, requestId?, userId?, orgId?, op?,
- * durationMs?, errorCode?, ... }. NEVER log passwords, TOTP codes, session
- * tokens, or secrets — the wrappers below only pass identifiers.
+ * Structured JSON logging with OTel Tracing Propagation (Phase 2 B.1 & audit §G).
+ * Formats log entries with ISO timestamp, level, msg, trace_id, span_id, and context fields.
+ * NEVER logs passwords, TOTP codes, tokens, or private secrets.
  */
-export type LogLevel = 'info' | 'warn' | 'error';
+import { randomBytes } from 'crypto';
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+const LEVEL_PRIORITY: Record<LogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+};
 
 export interface LogFields {
+  traceId?: string;
+  spanId?: string;
   requestId?: string;
   userId?: string;
   orgId?: string;
@@ -19,8 +29,24 @@ export interface LogFields {
   [key: string]: unknown;
 }
 
+function currentLogLevel(): LogLevel {
+  const envLevel = (process.env.LOG_LEVEL || 'info').toLowerCase() as LogLevel;
+  return LEVEL_PRIORITY[envLevel] !== undefined ? envLevel : 'info';
+}
+
 export function log(level: LogLevel, msg: string, fields: LogFields = {}): void {
-  const line = JSON.stringify({ ts: new Date().toISOString(), level, msg, ...fields });
+  const threshold = LEVEL_PRIORITY[currentLogLevel()];
+  if (LEVEL_PRIORITY[level] < threshold) return;
+
+  const line = JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    msg,
+    trace_id: fields.traceId ?? fields.requestId ?? newTraceId(),
+    span_id: fields.spanId ?? newSpanId(),
+    ...fields,
+  });
+
   if (level === 'error') console.error(line);
   else if (level === 'warn') console.warn(line);
   else console.log(line);
@@ -29,3 +55,19 @@ export function log(level: LogLevel, msg: string, fields: LogFields = {}): void 
 export function newRequestId(): string {
   return crypto.randomUUID();
 }
+
+export function newTraceId(): string {
+  return randomBytes(16).toString('hex');
+}
+
+export function newSpanId(): string {
+  return randomBytes(8).toString('hex');
+}
+
+/**
+ * Creates W3C traceparent header: 00-{traceId}-{spanId}-01
+ */
+export function formatTraceparent(traceId: string, spanId: string): string {
+  return `00-${traceId}-${spanId}-01`;
+}
+

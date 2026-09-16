@@ -11,10 +11,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ZodError } from 'zod';
 import { getDb } from '../../db/client';
-import { log, newRequestId } from '../log';
+import { formatTraceparent, log, newRequestId, newSpanId, newTraceId } from '../log';
 import { getSessionContext, type AuthContext } from '../auth/context';
 import { can, type Permission } from '../auth/rbac';
 import { DomainError } from '../domain/errors';
+import { recordRequestMetric } from '../telemetry/metrics';
 
 export { DomainError };
 
@@ -54,15 +55,27 @@ export async function withRoute<T>(
   handler: RouteHandler<T>,
 ): Promise<NextResponse> {
   const requestId = newRequestId();
+  const traceparent = req.headers.get('traceparent');
+  const traceId = traceparent ? traceparent.split('-')[1] || newTraceId() : newTraceId();
+  const spanId = newSpanId();
+
   const started = Date.now();
   const path = new URL(req.url).pathname;
 
   const finish = (status: number, body: unknown, extra: Record<string, unknown> = {}) => {
+    const durationMs = Date.now() - started;
+    recordRequestMetric({ route: path, method: meta.method, status, durationMs });
     log(status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info', 'api_request', {
-      requestId, op: meta.op, method: meta.method, path, status,
-      durationMs: Date.now() - started, ...extra,
+      traceId, spanId, requestId, op: meta.op, method: meta.method, path, status,
+      durationMs, ...extra,
     });
-    return NextResponse.json(body, { status, headers: { 'x-request-id': requestId } });
+    return NextResponse.json(body, {
+      status,
+      headers: {
+        'x-request-id': requestId,
+        'traceparent': formatTraceparent(traceId, spanId),
+      },
+    });
   };
 
   try {

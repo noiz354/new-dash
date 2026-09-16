@@ -15,7 +15,12 @@ const CreateSrSchema = z.object({
 /** GET /api/service-requests — tenant-scoped triage queue + capabilities. */
 export async function GET(req: NextRequest) {
   return withRoute({ op: 'sr.list', method: 'GET', permission: 'sr.read' }, req, async (ctx) => {
-    const rows = await listServiceRequests(getDb(), ctx!);
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status') || undefined;
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
+    const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : undefined;
+
+    const rows = await listServiceRequests(getDb(), ctx!, { status, limit, offset });
     return {
       data: {
         rows,

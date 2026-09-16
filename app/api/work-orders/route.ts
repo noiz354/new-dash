@@ -15,9 +15,16 @@ const CreateWoSchema = z.object({
 /** GET /api/work-orders — tenant-scoped list + assignable techs + capabilities. */
 export async function GET(req: NextRequest) {
   return withRoute({ op: 'wo.list', method: 'GET', permission: 'wo.read' }, req, async (ctx) => {
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status') || undefined;
+    const priority = (searchParams.get('priority') as 'P1' | 'P2' | 'P3') || undefined;
+    const assetCode = searchParams.get('assetCode') || undefined;
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
+    const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!, 10) : undefined;
+
     const db = getDb();
     const [rows, techs] = await Promise.all([
-      listWorkOrders(db, ctx!),
+      listWorkOrders(db, ctx!, { status, priority, assetCode, limit, offset }),
       listAssignableTechs(db, ctx!),
     ]);
     return {

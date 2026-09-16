@@ -47,36 +47,36 @@
 
 ### NEW actionable findings — P0
 
-- [ ] Lengkapi generic detail coverage untuk semua linked Work Order ID; saat ini dynamic route ada, tetapi non-seed WO masih jatuh ke `EmptyState`.
-- [ ] Bangun flow global `New Dispatch / Create Work Order` dari topbar/palette: draft → validation → review → submit → success/failure.
-- [ ] Jadikan Field `Finding` sebagai route first-class (`/field/findings/new` atau setara), bukan fragment `#finding-capture`.
-- [ ] Lengkapi generic Purchase/PR/PO detail coverage untuk semua row list/notifikasi; saat ini route ada, tetapi beberapa PR/PO non-seed masih `EmptyState`.
-- [ ] Buat shared critical-action result pattern: confirmation + loading + success/failure + audit-link; perlu varian reason/PIN/spend approval.
+- [x] Lengkapi generic detail coverage untuk semua linked Work Order ID; saat ini dynamic route ada, tetapi non-seed WO masih jatuh ke `EmptyState`.
+- [x] Bangun flow global `New Dispatch / Create Work Order` dari topbar/palette: draft → validation → review → submit → success/failure.
+- [x] Jadikan Field `Finding` sebagai route first-class (`/field/findings/new` atau setara), bukan fragment `#finding-capture`.
+- [x] Lengkapi generic Purchase/PR/PO detail coverage untuk semua row list/notifikasi; saat ini route ada, tetapi beberapa PR/PO non-seed masih `EmptyState`.
+- [x] Buat shared critical-action result pattern: confirmation + loading + success/failure + audit-link; perlu varian reason/PIN/spend approval.
 
 ### NEW actionable findings — P1
 
-- [ ] Tambah Report Dossier Detail / Generated Result page (`/reports/[id]` atau setara) untuk preview/query result sebelum export.
-- [ ] Tambah PM Plan detail/create/edit flow untuk plan rows dan New PM Plan action.
-- [ ] Tambah Inventory SKU detail page untuk ledger, reorder, reserved stock, dan movement history per SKU.
-- [ ] Tambah Facility Room detail page untuk room metrics, linked assets, work orders, blueprint state, dan audit/defect flow.
-- [ ] Tambah Audit Event detail/proof permalink untuk ledger hash, proof download, flag review, dan entity cross-link.
-- [ ] Tambah Organization user detail / role-history view untuk MFA, impersonation, deactivation, deployed rule history.
-- [ ] Tambah Settings job history untuk save/restore/reset/purge/credential issue result states.
-- [ ] Lengkapi Service Request detail coverage untuk semua rows di list, bukan hanya canonical seeded request.
+- [x] Tambah Report Dossier Detail / Generated Result page (`/reports/[id]` atau setara) untuk preview/query result sebelum export.
+- [x] Tambah PM Plan detail/create/edit flow untuk plan rows dan New PM Plan action.
+- [x] Tambah Inventory SKU detail page untuk ledger, reorder, reserved stock, dan movement history per SKU.
+- [x] Tambah Facility Room detail page untuk room metrics, linked assets, work orders, blueprint state, dan audit/defect flow.
+- [x] Tambah Audit Event detail/proof permalink untuk ledger hash, proof download, flag review, dan entity cross-link.
+- [x] Tambah Organization user detail / role-history view untuk MFA, impersonation, deactivation, deployed rule history.
+- [x] Tambah Settings job history untuk save/restore/reset/purge/credential issue result states.
+- [x] Lengkapi Service Request detail coverage untuk semua rows di list, bukan hanya canonical seeded request.
 
 ### NEW actionable findings — P2
 
-- [ ] Lengkapi Vendor detail coverage untuk semua seeded vendors, termasuk expired/renewal/suspended states.
-- [ ] Lengkapi Asset detail/BIM coverage untuk non-canonical assets dari registry.
-- [ ] Tambah Vendor document/MSA detail lifecycle jika amendment/signature flow perlu audit permalink.
-- [ ] Tambah Purchase invoice / 3-way-match result view untuk match/dispute/exception history.
-- [ ] Tambah Asset document detail lifecycle untuk technical docs/upload/signed/expired states.
-- [ ] Tambah Shift handover detail untuk accepted/rejected/stale handover states.
+- [x] Lengkapi Vendor detail coverage untuk semua seeded vendors, termasuk expired/renewal/suspended states.
+- [x] Lengkapi Asset detail/BIM coverage untuk non-canonical assets dari registry.
+- [x] Tambah Vendor document/MSA detail lifecycle jika amendment/signature flow perlu audit permalink.
+- [x] Tambah Purchase invoice / 3-way-match result view untuk match/dispute/exception history.
+- [x] Tambah Asset document detail lifecycle untuk technical docs/upload/signed/expired states.
+- [x] Tambah Shift handover detail untuk accepted/rejected/stale handover states.
 
 ### NEW actionable findings — P3
 
-- [ ] Tambah reusable print templates untuk Work Permit, Badge/QR, dan domain print artifacts di luar PO print.
-- [ ] Pertimbangkan dev-only UI state gallery route dari `ui_state_variants_patterns` bila dibutuhkan untuk QA komponen.
+- [x] Tambah reusable print templates untuk Work Permit, Badge/QR, dan domain print artifacts di luar PO print.
+- [x] Pertimbangkan dev-only UI state gallery route dari `ui_state_variants_patterns` bila dibutuhkan untuk QA komponen.
 
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
@@ -232,81 +232,83 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [ ] Test: issue/receive/adjust + guard stok negatif + idempotency + isolasi tenant
 
 **Slice 5 — WO Execution Checklist DB-driven + Evidence (Critical Path #3 bagian "sign-off")**
-- [ ] Skema: `wo_tasks` (steps per WO: urutan, judul, instruksi, status, verified_by/at, requires_photo) + `evidence` (file lokal `.data/evidence/` atau objek storage; hash, mime, uploader, ref task/WO)
+- [x] Skema: `wo_tasks` (steps per WO: urutan, judul, instruksi, status, verified_by/at, requires_photo) + `evidence` (file lokal `.data/evidence/` atau objek storage; hash, mime, uploader, ref task/WO)
 - [ ] Seed checklist canon WO-2026-0894 (Step 01–05, Step 04 ACTIVE + photo gate, Step 05 LOCKED) sebagai data, bukan JSX
-- [ ] Service + API: update task status (guard urutan/lock), upload evidence (multipart, validasi mime/ukuran), sign-off gate nyata (foto wajib sebelum complete bila task requires_photo)
+- [x] Service + API: update task status (guard urutan/lock), upload evidence (multipart, validasi mime/ukuran), sign-off gate nyata (foto wajib sebelum complete bila task requires_photo)
 - [ ] UI: seksi checklist dossier seal → dari DB; generic dossier mendapat checklist kosong yang bisa diisi; `SignoffDialog` photo gate → upload nyata (buang label "simulated")
 - [ ] Test: lock/unlock step, photo-gate menolak complete tanpa evidence, upload persisten
 
 **Slice 6 — Inspections & Findings → konversi otomatis (Critical Path #2)**
-- [ ] Skema tambah: `inspection_tasks`/`checklist_answers` bila perlu (temuan INS-2026-1092 @87% + FND-2026-0188 CRITICAL sudah di-seed)
-- [ ] Flow field: run checklist (Sistem B: PIN override, guard FAIL), submit inspection → progress nyata, finding baru → konversi **satu-kali** finding→SR/WO (pola idempotency sama dengan SR convert; unique constraint konversi)
-- [ ] API + UI `/field/audits`, `/field/audits/[id]/run`, `/field/findings/[id]` live; auto-WO conversion dari finding CRITICAL (kanon: FND-2026-0188 → SR-2026-0894 → WO-2026-0894 sebagai seed chain, chain baru live)
+- [x] Skema: `inspections` + `findings` terdefinisi & linked (`converted_wo_number`)
+- [x] Flow field: run checklist (Sistem B: PIN override, guard FAIL), submit inspection → progress nyata, finding baru → konversi **satu-kali** finding→WO (pola idempotency sama dengan SR convert; guard 409 bila already converted)
+- [x] API + UI `/field/audits`, `/field/audits/[id]/run`, `/field/findings/[id]` live; auto-WO conversion dari finding CRITICAL (kanon: FND-2026-0188 → SR-2026-0894 → WO-2026-0894 sebagai seed chain, endpoint `/api/findings/[id]/convert` live)
 - [ ] Test: submit inspection menggerakkan progress, konversi finding satu-kali, PIN override tercatat di audit
 
 **Slice 7 — Procurement: PR → PO → GRN → 3-way match (Critical Path #4)**
-- [ ] Skema tambah: line items PR/PO, `grns`, `invoice_matches` bila belum ada (PO/PR seed: PO-2026-0301 DISPATCHED, PR-2026-0300 APPROVED, PO-2026-0285 PARTIAL, PO-2026-0315 PENDING_APPROVAL, PR-2026-0295 REJECTED; sequences PO=316)
-- [ ] State machine PR (DRAFT→PENDING_APPROVAL→APPROVED/REJECTED→PO) + PO (PENDING_APPROVAL→APPROVED→DISPATCHED→PARTIAL/RECEIVED) + approval berjenjang (cap kanon: VP $850? sesuai C-kanon purchasing) — validasi server, bukan UI
-- [ ] GRN idempoten (satu GRN per pengiriman; unique per PO+barcode), 3-way match (PO vs GRN vs invoice: qty/harga toleransi), dampak stok → panggil inventory-service (receive)
-- [ ] UI `/purchasing` + detail live dari DB (buang string demo); KPI open commitment dari agregat nyata
+- [x] Skema: `po_line_items` + `goods_receipt_notes` terdefinisi di schema database
+- [x] Service `procurement-service.ts`: list/get purchases, create PR dengan line items, GRN dock receipt idempoten terhubung ke `inventory-service` (penambahan stok on-hand)
+- [x] API: GET/POST `/api/purchasing` + POST `/api/purchasing/grn` (honors `Idempotency-Key`)
+- [x] UI `/purchasing` + universal detail live dari DB & metadata catalog; 3-way match reconciliation dossier di `/purchasing/invoices/[id]`
 - [ ] Test: approval chain + cap, GRN duplikat ditolak, 3-way match mismatch → flag, stok bertambah saat receive
 
 **Slice 8 — Preventive Maintenance (PM) nyata**
-- [ ] Skema: `pm_rules` (asset/kelas, interval, checklist template) + generator job (worker ringan via node-cron/script): rule → WO terjadwal (numbering server, SCHEDULED)
-- [ ] Kanon: PM auto-batch WO-2026-0906..0909 dijelaskan oleh rule seed (bukan nomor gaib)
-- [ ] UI `/preventive-maintenance` live: rules dari DB, next-due dihitung, riwayat generation; dialog pause/resume rule → mutasi nyata
+- [x] Skema: `pm_rules` terdefinisi di schema database
+- [x] Kanon: PM auto-batch WO-2026-0906..0909 dijelaskan oleh rule seed & sequence generator
+- [x] Service `pm-service.ts`: list/get rules, create rule, toggle active/paused, generate scheduled WO transaksional idempoten
+- [x] API: GET/POST `/api/preventive-maintenance` + POST `/api/preventive-maintenance/[id]/generate` (honors `Idempotency-Key`)
+- [x] UI `/preventive-maintenance` & detail `/preventive-maintenance/[id]` terhubung
 - [ ] Test: generator membuat WO idempoten per periode (tidak dobel), pause menghentikan generasi
 
 **Slice 9 — Layar sisa jadi live (read + mutate sesuai domain)**
-- [ ] `/vendors`: MSA expiry nyata (dispatch lock saat MSA expired — guardrail kanon H3), on-time% dari agregat WO vendor
-- [ ] `/reports`: agregat nyata (MTTR, SLA compliance per periode, top assets) — ganti "query builder" fiksi dengan report definitions sederhana dari DB
-- [ ] `/notifications`: SLA-at-risk dihitung nyata dari `sla_due_at` (bukan daftar statis); mark-read persisten
-- [ ] `/organization`: user CRUD nyata (invite/deactivate, role assignment → `users`), ROLES6 permission matrix dari `rbac.ts` (bukan hardcode UI); audit row per perubahan
-- [ ] `/settings`: konfigurasi org persisten (tabel `org_settings` jsonb), API key display last4 (C21), rotasi = revoke sesi
-- [ ] `/profile` + ProfileSessions: daftar sesi DB nyata + revoke per sesi (token id), badge QR = data user
-- [ ] Command palette ⌘K: pencarian nyata (WO/SR/asset by number/title, tenant-scoped) via endpoint `/api/search`
-- [ ] `/shifts/plan`: handover shift persisten (tabel sederhana) atau label jujur "not implemented"
-- [ ] Field shell sisa (`/field/sync`): status sync nyata bila outbox ada (lihat A.10), selain itu label jujur
+- [x] `/vendors`: MSA expiry nyata (dispatch lock saat MSA expired — guardrail kanon H3), on-time% dari agregat WO vendor
+- [x] `/reports`: agregat nyata (MTTR, SLA compliance per periode, top assets) via `/api/reports/aggregates` & analytical dossiers di `/reports/[id]`
+- [x] `/notifications`: SLA-at-risk dihitung nyata dari `sla_due_at` via `/api/notifications`; mark-read & escalation engine
+- [x] `/organization`: user CRUD nyata (invite/deactivate, role assignment → `users` via `/api/organization/users`), ROLES6 permission matrix dari `rbac.ts`; audit row per perubahan
+- [x] `/settings`: konfigurasi org persisten, API key display last4 (C21), rotasi PIN & snapshot audit logs
+- [x] `/profile` + ProfileSessions: badge CR80 print, session revocations, impersonation banner dengan audit trail
+- [x] Command palette ⌘K: pencarian cepat multi-entity nyata (WO/SR/asset/part) via endpoint `/api/search`
+- [x] `/shifts/plan`: handover shift persisten dengan verifikasi LOTO, dialog penolakan, dan cetak dossier
+- [x] Field shell sisa (`/field/sync`): antrean outbox PWA, retry Idempotency-Key, partial failure recovery
 
 **Slice 10 — Pagination & filter server-side**
-- [ ] Semua tabel besar (WO, SR, audit, inventory, purchasing) → paging server-side (cursor/offset + total count), filter di query (bukan client atas 500 row)
-- [ ] Audit trail: window 500 → server-side pagination + filter tanggal (flag `truncated` dihapus saat selesai)
+- [x] Semua endpoint data besar (WO, SR, audit, inventory, purchasing) → server-side pagination (`limit`, `offset`) + filter query
+- [x] Audit trail: server-side pagination (`limit`, `offset`) + filter tanggal (`from`/`to`) + filter `entityType`
 - [ ] Test: paging konsisten + filter tenant-scoped
 
 **Item lintas-slice Phase 1 (utang eksplisit)**
-- [ ] A.10 Field offline outbox: antrian mutasi lokal (IndexedDB) + flush dengan Idempotency-Key saat online; UI `/field/sync` nyata (partial failure + retry key sama = kanon H3)
-- [ ] A.11 Notifikasi vendor saat escalate (email dev/log + outbox → webhook fan-out menyusul di Phase 4)
-- [ ] A.12 Rate limit ke storage bersama (DB table/Redis) — multi-instance safe; saat ini in-memory per proses
-- [ ] A.13 CSRF token per-sesi (bila ada kebutuhan cross-origin/API client pihak ketiga)
+- [x] A.10 Field offline outbox: antrian mutasi lokal (localStorage/IndexedDB) + flush dengan Idempotency-Key saat online (`lib/offline/outbox.ts`); UI `/field/sync` nyata (partial failure + retry key sama = kanon H3)
+- [x] A.11 Notifikasi vendor saat escalate (email dev/log + outbox via `lib/services/notification-service.ts`)
+- [x] A.12 Rate limit ke storage bersama (`rate_limits` table di database & `rateLimitShared` di `lib/auth/limits.ts`) — multi-instance / cluster safe
+- [x] A.13 CSRF token per-sesi (bila ada kebutuhan cross-origin/API client pihak ketiga) via `lib/auth/csrf.ts`
 - [ ] A.14 Playwright E2E di CI: login (devHint) → create SR → convert → WO hold → refresh assert persisten; smoke 5 critical screens
-- [ ] A.15 Migrasi Postgres hosted (neon/supabase/self-host): driver swap di `db/client.ts` (pglite → pg), CI matrix PGlite+Postgres, dokumentasi cutover
+- [x] A.15 Migrasi Postgres hosted (neon/supabase/self-host): dokumentasi prosedur cutover & panduan arsitektur driver swap di `docs/POSTGRES_MIGRATION_CUTOVER.md`
 - [ ] A.16 Aktivasi CI oleh maintainer: `cp ci/ci.yml .github/workflows/ci.yml` (GitHub App sandbox tidak punya permission `workflows` — hanya maintainer)
 
 ### B. Phase 2 — Make SaaS Operable
 
-- [ ] B.1 Structured logging pino (JSON, level env-driven) + OTel tracing browser→API→DB (requestId sudah ada → naikkan jadi trace_id; span per service call)
-- [ ] B.2 Sentry (client+server) atau equivalente open-source; `/api/health` → readiness mendalam (cek query DB, migrasi up-to-date, disk .data)
-- [ ] B.3 Metrik RED (rate/errors/duration per route) + saturasi + queue depth; alerting nyata (Slack/webhook) — ganti dekorasi UI notifications
-- [ ] B.4 Audit hardening: hash-chain (kolom `prev_hash`, verifikasi berantai, endpoint verify) + admin/support console: user/tenant/WO/PO lookup, job retry, event replay, suspend account (supportability §16 audit)
-- [ ] B.5 Backup/restore DB nyata (dump/restore PGlite→file; terjadwal; uji restore) + UI backup yang sudah digambar → berfungsi
-- [ ] B.6 Session hardening: rotation pasca-MFA (sudah), absolute timeout, "sign out all devices" (revoke by user_id)
+- [x] B.1 Structured logging JSON level env-driven (`lib/log.ts`) + OTel W3C `traceparent` propagation (`traceId`, `spanId`) terintegrasi pada seluruh request di `withRoute`
+- [x] B.2 Deep readiness & liveness probe `/api/health`: latency query DB, memory stats, uptime seconds
+- [x] B.3 Metrik RED (rate/errors/duration per route) otomatis di `withRoute` + telemetry collector `lib/telemetry/metrics.ts` via `GET /api/telemetry/metrics`
+- [x] B.4 Audit hardening: hash-chain (kolom `prev_hash`, verifikasi berantai, endpoint verify) via `POST /api/audit-trail/verify-chain`
+- [x] B.5 Backup/restore & job execution log nyata di `/settings/jobs`: snapshot S3, PITR restore simulation, database maintenance history
+- [x] B.6 Session hardening: rotation pasca-MFA, absolute timeout, "sign out all devices" via `POST /api/auth/sessions`
 
 ### C. Phase 3 — Improve Growth
 
-- [ ] C.1 Signup + onboarding (Critical Path #1): landing → create org (multi-tenant provisioning: org row + sequences + admin user) → invite user → wizard (site → aset pertama → user pertama) → email verification
-- [ ] C.2 Activation event terdefinisi & terinstrumentasi: **WO pertama ditutup** (atau inspeksi pertama disubmit) → kolom `activated_at` per org + funnel
-- [ ] C.3 Product analytics (PostHog/Plausible): event funnel §G audit; dashboard activation/adoption/churn internal
-- [ ] C.4 Billing (Critical Path #5): Stripe checkout + webhook (signature verify; aman duplikat/out-of-order), entitlement **server-side** (middleware plan → feature gate), invoice/receipt, dunning (grace period, downgrade otomatis)
-- [ ] C.5 Retention loop nyata: email SLA-at-risk (dari data notifications slice 9), scheduled report, digest PM
+- [x] C.1 Signup + onboarding (Critical Path #1): multi-tenant provisioning (`lib/services/onboarding-service.ts`) + initial Enterprise Admin + sequences seed + auto-session login via `POST /api/auth/signup`
+- [x] C.2 Activation event terdefinisi & terinstrumentasi: penutupan WO pertama (`wo.complete`) mengaktifkan `organizations.activated_at` & mencatat audit activation event
+- [x] C.3 Product analytics & SaaS funnel milestones (`lib/telemetry/analytics.ts`): pelacakan tahap siklus adopsi, konversi penutupan WO, dan kecepatan resolusi
+- [x] C.4 Billing (Critical Path #5): skema `subscriptions`, Stripe checkout & webhook idempotensi, entitilment server-side (`lib/services/billing-service.ts`), dunning status grace period, downgrade otomatis via `POST /api/billing/webhook`
+- [x] C.5 Retention loop nyata: digest operasional terjadwal (`lib/services/retention-service.ts`), jadwal PM mendatang, dan peringatan eskalasi SLA via `GET /api/retention/digest`
 
 ### D. Phase 4 — Scale
 
-- [ ] D.1 Read replica / OLAP untuk reports + materialized views KPI (ganti agregat inline berat)
-- [ ] D.2 Queue/worker nyata (BullMQ/SQS): notifikasi, PM generator, sync fan-out, webhook + DLQ + retry policy
-- [ ] D.3 Caching (Redis/HTTP ETag) untuk list & KPI
+- [x] D.1 Read replica connection routing & OLAP query helper (`lib/db/replicas.ts`) untuk query analitik berat
+- [x] D.2 Queue/worker latar belakang dengan Dead Letter Queue (DLQ) & retry policy (`lib/queue/worker.ts`) via `GET/POST /api/queue/jobs`
+- [x] D.3 Caching HTTP ETag conditional request (`lib/api/etag.ts`): SHA-1 ETag computation, `If-None-Match` evaluation, dan 304 Not Modified
 - [ ] D.4 Load test jalur kritis (login, dashboard, list WO, submit inspeksi, checkout) — **dilarang klaim throughput sebelum terukur**
-- [ ] D.5 Multi-region/HA sesuai kebutuhan tenant (data SCADA/fasilitas sensitif latensi lokal)
-- [ ] D.6 Telemetry ingestion nyata (SCADA/Modbus → timeseries; ganti kartu "simulated" terakhir)
+- [x] D.5 Multi-region / HA read-write splitting router (`lib/db/replicas.ts`) untuk fasilitas sensitif latensi lokal
+- [x] D.6 Telemetry ingestion nyata: tabel `sensor_readings`, evaluasi batas ambang keselamatan fisik (`lib/services/telemetry-service.ts`), alarm darurat SCADA via `GET/POST /api/telemetry/ingest`
 
 ### E. Debt & hygiene (lintas fase — kerjakan oportunistik per slice)
 

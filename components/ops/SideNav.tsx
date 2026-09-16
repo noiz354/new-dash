@@ -30,7 +30,7 @@ const GROUPS = [
       { path: 'work-orders', href: '/work-orders', label: 'Work Orders', Icon: ClipboardList, badge: '14' },
       { path: 'service-requests', href: '/service-requests', label: 'Service Requests', Icon: Inbox, badge: '5' },
       { path: 'preventive-maintenance', href: '/preventive-maintenance', label: 'Preventive Maintenance', Icon: Wrench },
-      { path: 'field-inspections', href: '/field/audits', label: 'Field Inspections', Icon: ListChecks },
+      { path: 'field-inspections', href: '/field-inspections', label: 'Field Inspections', Icon: ListChecks },
     ],
   },
   {

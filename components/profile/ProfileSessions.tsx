@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, CheckCircle2, X } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, Printer, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/alert-dialog';
 import { CANON } from '@/lib/canon';
@@ -64,8 +64,13 @@ export function ProfileSessions() {
             <p className="text-sm text-muted">Role: <strong className="text-ink">Ops Admin</strong> (1 of {CANON.roles} Roles) · Shift A · Tenant {CANON.tenant}</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
+            <Link href="/badges/RFID-7714/print">
+              <Button variant="secondary">
+                <Printer size={16} /> Print Badge (CR80)
+              </Button>
+            </Link>
             <Button variant="secondary" onClick={() => window.print()}>
-              <BadgeCheck size={16} /> Print Badge QR
+              <BadgeCheck size={16} /> Quick Print
             </Button>
             <Link href="/organization">
               <Button variant="secondary">Open Org &amp; RBAC</Button>

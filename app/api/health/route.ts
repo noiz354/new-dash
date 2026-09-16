@@ -3,14 +3,40 @@ import type { NextRequest } from 'next/server';
 import { withRoute, DomainError } from '@/lib/api/http';
 import { getDb } from '@/db/client';
 
-/** GET /api/health — liveness + database reachability (real check). */
+/**
+ * GET /api/health — deep readiness & liveness probe (Phase 2 B.2).
+ * Verifies database query execution, memory statistics, and runtime readiness.
+ */
 export async function GET(req: NextRequest) {
   return withRoute({ op: 'health', method: 'GET', public: true }, req, async () => {
+    const startTime = Date.now();
     try {
-      await getDb().execute(sql`select 1`);
-      return { data: { ok: true, db: true } };
+      await getDb().execute(sql`select 1 as ping`);
+      const latencyMs = Date.now() - startTime;
+      const mem = process.memoryUsage();
+
+      return {
+        data: {
+          status: 'UP',
+          healthy: true,
+          checks: {
+            database: {
+              status: 'UP',
+              latencyMs,
+            },
+            runtime: {
+              status: 'UP',
+              nodeVersion: process.version,
+              uptimeSeconds: Math.floor(process.uptime()),
+              rssMb: Math.round((mem.rss / (1024 * 1024)) * 10) / 10,
+              heapUsedMb: Math.round((mem.heapUsed / (1024 * 1024)) * 10) / 10,
+            },
+          },
+          timestamp: new Date().toISOString(),
+        },
+      };
     } catch (err) {
-      throw new DomainError(503, 'DB_UNAVAILABLE', 'Database is not reachable', {
+      throw new DomainError(503, 'DB_UNAVAILABLE', 'Database is not reachable or degraded', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
