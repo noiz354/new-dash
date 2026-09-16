@@ -87,6 +87,15 @@
 - [ ] P1: agregat server untuk KPI inventory atau label scope jujur (ganti konstanta 4,218/1,840/`MOV_TOTAL`) (G6)
 - [ ] P2: bersihkan klaim Live/WS-PUSH/SYNCED-hash, EVT-fallback, seed-tanpa-badge, perm `assets.read`→tulis, rute transfers/adjustments/runs, export-scope label (G7–G12)
 
+## Audit Full-App — temuan baru di luar truth map lama (detail: `docs/audit-full-app-truth-map.md`)
+
+- [ ] BROKEN baru: wire `finding.convert` ke FindingDesk convert + dismiss ke endpoint nyata (kini setTimeout/setState + klaim "audit-chained")
+- [ ] BROKEN baru: wire `GET/POST /api/auth/sessions` ke ProfileSessions (kini SESSIONS const; revoke-all backend nganggur)
+- [ ] BACKEND-ONLY → putuskan expose atau kunci: inspections CRUD + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing UI, signup form
+- [ ] FRONTEND-ONLY → wire atau label jujur: reports hub, PM hub, shifts plan, facilities hub, vendors flows, settings hub, jobs page (SEED), print templates (WO/PO/badge/permit: nyatakan sumber CANON)
+- [ ] DEAD-END: buat rute `/inventory/transfers`, `/inventory/adjustments`, `/field/runs` atau cabut referensinya (TO-8891/ADJ/INS-… menggantung)
+- [ ] OrgHub provision: daftar roster masih SEED meski POST nyata → refetch setelah provision (PARTIAL → END-TO-END)
+
 ## Handoff Codex ✅ Selesai — `.gitignore` + `CODEX.md` (Fase A–F untuk Codex)
 
 ## Fase A — Tutup Kanon ✅ Selesai (2026-09-13)

@@ -161,3 +161,9 @@
 - Spec (`docs/audit-mocked-deadend-unintegrated-spec.md`, §1–70) + laporan (`docs/audit-fe-be-truth-map.md`, 228 baris, §56–§70).
 - Temuan: P0 = Deactivate palsu (G1) + Finding palsu (G2); P1 = mutasi inventory lokal + PIN 2468 (G3), purchasing lokal (G4), jobs tanpa fetch (G5), KPI fiktif (G6); P2 = klaim Live/WS-PUSH (G7), EVT-fallback (G8), rute hilang (G9), seed-tanpa-badge (G10), perm baca-untuk-tulis (G11), export parsial (G12).
 - End-to-end nyata: auth/RBAC/logout, WO/SR+audit, verify-chain, windowing, PWA/SW/offline, SSE+fallback, push-subscribe, tenant isolation. Backlog masuk TODO.md §Truth Map FE↔BE.
+
+### Audit full-app end-to-end (2026-09-16)
+- Laporan baru `docs/audit-full-app-truth-map.md` (152 baris): matrix 50 feature × 8 kolom + 10 seksi wajib + jawaban penutup; metode statik per-feature + runtime-baca (`/login` 200, `/api/health` 200, tanpa mutasi).
+- BROKEN baru di luar G1/G2: FindingDesk convert/dismiss fiktif (padahal `finding.convert` ADA), ProfileSessions SEED (padahal sessions API ADA), OrgHub edit-role/MFA-rotate lokal.
+- BACKEND-ONLY: inspections + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing, signup. FRONTEND-ONLY: reports/PM/shifts/facilities/vendors/settings/jobs-page/print-templates.
+- Pola dominan: endpoint ADA tapi FE mensimulasikan lokal + toast sukses. Backlog baru masuk TODO.md §Audit Full-App.
