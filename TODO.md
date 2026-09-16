@@ -221,6 +221,17 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Urutan pengerjaan = urutan nomor di bawah (slice Phase 1 dulu, lalu Phase 2–4). Setiap slice WAJIB memenuhi DoD di bagian bawah.
 > Master prompt siap-tempel untuk agent berikutnya: `docs/MASTER_PROMPT_CLAUDE_CODE.md`.
 
+### 0. URUTAN EKSEKUSI — BY IMPACT (disepakati 2026-09-16; backlog kanonis = file ini)
+
+> Aturan: tiap item aktif diverifikasi runtime via Chrome CDP :9227 (screenshot + console + network + runtime state) dengan verdict PASS/PARTIAL/FAIL/BLOCKED. TASK-27+ terkunci sampai runtime verification Wave 3–4 selesai.
+> Status implementasi file-level (cek 2026-09-16 — BUKAN verdict runtime): TASK-01..03, 05..21, 23..26 ada file + wiring; TASK-04, 22, 27, 28, 29, 30, FONT belum.
+
+1. [ ] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah
+2. [ ] Test debts: Slice 5 (seed checklist canon + UI checklist DB) → tests Slice 6/7/8/10 → A.14 Playwright E2E (harness untuk semua uji browser/CDP)
+3. [ ] TASK-27 web push (opt-in P1) → TASK-28 passkeys (role-terbatas) → TASK-29 worker CSV (gated bukti RUM longtask) → TASK-30 save-as picker → TASK-FONT (butuh aset woff2) → TASK-22 CSP enforce (butuh ≥1 siklus report bersih)
+4. [ ] A.16 aktivasi CI (dependensi maintainer) · D.4 load test (dilarang klaim throughput sebelum terukur) · Debt E.1–E.8 oportunistik per slice
+5. [ ] Triase arsip satu-per-satu per batch tema (±50–80/sesi): exp-check ~540 checkbox + ui-audit ~457 TODO → verdict DONE/USANG/PROMOTE per item
+
 ### A. Phase 1 sisa — Make Core Journey Reliable (slice 4 → 10)
 
 **Slice 4 — Inventory & Parts (mutasi stok nyata pertama; Critical Path #3 bagian "parts issue")**
@@ -320,6 +331,19 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [ ] E.6 Hapus `web/` (arsip prototipe HTML standalone) + `stitch_facility_maintenance_platform_ui/` **hanya atas persetujuan user** (folder beku AGENTS.md) — kandidat setelah Phase 2
 - [ ] E.7 Secrets: `SEED_TOTP_SECRET`/`SEED_USER_PASSWORD` via env di deployment nyata; `.env.example` sudah menyiapkan; jangan commit `.env`
 - [ ] E.8 i18n label status (WO_LABELS/SR_LABELS English) vs UI dwibahasa — putuskan saat Phase 3 landing page
+
+## Runtime Verification Wave 3–4 (via Chrome CDP :9227) 📋 Spec siap, eksekusi belum mulai
+
+> Spec lengkap: `docs/runtime-verification-wave-3-4.md`. Satu task satu verdict (PASS/PARTIAL/FAIL/BLOCKED). Jangan mulai TASK-27+ sebelum selesai.
+
+- [x] TASK-19 Barcode → PARTIAL (laporan: `docs/runtime-verification-task19.md`; A+E PASS, B/C/D/F BLOCKED BY ENVIRONMENT — Win64 Chrome tak punya BarcodeDetector)
+- [ ] TASK-20 Audit truthfulness (no pseudo-crypto, hash dari server, verify-chain)
+- [ ] TASK-21 Windowing (DOM << dataset, scroll, filter)
+- [x] TASK-23 PWA Manifest → PASS (laporan: `docs/runtime-verification-task23.md`; link manifest + JSON valid + 4/4 ikon 200 + installabilityErrors [])
+- [ ] TASK-24 Service Worker (register/activate/control, cache strategy, offline /offline, logout purge)
+- [ ] TASK-25 Background Sync + Badging (outbox, badge, offline→online flush)
+- [ ] TASK-26 SSE Alerts (stream, heartbeat, reconnect/backoff, fallback polling)
+- [ ] Final matrix + bug list + final decision Wave 3–4
 
 ### Definition of Done per slice (WAJIB semua)
 
