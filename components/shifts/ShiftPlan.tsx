@@ -28,8 +28,8 @@ interface HandoverRecord {
 /**
  * GAP-22/F27: LOCAL DEMO FALLBACK ONLY — rendered solely when the server is
  * unreachable, and ALWAYS labeled 'local demo — not persisted'. The badge
- * formerly hard-coded AUDIT COMPLIANT; it is now derived from real server
- * rows + HANDOVER_* audit coverage.
+ * formerly hard-coded a compliance badge with no ledger behind it;
+ * it is now derived from real server rows + HANDOVER_* audit coverage.
  */
 const HISTORIC_HANDOVERS: HandoverRecord[] = [
   {

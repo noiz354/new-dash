@@ -379,11 +379,23 @@ isolasi :3158: PUT persists-reload OK · rotate 1× plaintext · GET hash-only �
 400+401 OK · audit 5U+2R · /settings 200 nol klaim fiksi · tests 161/161 ·
 tsc bersih]**
 
-**F27 — Shifts.** Current: FRONTEND-ONLY + badge "AUDIT COMPLIANT" tanpa
-ledger, HND-* historis tanpa DB. Gap: BACKEND MISSING + MISLEADING badge.
-Break: component→API. Persist: NOT PERSISTED. Tests: NONE. **Decision: MUST
-FIX badge (S) + NEED PRODUCT DECISION** (handover backend — serah-terima
-shift = inti ops). Target: TBD. P2/S-then-M/MODULE.
+**F27 — Shifts. [CLOSED GAP-16 (F27=TASK 7) 2026-09-16 — handover backend
+dibangun 1 task, badge-first]** — laksana TASK-07.md. Was: FRONTEND-ONLY
++ badge "AUDIT COMPLIANT" tanpa ledger + HND-* fiktif. Now: tabel
+`handovers` (migrasi 0007, org-scoped PK, CHECK status, seed **KOSONG**),
+`lib/services/handover-service.ts` (create/decide; 400 REASON_REQUIRED,
+404 HANDOVER_NOT_FOUND, 409 HANDOVER_TERMINAL; audit transaksional
+HANDOVER_CREATE/ACCEPT/REJECT; withIdempotency), routes dipilih PERSIS SATU
+path `/api/shifts/handovers` (+`/[id]` decide), RBAC `shifts.read`
+(READ_ALL) + `shifts.manage` (FD/EL/EA via vendors-pattern), ShiftPlan
+server-aware: badge compliance → label berbasis state server (SERVER
+RECORDS/NO RECORDS/LOCAL DEMO), HISTORIC hanya fallback offline ber-label
+"local demo — not persisted", Initiate Handover saat server kosong,
+Accept/Reject POST vs row PENDING. Spec: docs/remediation-gap-22-spec.md.
+Tests: integration ×2 (create+replay+validasi; accept→409/400/404/decoy,
+audit rows) + truthfulness ×2 + gerbang sweep; runtime :3158 matrix penuh
+(201/replay-id/accept-200/409-terminal/400-no-reason/404/401/audit rows/
+halaman 200 σ nol badge fiktif). Target: END-TO-END. P2/S-then-M/MODULE.
 
 **F28 — Import CSV.** Current: NOT FOUND (koreksi UNKNOWN→absent; hanya
 export). Gap: none claimed. **Decision: DEFER** (tak ada klaim, tak ada harm;
@@ -450,7 +462,7 @@ acak = compliance hole kecil tapi tajam. P1/S/LOCAL.
 | 24 | Billing | HMAC/checkout | BACKEND-ONLY | AUTH BYPASS (catch) | MUST FIX | BE-hardened | P0 | M | MODULE |
 | 25 | Retention | Digest orphan | DEPRECATED [CLOSED GAP-16-T4] | FLAGGED (was NO TRIGGER) | NEED DECISION (decided: deprecate, sunset 2026-12-15) | deprecated-honest | P3 | S | LOCAL |
 | 26 | Settings | Keys/rotate/maint | CLOSED [GAP-16-T6] | BACKEND BUILT + WIRED | FIXED (settings.manage; settings_kv hash-only secrets) | E2E + staged fallback | P2 | S→L | MODULE |
-| 27 | Shifts | Accept/reject | FRONTEND-ONLY | BACKEND MISSING + fake badge | FIX badge + DECISION | TBD | P2 | S→M | MODULE |
+| 27 | Shifts | Accept/reject | CLOSED [GAP-16-T7] | BACKEND BUILT + badge fixed | FIXED (shifts.manage; handovers terminal) | E2E + demo fallback | P2 | S→M | MODULE |
 | 28 | Import | CSV import | NOT FOUND | — | DEFER | NONE | P3 | — | — |
 | 29 | AuthZ | Impersonate | MOCKED | FAKE SUCCESS (audit) | MUST FIX | E2E/honest | P0 | S/M | MODULE |
 | 30 | Profile | Rotate Key | MOCKED | BACKEND MISSING + fake | MUST FIX | E2E/placeholder | P1 | S | MODULE |

@@ -59,7 +59,7 @@
 | Audit | Trail + verify-chain + widget | AuditTrail POST FOUND | audit-trail + verify-chain FOUND | recompute FOUND | DB audit_events FOUND | Ledger + badge | END-TO-END |
 | Settings | Keys/rotate/maint/webhook/KV reads | apiFetch /api/settings(+[key,+…/rotate) FOUND [GAP-16-T6] | settings-service hash-only/PUT/rotate FOUND | settings_kv table FOUND (0006) | — | wire semua handler + fallback berlabel | END-TO-END [GAP-16-T6 CLOSED 2026-09-16] |
 | Dashboard | Ops dashboard | Server comp FOUND | — (server comp) | getDashboard FOUND | DB FOUND | Kartu + antrean live | END-TO-END |
-| Shifts | Shift plan accept/reject | State lokal, nol fetch | NOT FOUND | NOT FOUND | — | Toast lokal | FRONTEND-ONLY |
+| Shifts | Shift plan accept/reject | Server rows + decide endpoint | `/api/shifts/handovers` (+/[id]) | `handovers` + audit HANDOVER_* | checked — decoy 404/list-blind | Toast server id + audit | END-TO-END [GAP-16-T7 CLOSED] |
 | Profile | Sessions list | SEED statis MOCKED | sessions ADA tak dipanggil | FOUND | DB (tak tersentuh) | Daftar statis | FRONTEND-ONLY |
 | Print | Badge/permit print | Template CANON statis | NOT FOUND | NOT FOUND | — | Halaman print | FRONTEND-ONLY |
 | PWA | Manifest + SW + offline /offline | SwRegister + shell FOUND | — (statis + SW) | SW strategi FOUND | Cache API FOUND | Install + /offline | END-TO-END |

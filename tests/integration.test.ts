@@ -35,6 +35,7 @@ import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key
 import { amendVendor, commendVendor, createVendor, getVendor, listVendorPos, listVendors, renewVendor } from '../lib/services/vendor-service';
 import { createFacility, getFacility, listFacilities, updateFacility } from '../lib/services/facility-service';
 import { listSettings, putSetting, rotateSecret } from '../lib/services/settings-service';
+import { createHandover, decideHandover, listHandovers } from '../lib/services/handover-service';
 import { can } from '../lib/auth/rbac';
 import { ingestSensorReading, listRecentSensorReadings } from '../lib/services/telemetry-service';
 import { provisionOrganization } from '../lib/services/onboarding-service';
@@ -1671,4 +1672,107 @@ test('settings KV (GAP-21/F26): rotate hash-only — plaintext returned once, ne
     () => putSetting(db, admin, 'security.core_api_secret', { value: 'x', kind: 'secret' }),
     400, 'SECRET_VIA_ROTATE',
   );
+});
+
+test('handovers (GAP-22/F27): create happy + idempotent replay + validation, audit HANDOVER_CREATE', async () => {
+  const countAudit = async (action: string) => {
+    const rows = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.action, action));
+    return rows.length;
+  };
+  // seed is intentionally empty (no fictional HND-* rows)
+  assert.equal((await listHandovers(db, admin)).length, 0, 'seed ships zero handover rows');
+
+  const before = await countAudit('HANDOVER_CREATE');
+  const payload = {
+    shiftFrom: 'Shift A (Day)', shiftTo: 'Shift B (Evening)',
+    leadFrom: 'Elena Voronova', leadTo: 'David Chen',
+    woRef: 'WO-2026-0894', items: 'Seal replacement in progress', notes: 'Stopwatch transferred',
+  };
+  const h = await createHandover(db, admin, payload, { idempotencyKey: 'hnd-it-01', requestId: 'it-hnd-1' });
+  assert.equal(h.status, 'PENDING');
+  assert.equal(h.leadTo, 'David Chen');
+  assert.equal(h.woRef, 'WO-2026-0894');
+  const replay = await createHandover(db, admin, payload, { idempotencyKey: 'hnd-it-01' });
+  assert.equal(replay.id, h.id, 'idempotent replay returns same row');
+  assert.equal((await listHandovers(db, admin)).length, 1, 'replay created no duplicate');
+  assert.equal(await countAudit('HANDOVER_CREATE') - before, 1, 'create audited exactly once');
+
+  await expectDomainError(
+    () => createHandover(db, admin, { ...payload, leadTo: '  ' }),
+    400, 'VALIDATION_ERROR',
+  );
+});
+
+test('handovers (GAP-22/F27): accept → terminal 409 · reject needs reason 400 → REJECTED + audit, tenant guard', async () => {
+  const created = await createHandover(db, admin, {
+    shiftFrom: 'Shift B', shiftTo: 'Shift C', leadFrom: 'David Chen', leadTo: 'Sarah Al-Mansoor',
+    items: 'Cleanroom BMS telemetry nominal',
+  });
+
+  // reject without a reason → honest 400
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'reject', reason: '' }),
+    400, 'REASON_REQUIRED',
+  );
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'reject' }),
+    400, 'REASON_REQUIRED',
+  );
+  let row = (await listHandovers(db, admin)).find((r) => r.id === created.id)!;
+  assert.equal(row.status, 'PENDING', 'failed reject leaves row PENDING');
+
+  // unknown id → 404
+  await expectDomainError(
+    () => decideHandover(db, admin, '00000000-0000-0000-0000-000000000000', { action: 'accept' }),
+    404, 'HANDOVER_NOT_FOUND',
+  );
+
+  // accept happy → ACCEPTED + decidedBy + audit
+  const accepted = await decideHandover(db, admin, created.id, { action: 'accept' }, { idempotencyKey: 'hnd-dec-it-1' });
+  assert.equal(accepted.status, 'ACCEPTED');
+  assert.equal(accepted.decidedBy, admin.name);
+  assert.ok(accepted.decidedAt, 'decision stamped');
+  const audits = await db.select().from(auditEvents).where(eq(auditEvents.action, 'HANDOVER_ACCEPT'));
+  const mine = audits.filter((a) => a.entityId === created.id);
+  assert.equal(mine.length, 1, 'HANDOVER_ACCEPT written');
+  assert.deepEqual((mine[0]!.before as { status: string }).status, 'PENDING');
+  assert.deepEqual((mine[0]!.after as { status: string }).status, 'ACCEPTED');
+
+  // second decision on terminal row → 409 (and idempotent replay of the SAME key still returns accepted)
+  const replayDec = await decideHandover(db, admin, created.id, { action: 'accept' }, { idempotencyKey: 'hnd-dec-it-1' });
+  assert.equal(replayDec.status, 'ACCEPTED', 'same key replays the stored envelope');
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'reject', reason: 'late objection' }),
+    409, 'HANDOVER_TERMINAL',
+  );
+  await expectDomainError(
+    () => decideHandover(db, admin, created.id, { action: 'accept' }),
+    409, 'HANDOVER_TERMINAL',
+  );
+
+  // reject with reason on a fresh row → REJECTED + reason stored + audit REJECT
+  const second = await createHandover(db, admin, {
+    shiftFrom: 'Shift B', shiftTo: 'Shift C', leadFrom: 'Robert Langdon', leadTo: 'Sarah Al-Mansoor',
+    items: 'ELEC-TR-880 bushing kit incomplete',
+  });
+  const rejected = await decideHandover(db, admin, second.id, { action: 'reject', reason: 'LOTO padlock #4091 key missing from lockbox' });
+  assert.equal(rejected.status, 'REJECTED');
+  assert.match(rejected.rejectReason ?? '', /#4091/);
+  const rejAudits = (await db.select().from(auditEvents).where(eq(auditEvents.action, 'HANDOVER_REJECT')))
+    .filter((a) => a.entityId === second.id);
+  assert.equal(rejAudits.length, 1, 'HANDOVER_REJECT written');
+
+  // tenant isolation: decoy sees zero rows, cannot decide canon rows (404), lives in own bucket
+  const { ctx: decoy } = await gap14Decoy();
+  assert.equal((await listHandovers(db, decoy)).length, 0, 'decoy org blind to canon handovers');
+  await expectDomainError(
+    () => decideHandover(db, decoy, second.id, { action: 'accept' }),
+    404, 'HANDOVER_NOT_FOUND',
+  );
+  await createHandover(db, decoy, {
+    shiftFrom: 'X', shiftTo: 'Y', leadFrom: 'Decoy One', leadTo: 'Decoy Two',
+  });
+  assert.equal((await listHandovers(db, decoy)).length, 1, 'decoy creates in its own org');
+  const canonAfter = await listHandovers(db, admin);
+  assert.ok(!canonAfter.some((r) => r.leadFrom === 'Decoy One'), 'no decoy bleed into canon list');
 });

@@ -332,3 +332,44 @@ test('GAP-21 settings backend: secret flow is hash-only with rotate-audit; PUT r
   }
   assert.ok(!body.includes('sdk.slack'), 'no third-party SDK leakage');
 });
+
+test('GAP-22 shift plan: fictional compliance badge gone, honest labels + real handover wiring present', () => {
+  const body = readFileSync(new URL('../components/shifts/ShiftPlan.tsx', import.meta.url).pathname, 'utf8');
+  for (const gone of ['AUDIT COMPLIANT']) {
+    assert.ok(!body.includes(gone), `ShiftPlan still fabricates: "${gone}"`);
+  }
+  for (const want of [
+    "'/api/shifts/handovers'",
+    'local demo — not persisted',
+    'LOCAL DEMO',
+    'Handover initiated (server)',
+    'HANDOVER_ACCEPT audit logged',
+  ]) {
+    assert.ok(body.includes(want), `ShiftPlan must disclose/wire: "${want}"`);
+  }
+});
+
+test('GAP-22 handover backend: terminal decisions immutable, reject requires reason, audit written per action', () => {
+  const body = readFileSync(new URL('../lib/services/handover-service.ts', import.meta.url).pathname, 'utf8');
+  for (const want of ['HANDOVER_CREATE', 'HANDOVER_ACCEPT', 'HANDOVER_REJECT', 'REASON_REQUIRED', 'HANDOVER_TERMINAL', 'HANDOVER_NOT_FOUND', 'handover.create', 'handover.decide']) {
+    assert.ok(body.includes(want), `handover-service must carry: "${want}"`);
+  }
+});
+
+test('GAP-16 gerbang sweep: era-GAP-16 fiction strings stay absent on every component surface', () => {
+  const fs = require('node:fs') as typeof import('node:fs');
+  const path = require('node:path') as typeof import('node:path');
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p2 = path.join(dir, e.name);
+      return e.isDirectory() ? walk(p2) : /\.(tsx?|jsx?)$/.test(e.name) ? [p2] : [];
+    });
+  const compDir = new URL('../components', import.meta.url).pathname;
+  const banned = ['10.14.0.8', 'MODEL MATCHED', 'production KV-store', 'AUDIT COMPLIANT', 'SOC2 AUDIT READY'];
+  for (const file of walk(compDir)) {
+    const body = fs.readFileSync(file, 'utf8');
+    for (const s of banned) {
+      assert.ok(!body.includes(s), `${path.basename(file)} still fabricates banned claim: "${s}"`);
+    }
+  }
+});

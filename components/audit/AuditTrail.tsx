@@ -247,7 +247,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     entityType: 'Asset State',
     entityId: 'AST-HVAC-004',
     description: 'Chiller #4 ultrasonic probe triggered critical defect flag (refrigerant leak 18.4 ppm threshold breach)',
-    ip: '10.14.0.8',
+    ip: '10.14.0.x (demo row — VLAN placeholder)',
     terminal: 'Broker: SCADA-BROKER-01',
     hash: '',
     demo: true, // TASK-20: tidak ada hash nyata — event fallback/demonstrasi, bukan ledger asli
@@ -260,7 +260,7 @@ const CANONICAL_FALLBACK_EVENTS: ProcessedEvent[] = [
     ],
     session: {
       badge: 'SVC-SCADA-DAEMON',
-      ip: '10.14.0.8 (Core Telemetry VLAN)',
+      ip: '10.14.0.x (demo row — VLAN placeholder)',
       env: 'Modbus Daemon v4.18 / Alpine Linux',
       location: 'Central Utility Plant Gateway',
       mfa: 'mTLS Hardware Certificate Validated',

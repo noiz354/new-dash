@@ -157,7 +157,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
   const onIot = () => {
     if (iotBusy) return;
     setIotBusy(true);
-    setIotState('Reading Modbus 10.14.0.8…');
+    setIotState('Reading Modbus gateway (demo — no live PLC)…');
     setTimeout(() => {
       setIotBusy(false);
       setIotState('118 PSI · demo reading (not saved to ledger)');
@@ -316,7 +316,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
             <h2 className="text-lg font-semibold font-display">Step 03 · Live Reading Sync</h2>
           </div>
           <div className="p-3 flex flex-col gap-2">
-            <p className="text-sm">Modbus 10.14.0.8 · discharge pressure envelope 110–130 PSI</p>
+            <p className="text-sm">Modbus gateway (demo — not connected) · discharge pressure envelope 110–130 PSI</p>
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="field" className="bg-slate900" onClick={onIot} disabled={iotBusy}>Sync via IoT</Button>
               <p className="font-mono text-base font-bold" role="status">{iotState}</p>
