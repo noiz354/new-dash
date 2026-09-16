@@ -204,15 +204,18 @@ export interface CreateFindingInput {
   severity: 'CRITICAL' | 'MAJOR' | 'MODERATE' | 'MINOR';
   inspectionNumber?: string | null;
   assetCode?: string | null;
+  /** Free-form capture context (no dedicated columns by design) — persisted into the audit event only. */
+  extra?: { description?: string | null; zone?: string | null };
 }
 
 export async function createFinding(
   db: Db,
   ctx: AuthContext,
   input: CreateFindingInput,
+  opts: { idempotencyKey?: string | null; requestId?: string } = {},
 ): Promise<FindingRow> {
   const year = new Date().getFullYear();
-  return db.transaction(async (tx) => {
+  const exec = async (tx: Tx): Promise<FindingRow> => {
     const number = await nextNumber(tx, ctx.orgId, 'FND', year);
     const [fnd] = await tx
       .insert(findings)
@@ -239,6 +242,8 @@ export async function createFinding(
         severity: fnd.severity,
         assetCode: fnd.assetCode,
         inspectionNumber: fnd.inspectionNumber,
+        description: input.extra?.description ?? null,
+        zone: input.extra?.zone ?? null,
       },
     });
 
@@ -252,6 +257,19 @@ export async function createFinding(
       convertedWoNumber: fnd.convertedWoNumber,
       createdAt: fnd.createdAt.toISOString(),
     };
+  };
+
+  if (!opts.idempotencyKey) {
+    return db.transaction(exec);
+  }
+
+  const hash = requestHash({ ...input, requestId: opts.requestId ?? null });
+  return db.transaction(async (tx) => {
+    const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'finding.create', hash, async () => {
+      const body = await exec(tx);
+      return { status: 201, body };
+    });
+    return res.body;
   });
 }
 

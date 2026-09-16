@@ -167,3 +167,17 @@
 - BROKEN baru di luar G1/G2: FindingDesk convert/dismiss fiktif (padahal `finding.convert` ADA), ProfileSessions SEED (padahal sessions API ADA), OrgHub edit-role/MFA-rotate lokal.
 - BACKEND-ONLY: inspections + force-dispatch, wo tasks, parts/movements, purchasing/grn, queue/jobs, retention/digest, reports/aggregates, telemetry ingest/metrics, billing, signup. FRONTEND-ONLY: reports/PM/shifts/facilities/vendors/settings/jobs-page/print-templates.
 - Pola dominan: endpoint ADA tapi FE mensimulasikan lokal + toast sukses. Backlog baru masuk TODO.md §Audit Full-App.
+
+## GAP CLOSED #1 — Finding create (2026-09-16)
+
+Domain: Field | Feature: Finding create | Previous: BROKEN | New: END-TO-END
+Root cause: route fabrikasi (201 + id acak tanpa insert) + perm baca-untuk-tulis, padahal service lengkap tak dipanggil.
+Frontend: tanpa ubah logic (sudah POST benar); respons kini `{id: number-canon, ...row}` kompatibel.
+Backend: GET→listFindings org-scoped (perm finding.read); POST→createFinding + adapter HIGH→MAJOR/MEDIUM→MODERATE/LOW→MINOR + extra desc/zone ke audit + idempotency-Key via withIdempotency (scope finding.create); RBAC finding.read/create + mapping role.
+Persistence: tabel findings + sequence FND canon + audit FINDING_CREATE.
+Contract: severity UI→service di adapter; status canon OPEN; description/zone tanpa migrasi kolom.
+Runtime proof (MCP dev :3145, m.vance): submit LOW → FND-2026-0189 OPEN/MINOR; GET total 2; reload persists; POST invalid → 400 VALIDATION_ERROR total tetap 2; console hanya 400 sengaja.
+Tests: 2 test integrasi baru (persist+numbering+audit+tenant; replay idempoten); npm test 67/67.
+Remaining limitation: live-403 belum diuji browser (tak ada seed user Vendor/Auditor; enforcement via withRoute, pola terbukti); offline-flush runtime menyusul (jalur generik + endpoint idempoten, verified-by-construction).
+Commit: (menyusul di bawah)
+NEXT GAP: #2 Org deactivate/edit role/reset MFA — local-only false success

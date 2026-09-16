@@ -24,6 +24,7 @@ import {
 } from '../lib/services/sr-service';
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
+import { createFinding, getFinding, listFindings } from '../lib/services/inspection-service';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
 import { verifySession, type AuthContext } from '../lib/auth/session';
@@ -467,4 +468,54 @@ test('assets: registry with real workload counts; dossier relations; cross-tenan
     () => getAssetDossier(db, decoy, 'AST-HVAC-004'),
     404, 'ASSET_NOT_FOUND',
   );
+});
+
+// ---------------------------------------------------------------------------
+// Findings persistence (GAP #1: POST used to return 201 without insert)
+// ---------------------------------------------------------------------------
+test('findings: create persists with canon numbering + audit; list reads DB rows', async () => {
+  const before = await listFindings(db, admin);
+  assert.ok(before.some((f) => f.status === 'CONVERTED'), 'seeded converted finding visible');
+
+  const fnd = await createFinding(db, admin, {
+    title: 'Oil mist at compressor terminal box',
+    severity: 'MAJOR',
+    assetCode: 'AST-HVAC-004',
+    extra: { description: 'Visible misting', zone: 'Plant Room' },
+  });
+  assert.equal(fnd.number, 'FND-2026-0189');
+  assert.equal(fnd.status, 'OPEN');
+  assert.equal(fnd.severity, 'MAJOR');
+
+  // Refresh test: row survives a fresh read; audit event written.
+  const refetched = await getFinding(db, admin, 'FND-2026-0189');
+  assert.equal(refetched.title, 'Oil mist at compressor terminal box');
+  const ledger = await listAuditEvents(db, admin);
+  assert.ok(ledger.rows.some((e) => e.action === 'FINDING_CREATE' && e.entityId === 'FND-2026-0189'), 'FINDING_CREATE audited');
+
+  const after = await listFindings(db, admin);
+  assert.equal(after.length, before.length + 1);
+
+  // Cross-tenant isolation: decoy org sees none of canon's findings.
+  const { ctx: decoy } = await sessionFor('t.user@apexgl.io', 'decoy-pass-9021');
+  assert.equal((await listFindings(db, decoy)).length, 0);
+  await expectDomainError(() => getFinding(db, decoy, 'FND-2026-0189'), 404, 'FINDING_NOT_FOUND');
+});
+
+test('findings: idempotent create replays without a second row', async () => {
+  const key = 'finding-idem-key-0001';
+  const first = await createFinding(db, admin, {
+    title: 'Vibration probe loose on AHU-3', severity: 'MODERATE', assetCode: 'AST-HVAC-003',
+  }, { idempotencyKey: key });
+  assert.equal(first.number, 'FND-2026-0190');
+
+  const replay = await createFinding(db, admin, {
+    title: 'Vibration probe loose on AHU-3', severity: 'MODERATE', assetCode: 'AST-HVAC-003',
+  }, { idempotencyKey: key });
+  assert.equal(replay.number, first.number, 'replay returns the stored row, no duplicate');
+
+  const after = await createFinding(db, admin, {
+    title: 'After idempotency', severity: 'MINOR', assetCode: 'AST-HVAC-003',
+  });
+  assert.equal(after.number, 'FND-2026-0191', 'sequence advanced only for real inserts');
 });

@@ -38,7 +38,7 @@
 | Vendors | Onboard/amend/MSA/dispatch | Dialog lokal BYPASSED | Rute TAK ADA | NOT FOUND | — | Toast/sukses lokal | DEAD-END |
 | Facilities | Hub actions (reassign/defect/SLA) | Nol fetch, state lokal | Rute TAK ADA | NOT FOUND | — | UI interaktif lokal | FRONTEND-ONLY |
 | Field | Audit queue + run checklist | State lokal + INITIAL_* | NOT FOUND | NOT FOUND | — | Checklist lokal | FRONTEND-ONLY |
-| Field | Finding create (online/offline) | FindingCapture POST FOUND | POST /api/findings FABRIKASI | 201 + id acak, tanpa insert BROKEN | — (hilang) | Toast SYNCED/sukses | BROKEN |
+| Field | Finding create (online/offline) | FindingCapture POST FOUND | POST /api/findings PERSISTED (fix GAP-1) | createFinding + canon FND seq + audit FOUND | DB findings FOUND | Toast + SYNCED valid | END-TO-END |
 | Field | Finding convert → WO | setTimeout 1200ms MOCKED | finding.convert ADA tak dipanggil | convert FOUND | DB (tak tersentuh) | "Dispatched ✓" | BROKEN |
 | Field | Finding dismiss | setState + klaim audit MOCKED | NOT FOUND | NOT FOUND | — | "audit-chained" | BROKEN |
 | Field | Sync outbox (enqueue/retry) | IDB outbox + key FOUND | (via findings/WO API) | outbox klien FOUND | IDB FOUND | Badge + halaman sync | PARTIAL |

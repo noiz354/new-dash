@@ -81,7 +81,7 @@
 ## Truth Map FE↔BE — backlog integrasi (detail: `docs/audit-fe-be-truth-map.md`, spec: `docs/audit-mocked-deadend-unintegrated-spec.md`)
 
 - [ ] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1)
-- [ ] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (kini 201 tanpa simpan; TASK-25 FAIL) (G2)
+- [x] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (GAP-1 CLOSED 2026-09-16: route via inspection-service, perm finding.create/read, severity adapter, idempotensi; 67/67 test; runtime MCP terverifikasi)
 - [ ] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (G3)
 - [ ] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5)
 - [ ] P1: agregat server untuk KPI inventory atau label scope jujur (ganti konstanta 4,218/1,840/`MOV_TOTAL`) (G6)
