@@ -208,7 +208,8 @@ export interface AddEvidenceInput {
 }
 
 export async function addEvidence(db: Db, ctx: AuthContext, input: AddEvidenceInput): Promise<EvidenceRow> {
-  const id = `ev-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const { randomBytes } = await import('node:crypto');
+  const id = `ev-${Date.now()}-${randomBytes(4).toString('hex')}`;
 
   const inserted = await db.insert(evidence).values({
     organizationId: ctx.orgId,

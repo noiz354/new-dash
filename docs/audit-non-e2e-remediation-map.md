@@ -68,12 +68,11 @@ header "4/7" hardcode → hitung server); advance via POST + pesan 422 jujur
 130/130; runtime MCP: advance 05→DONE + unlock 06 + Start 06→IN_PROGRESS tanpa crash,
 console bersih. Bug envelope `updated.data` tertangkap runtime → diperbaiki.
 
-**F6 — Evidence serve.** Current: PARTIAL. Nyata: POST upload → magic-byte
-+sha256 → writeFile `.data/evidence` + row DB. Belum: serving (header route:
-"TODO slice berikutnya"), viewer UI, FindingCapture tak pakai route (JSON
-only). Break: serving layer. Canon: FS+DB evidence. Persist: PERSISTED.
-Contract: PARTIAL (POST MATCH, GET NOT FOUND). Tests: NONE. **Decision:
-COMPLETE PARTIAL** (GET ter-otentikasi + viewer). Target: END-TO-END.
+**F6 — Evidence serve. [CLOSED GAP-13 2026-09-16]** — GET
+`/api/work-orders/[id]/evidence/[evidenceId]` ter-otentikasi (401/403, 404
+tenant-scoped, traversal→404, file-hilang→410, sha-mismatch→500) +
+WoChecklist viewer (thumbnail + download + sha short) di kedua branch page;
+runtime: upload 201 → download 200 byte-identik, cross-WO 404, unauth 401.
 Reason: bukti tersimpan tapi tak tersaji = setengah rantai. P1/M/MODULE.
 
 **F7 — Print templates (WO/badge/permit/PO).** Current: FRONTEND-ONLY. Gap:
@@ -264,11 +263,11 @@ audit). **Decision: MUST FIX** (tulis audit event beneran + session-flag
 server, atau cabut klaim & batasi). Target: END-TO-END atau HONEST. Reason:
 "audit-chained" fiktif = P0-adjacent. P0/S-M/MODULE.
 
-**F30 — Rotate Key.** Current: MOCKED ("Rotation started" toast-only; full
-secret tak pernah ada). Gap: BACKEND MISSING + FAKE SUCCESS. Break: UI→API.
-Tests: NONE. **Decision: MUST FIX** (endpoint rotate nyata atau ubah jadi
-honest placeholder "managed externally"). Target: END-TO-END atau
-PLACEHOLDER. Reason: key-rotation fiktif = security theater. P1/S/MODULE.
+**F30 — Rotate Key. [CLOSED GAP-13 2026-09-16]** — tabel `api_keys`
+(hash-only) + service issue/list/revoke + audit API_KEY_CREATE/REVOKE +
+routes `/api/settings/api-keys` + UI ProfileSessions live (issue show-once +
+revoke + copy gateway-follow-up jujur); runtime: AK-2026-0001 issue→revoke→list
+kosong. Bearer enforcement = follow-up eksplisit. P1/S/MODULE.
 
 **F31 — Misleading copy cluster. [CLOSED GAP-08]** Item: `Live Sync Active`+`Broker HEALTHY`
 (SideNav/FacilityHub), `WS-PUSH: 12ms` (NotificationsHub — SSE-nya nyata,

@@ -302,3 +302,12 @@ NEXT GAP: #12 (4 quick-close: F5 WO tasks + F10 inventory KPI + F3 provision-ref
 - F17 FieldShell online→flushOutbox silent + refresh (verified-by-construction).
 - 2 bug envelope apiFetch (`updated.data`/`res.data` — apiFetch sudah unwrap) TERTANGKAP RUNTIME via error boundary + alert jujur → diperbaiki; pelajaran: pola `apiFetch<{rows…}>` yang benar = T adalah bentuk data, bukan envelope.
 - npm test 130/130, tsc exit 0, console 0 error. Artefak dev scratch: WO-2026-0894 tasks 05 DONE/06 IN_PROGRESS, user gap12.probe@apexops.io.
+
+## GAP CLOSED #13 — evidence serve + api-key lifecycle (F6/F30 → END-TO-END) (2026-09-16)
+Spec: docs/remediation-gap-13-spec.md (ditulis dulu; tanpa auth-middleware change — bearer enforcement = follow-up eksplisit).
+- F6 PARTIAL→E2E: GET /api/work-orders/[id]/evidence/[evidenceId] (session auth manual + 401/403; 404 tenant-scoped; traversal→404; file-hilang→410 EVIDENCE_FILE_MISSING; sha-mismatch→500 EVIDENCE_CORRUPT; header inline/private/nosniff) + WoChecklist viewer (thumbnail + download + sha short + ukuran) di kedua branch page.tsx; addEvidence Math.random→randomBytes.
+- F30 MOCKED→E2E-lifecycle: tabel api_keys (hash-only) + migrasi 0003 + sequence AK + api-key-service (issue show-once/revoke/list + audit API_KEY_CREATE/REVOKE) + 3 routes (settings.manage) + ProfileSessions card live (issue + show-once alert + revoke ConfirmDialog + copy gateway-follow-up jujur; copy lama …9fb4 dihapus).
+- Tests: 2 service-level (api-keys: canon AK + show-once + list-tanpa-secret + revoke + 409/404/400 + audit; evidence: persist + list + audit); npm test 132/132; tsc bersih (5 error NextRequest/AuthContext/nullish diperbaiki).
+- Runtime proof (MCP browser dev :3145, m.vance): /profile issue AK-2026-0001 via UI (secret sekali-tampil + toast) → revoke via UI → GET list 0 rows tanpa secret; curl: upload PNG 201 → download 200 byte-identik (match=true) → cross-WO 404 → unknown-id 404 → unauth 401; /work-orders/WO-2026-0894 viewer 2 files + thumbnail 1×1 termuat; console 0 error. Artefak dev scratch: 2× gap13-probe.png evidence + AK-2026-0001 (revoked) di .data/pg.
+- Follow-up eksplisit: bearer enforcement gateway; SettingsHub genKey client-side (gap settings FRONTEND-ONLY); FindingCapture JSON-only (tak pakai upload route).
+NEXT GAP: #14 sesuai order CLOSE ALL GAPS.

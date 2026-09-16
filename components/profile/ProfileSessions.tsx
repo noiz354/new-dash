@@ -16,6 +16,16 @@ interface LiveSession {
   current: boolean;
 }
 
+interface ApiKey {
+  id: string;
+  name: string;
+  last4: string;
+  createdBy: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
 interface Toast { id: number; title: string; msg: string }
 let toastSeq = 500;
 
@@ -42,6 +52,13 @@ export function ProfileSessions() {
   const [sessState, setSessState] = useState('Loading live sessions…');
   const [busy, setBusy] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // GAP-13/F30 — live API key lifecycle (issue/list/revoke). Full secrets are
+  // shown ONCE at creation and never readable again (server stores hashes only).
+  const [keys, setKeys] = useState<ApiKey[] | null>(null);
+  const [keysError, setKeysError] = useState<string | null>(null);
+  const [keyName, setKeyName] = useState('');
+  const [freshSecret, setFreshSecret] = useState<{ id: string; secret: string } | null>(null);
+  const [keyBusy, setKeyBusy] = useState(false);
 
   const push = (title: string, msg: string) => {
     const id = toastSeq++;
@@ -76,6 +93,73 @@ export function ProfileSessions() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  const refreshKeys = useCallback(async () => {
+    setKeysError(null);
+    try {
+      const res = await fetch('/api/settings/api-keys', { credentials: 'same-origin' });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.error?.code ? `${body.error.code}: ${body.error.message}` : `HTTP ${res.status}`);
+      }
+      setKeys(body.data ?? []);
+    } catch (err) {
+      setKeys(null);
+      setKeysError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshKeys();
+  }, [refreshKeys]);
+
+  const issueKey = async () => {
+    if (!keyName.trim()) {
+      push('Key name required', 'Give the key a name (e.g. "scada-exporter") before issuing.');
+      return;
+    }
+    setKeyBusy(true);
+    try {
+      const res = await fetch('/api/settings/api-keys', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: keyName.trim() }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.error?.code ? `${body.error.code}: ${body.error.message}` : `HTTP ${res.status}`);
+      }
+      setFreshSecret({ id: body.data.id, secret: body.data.secret });
+      setKeyName('');
+      push('API key issued', `${body.data.id} created — copy the secret now, it will never be shown again.`);
+      await refreshKeys();
+    } catch (err) {
+      push('Issue failed', err instanceof Error ? err.message : String(err));
+    } finally {
+      setKeyBusy(false);
+    }
+  };
+
+  const revokeKey = async (id: string) => {
+    setKeyBusy(true);
+    try {
+      const res = await fetch(`/api/settings/api-keys/${encodeURIComponent(id)}/revoke`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        throw new Error(body?.error?.code ? `${body.error.code}: ${body.error.message}` : `HTTP ${res.status}`);
+      }
+      push('API key revoked', `${id} can no longer authenticate.`);
+      await refreshKeys();
+    } catch (err) {
+      push('Revoke failed', err instanceof Error ? err.message : String(err));
+    } finally {
+      setKeyBusy(false);
+    }
+  };
 
   const revokeOthers = async () => {
     setBusy(true);
@@ -221,11 +305,70 @@ export function ProfileSessions() {
         <section className="bg-card border border-border-subtle rounded-lg p-5 flex flex-col gap-3" aria-label="API access">
           <h2 className="font-semibold">API Access</h2>
           <p className="text-sm text-muted">
-            Production key <span className="apex-id font-bold text-ink">…9fb4</span> (last4 only — full secret rotated at seeding per C21, never displayed).
+            Programmatic keys are issued and revoked here — the server stores
+            only hashes, so a secret is shown once at creation and never again.
+            Bearer enforcement at the API gateway lands in a follow-up slice;
+            lifecycle (issue / revoke) is live.
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => push('Rotation started', 'New key reveals once — old key valid 15 min overlap.')}>
-              Rotate Key
+          {keysError && (
+            <p className="text-[12px] font-semibold text-fail bg-fail-bg rounded px-2 py-1" role="alert">
+              Could not load API keys: {keysError}
+            </p>
+          )}
+          {keys !== null && keys.length > 0 && (
+            <ul className="flex flex-col gap-1 text-[13px]">
+              {keys.map((k) => (
+                <li key={k.id} className="flex items-center justify-between gap-2 rounded border border-border-subtle px-2 py-1.5">
+                  <span className="min-w-0">
+                    <strong className="apex-id">{k.id}</strong> · {k.name} · <span className="apex-id">…{k.last4}</span>
+                    <span className="block text-[11px] text-muted apex-id">issued {fmtDate(k.createdAt)}</span>
+                  </span>
+                  <ConfirmDialog
+                    title={`Revoke ${k.id}?`}
+                    description="The key stops authenticating immediately. This cannot be undone — issue a new key if access is still needed."
+                    confirmLabel="Revoke Key"
+                    onConfirm={() => revokeKey(k.id)}
+                  >
+                    <button
+                      type="button"
+                      disabled={keyBusy}
+                      className="h-8 px-3 rounded border border-border-subtle text-xs font-bold text-muted hover:text-fail disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Revoke
+                    </button>
+                  </ConfirmDialog>
+                </li>
+              ))}
+            </ul>
+          )}
+          {keys !== null && keys.length === 0 && (
+            <p className="text-[13px] text-muted" role="status">No active API keys.</p>
+          )}
+          {freshSecret && (
+            <div className="rounded border border-warn bg-warn-bg p-3 text-[13px]" role="alert">
+              <p className="font-bold">Copy this secret now — it will never be shown again.</p>
+              <p className="apex-id break-all font-mono mt-1">{freshSecret.secret}</p>
+              <button
+                type="button"
+                className="mt-2 h-8 px-3 rounded border border-border-subtle text-xs font-bold"
+                onClick={() => setFreshSecret(null)}
+              >
+                I saved it — hide
+              </button>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={keyName}
+              onChange={(e) => setKeyName(e.target.value)}
+              placeholder="Key name (e.g. scada-exporter)"
+              maxLength={80}
+              aria-label="New API key name"
+              className="h-9 flex-1 min-w-[200px] rounded border border-border-subtle bg-surface px-3 text-sm"
+            />
+            <Button variant="secondary" onClick={() => void issueKey()} disabled={keyBusy}>
+              {keyBusy ? '…' : 'Generate New Key'}
             </Button>
             <Link href="/settings">
               <Button variant="secondary">Open Settings</Button>

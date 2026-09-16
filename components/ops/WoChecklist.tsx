@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/api/client';
-import type { WoTaskRow } from '@/lib/services/task-service';
+import type { EvidenceRow, WoTaskRow } from '@/lib/services/task-service';
 
 const NEXT: Record<string, 'IN_PROGRESS' | 'DONE' | null> = {
   PENDING: 'IN_PROGRESS',
@@ -29,10 +29,13 @@ export function WoChecklist({
   number,
   initialTasks,
   enabled,
+  evidence = [],
 }: {
   number: string;
   initialTasks: WoTaskRow[];
   enabled: boolean;
+  /** Server-fetched evidence rows (GAP-13/F6) — viewable by every role that can read the WO. */
+  evidence?: EvidenceRow[];
 }) {
   const [tasks, setTasks] = useState<WoTaskRow[]>(initialTasks);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -118,6 +121,47 @@ export function WoChecklist({
           );
         })}
       </ol>
+      {/* GAP-13/F6 — persisted evidence served behind session auth (download route). */}
+      <div className="mt-3 pt-2 border-t border-border-subtle" aria-label="Attached evidence">
+        <p className="text-[11px] font-semibold text-muted">
+          Evidence · {evidence.length === 0 ? 'none attached' : `${evidence.length} file${evidence.length === 1 ? '' : 's'} (server-stored, integrity-verified)`}
+        </p>
+        {evidence.length > 0 && (
+          <ul className="mt-1 flex flex-col gap-2">
+            {evidence.map((ev) => (
+              <li key={ev.id} className="flex items-center gap-3 text-[12px]">
+                <a
+                  href={`/api/work-orders/${encodeURIComponent(number)}/evidence/${encodeURIComponent(ev.id)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/work-orders/${encodeURIComponent(number)}/evidence/${encodeURIComponent(ev.id)}`}
+                    alt={`Evidence ${ev.fileName}`}
+                    className="h-12 w-12 rounded border border-border-subtle object-cover bg-surface-subtle"
+                    loading="lazy"
+                  />
+                </a>
+                <span className="min-w-0 flex-1">
+                  <a
+                    href={`/api/work-orders/${encodeURIComponent(number)}/evidence/${encodeURIComponent(ev.id)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-cobalt hover:underline break-all"
+                  >
+                    {ev.fileName}
+                  </a>
+                  <span className="block text-[11px] text-muted apex-id">
+                    {(ev.fileSize / 1024).toFixed(1)} KB · sha256:{ev.sha256Hash.slice(0, 12)}… · {ev.uploadedBy}
+                    {ev.taskId ? ` · task ${ev.taskId}` : ''}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

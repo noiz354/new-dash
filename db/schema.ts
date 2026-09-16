@@ -534,6 +534,31 @@ export const webauthnCredentials = pgTable(
   ],
 );
 
+/** GAP-13/F30 — programmatic API keys. Only the SHA-256 hash is stored:
+ *  the plaintext secret is shown ONCE at creation and never readable again.
+ *  Bearer enforcement at the API gateway is an explicit follow-up slice —
+ *  this slice delivers the real issue / list / revoke lifecycle. */
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(), // AK-2026-0001…
+    name: text('name').notNull(),
+    /** SHA-256 hex of the plaintext secret (ak_live_…). Never the secret itself. */
+    keyHash: text('key_hash').notNull(),
+    last4: text('last4').notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    uniqueIndex('api_keys_hash_uq').on(t.keyHash),
+    index('api_keys_org_idx').on(t.organizationId, t.createdAt),
+  ],
+);
+
 
 
 

@@ -10,7 +10,7 @@ import { getSessionContext } from '@/lib/auth/context';
 import { can } from '@/lib/auth/rbac';
 import { getDb } from '@/db/client';
 import { getWorkOrder, listWoEvents, type WoRow, type WoHistoryEntry } from '@/lib/services/wo-service';
-import { listWoTasks, type WoTaskRow } from '@/lib/services/task-service';
+import { listWoEvidence, listWoTasks, type EvidenceRow, type WoTaskRow } from '@/lib/services/task-service';
 import { findSrByConvertedWo } from '@/lib/services/asset-service';
 import { DomainError } from '@/lib/domain/errors';
 import { CANON } from '@/lib/canon';
@@ -137,18 +137,22 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
   let history: WoHistoryEntry[] = [];
   let originSr: { number: string; title: string } | null = null;
   let tasks: WoTaskRow[] = [];
+  let evidence: EvidenceRow[] = [];
 
   try {
     wo = await getWorkOrder(getDb(), ctx, id);
-    const [h, s, t] = await Promise.all([
+    const [h, s, t, e] = await Promise.all([
       listWoEvents(getDb(), ctx, id),
       findSrByConvertedWo(getDb(), ctx, id),
       // DB-driven execution checklist (GAP-12/F5) — empty = honest empty-state.
       listWoTasks(getDb(), ctx, id).catch(() => [] as WoTaskRow[]),
+      // Served evidence (GAP-13/F6) — empty = honest "none attached".
+      listWoEvidence(getDb(), ctx, id).catch(() => [] as EvidenceRow[]),
     ]);
     history = h;
     originSr = s;
     tasks = t;
+    evidence = e;
   } catch (err) {
     if (err instanceof DomainError && err.status === 404) {
       if (!isWoPattern) {
@@ -360,7 +364,7 @@ export default async function WorkOrderDetailPage({ params }: { params: Promise<
         <section className="xl:col-span-7 bg-card border border-border-subtle rounded-lg p-6 flex flex-col gap-4 shadow-card" aria-label="Execution details">
           <div>
             <h2 className="text-base font-semibold">Checklist Execution</h2>
-            <WoChecklist number={wo.number} initialTasks={tasks} enabled={transitionable} />
+            <WoChecklist number={wo.number} initialTasks={tasks} enabled={transitionable} evidence={evidence} />
           </div>
 
           <div className="pt-2 border-t border-border-subtle">

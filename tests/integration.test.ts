@@ -30,6 +30,8 @@ import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/servic
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
 import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '../lib/services/pm-service';
+import { addEvidence, listWoEvidence } from '../lib/services/task-service';
+import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
 import { CANON } from '../lib/canon';
 import { totpNow } from '../lib/auth/totp';
 import { DomainError } from '../lib/domain/errors';
@@ -1169,4 +1171,52 @@ test('wo-tasks (GAP-12/F5): seed 7 steps → advance 05 DONE unlocks 06 → 07 e
 
   const ledger = await listAuditEvents(db, admin);
   assert.ok(ledger.rows.some((e) => e.action === 'WO_TASK_UPDATE'), 'WO_TASK_UPDATE audited');
+});
+
+test('api-keys (GAP-13/F30): issue show-once → list hides secret → revoke → 409 replay', async () => {
+  const created = await createApiKey(db, admin, { name: 'gap13-probe' });
+  assert.match(created.id, /^AK-\d{4}-\d{4}$/, 'canon AK numbering');
+  assert.ok(created.secret.startsWith('ak_live_'), 'secret issued once');
+  assert.equal(created.last4, created.secret.slice(-4), 'last4 derives from secret');
+
+  const keys = await listApiKeys(db, admin);
+  const listed = keys.find((k) => k.id === created.id)!;
+  assert.ok(listed, 'new key listed');
+  assert.ok(!('secret' in listed), 'secret NEVER readable again');
+
+  const again = await createApiKey(db, admin, { name: 'gap13-second' });
+  assert.notEqual(again.id, created.id, 'ids unique');
+  assert.notEqual(again.secret, created.secret, 'secrets unique');
+
+  const revoked = await revokeApiKey(db, admin, created.id);
+  assert.ok(revoked.revokedAt, 'revokedAt stamped');
+  assert.ok(!(await listApiKeys(db, admin)).some((k) => k.id === created.id), 'revoked key leaves the active list');
+
+  await expectDomainError(() => revokeApiKey(db, admin, created.id), 409, 'API_KEY_ALREADY_REVOKED');
+  await expectDomainError(() => revokeApiKey(db, admin, 'AK-2099-9999'), 404, 'API_KEY_NOT_FOUND');
+  await expectDomainError(() => createApiKey(db, admin, { name: '   ' }), 400, 'VALIDATION_ERROR');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'api_key' });
+  assert.ok(ledger.rows.some((e) => e.action === 'API_KEY_CREATE' && e.entityId === created.id), 'API_KEY_CREATE audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'API_KEY_REVOKE' && e.entityId === created.id), 'API_KEY_REVOKE audited');
+});
+
+test('evidence (GAP-13/F6): addEvidence persists row + listWoEvidence tenant-scoped', async () => {
+  const ev = await addEvidence(db, admin, {
+    workOrderNumber: CANON.workOrderSeal,
+    taskId: null,
+    fileName: 'probe.png',
+    filePath: '.data/evidence/probe.png',
+    mimeType: 'image/png',
+    fileSize: 68,
+    sha256Hash: 'probe-hash-gap13',
+  });
+  assert.ok(ev.id.startsWith('ev-'), 'evidence id issued');
+  assert.equal(ev.uploadedBy, 'Marcus Vance');
+
+  const rows = await listWoEvidence(db, admin, CANON.workOrderSeal);
+  assert.ok(rows.some((r) => r.id === ev.id), 'row visible in WO evidence list');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'evidence' });
+  assert.ok(ledger.rows.some((e) => e.action === 'EVIDENCE_UPLOAD' && e.entityId === ev.id), 'EVIDENCE_UPLOAD audited');
 });
