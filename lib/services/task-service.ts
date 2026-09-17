@@ -254,3 +254,85 @@ export async function addEvidence(db: Db, ctx: AuthContext, input: AddEvidenceIn
     createdAt: r.createdAt.toISOString(),
   };
 }
+
+export interface AddTaskInput {
+  woNumber: string;
+  title: string;
+  instruction?: string | null;
+  requiresPhoto?: boolean;
+}
+
+/**
+ * SDD T3-2: append an execution step to any WO's checklist (generic dossiers
+ * ship with an empty checklist that must be fillable — the canon seal WO gets
+ * its 7 steps from the seed). Step order = max(existing)+1; the sequence gate
+ * in updateWoTask keeps completion ordered. Audited as WO_TASK_ADD.
+ */
+export async function addWoTask(db: Db, ctx: AuthContext, input: AddTaskInput): Promise<WoTaskRow> {
+  const title = input.title.trim();
+  if (title.length < 3 || title.length > 160) {
+    throw new DomainError(400, 'VALIDATION_ERROR', 'Task title must be 3–160 characters');
+  }
+  const instruction = (input.instruction ?? '').trim().slice(0, 500);
+
+  return db.transaction(async (tx) => {
+    const wo = await tx
+      .select({ number: workOrders.number })
+      .from(workOrders)
+      .where(and(eq(workOrders.organizationId, ctx.orgId), eq(workOrders.number, input.woNumber)))
+      .limit(1);
+    if (!wo[0]) throw notFound('WORK_ORDER', input.woNumber);
+
+    const maxRow = await tx
+      .select({ maxOrder: sql<number>`coalesce(max(${woTasks.stepOrder}), 0)` })
+      .from(woTasks)
+      .where(and(eq(woTasks.organizationId, ctx.orgId), eq(woTasks.workOrderNumber, input.woNumber)));
+    const stepOrder = Number(maxRow[0]?.maxOrder ?? 0) + 1;
+
+    const { randomBytes } = await import('node:crypto');
+    const id = `WOTSK-${Date.now().toString(36)}-${randomBytes(3).toString('hex')}`;
+
+    const inserted = await tx
+      .insert(woTasks)
+      .values({
+        organizationId: ctx.orgId,
+        id,
+        workOrderNumber: input.woNumber,
+        stepOrder,
+        title,
+        instruction,
+        status: 'PENDING',
+        requiresPhoto: input.requiresPhoto ?? false,
+      })
+      .returning();
+
+    await tx.insert(auditEvents).values({
+      organizationId: ctx.orgId,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      action: 'WO_TASK_ADD',
+      entityType: 'work_order_task',
+      entityId: id,
+      after: {
+        woNumber: input.woNumber,
+        stepOrder,
+        title,
+        requiresPhoto: input.requiresPhoto ?? false,
+      },
+    });
+
+    const r = inserted[0];
+    return {
+      id: r.id,
+      workOrderNumber: r.workOrderNumber,
+      stepOrder: r.stepOrder,
+      title: r.title,
+      instruction: r.instruction,
+      status: r.status as WoTaskRow['status'],
+      requiresPhoto: r.requiresPhoto,
+      verifiedBy: r.verifiedBy,
+      verifiedAt: r.verifiedAt ? r.verifiedAt.toISOString() : null,
+      createdAt: r.createdAt.toISOString(),
+    };
+  });
+}

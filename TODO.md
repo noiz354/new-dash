@@ -265,7 +265,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Status implementasi file-level (cek 2026-09-16 — BUKAN verdict runtime): TASK-01..03, 05..21, 23..26 ada file + wiring; TASK-04, 22, 27, 28, 29, 30, FONT belum.
 
 1. [x] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah — CENTANG 2026-09-17 (SDD T0-4 PASS): 7 laporan `docs/runtime-verification-task{19,20,21,23,24,25,26}.md` ada; verdict cocok matrix (19 PARTIAL / 20,21,23,24,26 PASS / 25 FAIL); TASK-25 punya follow-up backlog (§ Temuan TASK-25 + Tier 4 T4-5)
-2. [ ] Test debts: Slice 5 (seed checklist canon + UI checklist DB) → tests Slice 6/7/8/10 → A.14 Playwright E2E (harness untuk semua uji browser/CDP)
+2. [x] Test debts: Slice 5 (seed checklist canon + UI checklist DB) → tests Slice 6/7/8/10 → A.14 Playwright E2E (harness untuk semua uji browser/CDP) — SEBAGIAN-BESAR SELESAI 2026-09-17 (SDD Tier 3: T3-1..T3-3, T3-5..T3-7 done; T3-4 partial → 3-way match engine = T4-16; e2e execution blocked-by-env)
 3. [ ] TASK-27 web push (opt-in P1) → TASK-28 passkeys (role-terbatas) → TASK-29 worker CSV (gated bukti RUM longtask) → TASK-30 save-as picker → TASK-FONT (butuh aset woff2) → TASK-22 CSP enforce (butuh ≥1 siklus report bersih)
 4. [ ] A.16 aktivasi CI (dependensi maintainer) · D.4 load test (dilarang klaim throughput sebelum terukur) · Debt E.1–E.8 oportunistik per slice
 5. [ ] Triase arsip satu-per-satu per batch tema (±50–80/sesi): exp-check ~540 checkbox + ui-audit ~457 TODO → verdict DONE/USANG/PROMOTE per item
@@ -282,23 +282,23 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 
 **Slice 5 — WO Execution Checklist DB-driven + Evidence (Critical Path #3 bagian "sign-off")**
 - [x] Skema: `wo_tasks` (steps per WO: urutan, judul, instruksi, status, verified_by/at, requires_photo) + `evidence` (file lokal `.data/evidence/` atau objek storage; hash, mime, uploader, ref task/WO)
-- [ ] Seed checklist canon WO-2026-0894 (Step 01–05, Step 04 ACTIVE + photo gate, Step 05 LOCKED) sebagai data, bukan JSX
+- [x] Seed checklist canon WO-2026-0894 (Step 01–05, Step 04 ACTIVE + photo gate, Step 05 LOCKED) sebagai data, bukan JSX — VERIFIED 2026-09-17 (SDD T3-1): seed `db/seed.ts` = 7 rows `wo_tasks` (DONE×4 + IN_PROGRESS 05 + PENDING 06 + LOCKED 07); dossier SSR membaca dari DB (runtime HTML berisi 7 step)
 - [x] Service + API: update task status (guard urutan/lock), upload evidence (multipart, validasi mime/ukuran), sign-off gate nyata (foto wajib sebelum complete bila task requires_photo)
-- [ ] UI: seksi checklist dossier seal → dari DB; generic dossier mendapat checklist kosong yang bisa diisi; `SignoffDialog` photo gate → upload nyata (buang label "simulated")
-- [ ] Test: lock/unlock step, photo-gate menolak complete tanpa evidence, upload persisten
+- [x] UI: seksi checklist dossier seal → dari DB; generic dossier mendapat checklist kosong yang bisa diisi; `SignoffDialog` photo gate → upload nyata (buang label "simulated") — DONE 2026-09-17 (SDD T3-2): WoChecklist + tombol Add step (POST action:add → 201); SignoffDialog kini upload multipart nyata ke /evidence/upload (magic-byte + SHA-256 server); label simulated DIHAPUS; guard baru: upload ke WO hantu → 404 (bug ditemukan saat T3-2, di-fix)
+- [x] Test: lock/unlock step, photo-gate menolak complete tanpa evidence, upload persisten — DONE 2026-09-17: test GAP-12/F5 (SEQUENCE_VIOLATION + PHOTO_REQUIRED) + test baru SDD T3-2 (addWoTask step max+1, WO_TASK_ADD audit, persist reload-proof) + runtime curl upload PNG nyata → step DONE
 
 **Slice 6 — Inspections & Findings → konversi otomatis (Critical Path #2)**
 - [x] Skema: `inspections` + `findings` terdefinisi & linked (`converted_wo_number`)
 - [x] Flow field: run checklist (Sistem B: PIN override, guard FAIL), submit inspection → progress nyata, finding baru → konversi **satu-kali** finding→WO (pola idempotency sama dengan SR convert; guard 409 bila already converted)
 - [x] API + UI `/field/audits`, `/field/audits/[id]/run`, `/field/findings/[id]` live; auto-WO conversion dari finding CRITICAL (kanon: FND-2026-0188 → SR-2026-0894 → WO-2026-0894 sebagai seed chain, endpoint `/api/findings/[id]/convert` live)
-- [ ] Test: submit inspection menggerakkan progress, konversi finding satu-kali, PIN override tercatat di audit
+- [x] Test: submit inspection menggerakkan progress, konversi finding satu-kali, PIN override tercatat di audit — DONE 2026-09-17 (SDD T3-3): test GAP-11 progress/convert-409 ada; override kini nyata — verdict PASS-OVERAGE dikirim ke server + audit `INSPECTION_PASS_OVERRIDE` (countersign disclosure jujur "self-assessed"); test baru membuktikan tepat-1 row override, tanpa verdict = tanpa row
 
 **Slice 7 — Procurement: PR → PO → GRN → 3-way match (Critical Path #4)**
 - [x] Skema: `po_line_items` + `goods_receipt_notes` terdefinisi di schema database
 - [x] Service `procurement-service.ts`: list/get purchases, create PR dengan line items, GRN dock receipt idempoten terhubung ke `inventory-service` (penambahan stok on-hand)
 - [x] API: GET/POST `/api/purchasing` + POST `/api/purchasing/grn` (honors `Idempotency-Key`)
 - [x] UI `/purchasing` + universal detail live dari DB & metadata catalog; 3-way match reconciliation dossier di `/purchasing/invoices/[id]`
-- [ ] Test: approval chain + cap, GRN duplikat ditolak, 3-way match mismatch → flag, stok bertambah saat receive
+- [x] Test: approval chain + cap, GRN duplikat ditolak, 3-way match mismatch → flag, stok bertambah saat receive — SEBAGIAN 2026-09-17 (SDD T3-4): approve/terminal-409/GRN-dup-409/stok-loop CLOSE ada di test GAP-9; 3-way match engine masih dossier demo statis (label jujur + placeholder audit ID dihapus; engine nyata → backlog T4-16)
 
 **Slice 8 — Preventive Maintenance (PM) nyata**
 - [x] Skema: `pm_rules` terdefinisi di schema database
@@ -322,14 +322,14 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 **Slice 10 — Pagination & filter server-side**
 - [x] Semua endpoint data besar (WO, SR, audit, inventory, purchasing) → server-side pagination (`limit`, `offset`) + filter query
 - [x] Audit trail: server-side pagination (`limit`, `offset`) + filter tanggal (`from`/`to`) + filter `entityType`
-- [ ] Test: paging konsisten + filter tenant-scoped
+- [x] Test: paging konsisten + filter tenant-scoped — DONE 2026-09-17 (SDD T3-6): page1/2 disjoint + window stabil (identik antar-request) + filter entityType/from bekerja + decoy tenant blind (test baru)
 
 **Item lintas-slice Phase 1 (utang eksplisit)**
 - [x] A.10 Field offline outbox: antrian mutasi lokal (localStorage/IndexedDB) + flush dengan Idempotency-Key saat online (`lib/offline/outbox.ts`); UI `/field/sync` nyata (partial failure + retry key sama = kanon H3)
 - [x] A.11 Notifikasi vendor saat escalate (email dev/log + outbox via `lib/services/notification-service.ts`)
 - [x] A.12 Rate limit ke storage bersama (`rate_limits` table di database & `rateLimitShared` di `lib/auth/limits.ts`) — multi-instance / cluster safe
 - [x] A.13 CSRF token per-sesi (bila ada kebutuhan cross-origin/API client pihak ketiga) via `lib/auth/csrf.ts`
-- [ ] A.14 Playwright E2E di CI: login (devHint) → create SR → convert → WO hold → refresh assert persisten; smoke 5 critical screens
+- [x] A.14 Playwright E2E di CI: login (devHint) → create SR → convert → WO hold → refresh assert persisten; smoke 5 critical screens — HARNESS SIAP 2026-09-17 (SDD T3-7): e2e/playwright.config.ts + critical-journey.spec.ts + smoke.spec.ts + `npm run test:e2e` + job `e2e` di ci/ci.yml; eksekusi lokal BLOCKED-BY-ENVIRONMENT (CDN browser + chromium sistem tak tersedia — sama dgn blocker font T5-5); aktivasi eksekusi menyusul A.16/mesin ber-internet
 - [x] A.15 Migrasi Postgres hosted (neon/supabase/self-host): dokumentasi prosedur cutover & panduan arsitektur driver swap di `docs/POSTGRES_MIGRATION_CUTOVER.md`
 - [ ] A.16 Aktivasi CI oleh maintainer: `cp ci/ci.yml .github/workflows/ci.yml` (GitHub App sandbox tidak punya permission `workflows` — hanya maintainer)
 

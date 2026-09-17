@@ -75,3 +75,10 @@
   6. Guard-test: absence feed-fabrikasi (feed harus dari DB rows, bukan const JSX).
 - Verifikasi: `npm run db:setup` (migrasi idempotent, server STOP) → test hijau → runtime curl: RECEIVE → row muncul di feed + audit tetap ada → reload tahan.
 - Estimasi: medium (migrasi + service + feed + test). Kaitan: T3-1 (seed checklist), T4-1 (KPI inventory jujur).
+
+## T4-16 — 3-way match engine nyata (PROMOSI dari T3-4, 2026-09-17)
+
+- Fakta: dossier `/purchasing/invoices/[id]` masih data demo statis (label sudah jujur: "DEMO DOSSIER", placeholder audit ID `EVT-MATCH-*` sudah dihapus dari tombol Audit Trail).
+- AC: engine hitung per baris dari `po_line_items` vs `goods_receipt_notes` (qty/price) + invoice nyata bila ada; mismatch → flag + payment-hold state; feed ke dossier (endpoint atau RSC fetch); test mismatch→flag + matched→ok + tenant-scope; hapus `INVOICES` const statis.
+- Verifikasi: runtime — GRN qty ≠ PO qty → dossier EXCEPTION_DISPUTED nyata + audit row; reload tahan.
+- Estimasi: medium. Kaitan: T4-3 (expose/lock reports/aggregates).

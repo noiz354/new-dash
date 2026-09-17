@@ -172,7 +172,7 @@ export function RunChecklist({ auditId }: { auditId: string }) {
     try {
       const data = await apiFetch<{ number: string; status: string; progressPct: number }>(
         `/api/inspections/${auditId}/progress`,
-        { method: 'POST', body: { progressPct: 100, status: 'COMPLETED' } },
+        { method: 'POST', body: { progressPct: 100, status: 'COMPLETED', verdict } },
       );
       setSubmitted(true);
       setServerStatus(data.status);

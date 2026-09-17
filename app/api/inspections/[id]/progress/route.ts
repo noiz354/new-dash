@@ -7,6 +7,7 @@ import { updateInspectionProgress } from '@/lib/services/inspection-service';
 const ProgressSchema = z.object({
   progressPct: z.number().int().min(0).max(100),
   status: z.string().min(2).max(20).optional(),
+  verdict: z.enum(['FAIL', 'PASS-OVERRIDE']).nullish(),
 });
 
 /** POST /api/inspections/[id]/progress — persist run progress from the field checklist (GAP-11, F16). */
@@ -27,7 +28,7 @@ export async function POST(
         id,
         body.progressPct,
         body.status,
-        { requestId },
+        { requestId, verdict: body.verdict ?? null },
       );
       return { data: row };
     }

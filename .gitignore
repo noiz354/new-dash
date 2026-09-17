@@ -62,3 +62,7 @@ trace.json.gz
 
 # Phase 1: PGlite database files (local dev data — never commit)
 .data/
+
+# Playwright artifacts (SDD T3-7)
+test-results/
+playwright-report/

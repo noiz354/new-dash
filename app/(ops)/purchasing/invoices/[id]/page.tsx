@@ -181,12 +181,13 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
           <div>
             <div className="flex items-center gap-2">
               <Badge variant={inv.status === 'RECONCILED' ? 'pass' : 'fail'}>{inv.status}</Badge>
-              <Badge variant="info">3-WAY MATCH ENGINE</Badge>
-              <span className="text-xs font-mono text-muted">{inv.matchConfidence}</span>
+              <Badge variant="info">3-WAY MATCH — DEMO DOSSIER</Badge>
+              <span className="text-xs font-mono text-muted">{inv.matchConfidence} (reference)</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight mt-1">Invoice Reconciliation Dossier {inv.id}</h1>
             <p className="text-sm text-muted">
               Three-way matching between Purchase Order commitment, physical dock receipt (GRN), and electronic vendor invoice.
+              <span className="block text-[11px] text-muted mt-0.5">Demo reference data — this dossier is not computed from live GRN rows yet (live engine: backlog T4-16). Audit IDs shown here are placeholders, not ledger rows.</span>
             </p>
           </div>
 
@@ -194,8 +195,8 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
             <Link href={`/purchasing/${inv.poNumber}?tab=match`}>
               <Button variant="secondary"><ArrowLeft size={16} /> Back to Purchase Order</Button>
             </Link>
-            <Link href={`/audit-trail?search=${inv.auditTrailId}`}>
-              <Button><ShieldCheck size={16} /> Audit Trail Proof</Button>
+            <Link href="/audit-trail">
+              <Button><ShieldCheck size={16} /> Open Audit Trail</Button>
             </Link>
           </div>
         </div>
