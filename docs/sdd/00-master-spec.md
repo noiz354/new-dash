@@ -20,7 +20,7 @@
 
 | Tier | Spec | Unit | Status |
 |---|---|---|---|
-| 0 — Verifikasi + centang | `tier-0-verify.md` | 5 | ⬜ |
+| 0 — Verifikasi + centang | `tier-0-verify.md` | 5 | ✅ 4 PASS + 1 PARTIAL (2026-09-17; T0-5 Skema/Test → T4-15) |
 | 1 — Kecil & jelas | `tier-1-small.md` | 11 | ⬜ |
 | 2 — GAP-17 KEEP batch | `tier-2-keep-batch.md` | 6 | ⬜ |
 | 3 — Test debts | `tier-3-test-debts.md` | 7 | ⬜ |

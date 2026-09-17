@@ -80,11 +80,11 @@
 
 ## Truth Map FE↔BE — backlog integrasi (detail: `docs/audit-fe-be-truth-map.md`, spec: `docs/audit-mocked-deadend-unintegrated-spec.md`)
 
-- [ ] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1)
+- [x] P0: wire `PATCH /api/organization/users/[id]` ke dialog Deactivate User (kini toast palsu "access revoked") + refetch + bukti 401 (G1) — RE-VERIFIED 2026-09-17 (SDD T0-1 PASS): self-deactivate → 403 USER_SELF_DEACTIVATE; deactivate Kowalski → isActive:false + login → INVALID_CREDENTIALS; reactivate → login OK; UI ConfirmDialog → setActive → PATCH → setPeople (update otomatis tanpa reload)
 - [x] P0: wire `PATCH /api/organization/users/[id]` + reset-MFA ke OrgHub (GAP-2 CLOSED 2026-09-16: org-service baru — list/create/update/resetMfa + self-guard 403 + revoke sesi + audit USER_*; roster live dari GET; 69/69 test; runtime MCP: provision→deactivate→reactivate + reset-MFA + self-403, 0 console error)
 - [x] P0: persist `POST /api/findings` ke tabel findings + GET baca DB (GAP-1 CLOSED 2026-09-16: route via inspection-service, perm finding.create/read, severity adapter, idempotensi; 67/67 test; runtime MCP terverifikasi)
 - [x] P1: wire `inventory.mutate` ke Receive/Mutation desk + PIN approver server-side + guard available→0 (GAP-3 CLOSED 2026-09-16: step-up TOTP wajib di POST movements — verifyStepUpCode + 403 STEP_UP_UNAVAILABLE/INVALID + stepUpAt di audit; rows live GET /api/parts + feed GET movements dari audit PART_*; PIN 2468 dihapus total; non-katalog disabled; 72/72 test; runtime MCP: receive+mutasi persist, kode salah → STEP_UP_INVALID, reload OK, 0 JS error)
-- [ ] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5)
+- [x] P1: wire `po.list/create/receive` + `queue/jobs` ke purchasing/jobs UI + polling status (G4/G5) — RE-VERIFIED 2026-09-17 (SDD T0-2 PASS): PR-2026-0316 create → APPROVE (decidedBy) → GRN butuh PO (409 WRONG_DOCUMENT_KIND jujur untuk PR) → GRN PO-2026-0302 → stok PART-LUB-09 6→8, replay Idempotency-Key = GRN sama (tanpa dobel stok); queue: enqueue pm_generator → run_cycle {1,1,0} → COMPLETED attempts 1; guard GAP-18: jobs page nol DAEMON/SOC2/auditHash/JOB-2026-08 (marker auditHash tersisa di vendors/contracts = scope T4-2, bukan jobs)
 - [ ] P1: agregat server untuk KPI inventory atau label scope jujur (ganti konstanta 4,218/1,840/`MOV_TOTAL`) (G6)
 - [ ] P2: bersihkan klaim Live/WS-PUSH/SYNCED-hash, EVT-fallback, seed-tanpa-badge, perm `assets.read`→tulis, rute transfers/adjustments/runs, export-scope label (G7–G12)
 
@@ -95,7 +95,7 @@
 - [ ] BACKEND-ONLY → putuskan expose atau kunci: inspections CRUD + force-dispatch, wo tasks, parts/movements, purchasing/grn, ~~queue/jobs~~ (EXPOSED+honest — GAP-16 TASK 3 CLOSED 2026-09-16), ~~retention/digest~~ (DEPRECATED eksplisit — GAP-16 TASK 4 CLOSED, sunset 2026-12-15), reports/aggregates, telemetry ingest/metrics, billing UI, ~~signup form~~ (signup form EXPOSED — GAP-16 TASK 1 CLOSED 2026-09-16)
 - [ ] FRONTEND-ONLY → wire atau label jujur: reports hub, PM hub, ~~shifts plan~~ (handover backend+badge fix — GAP-16 TASK 7 CLOSED 2026-09-16), ~~facilities hub~~ (backend+wire — GAP-16 TASK 5 CLOSED 2026-09-16), vendors flows, ~~settings hub~~ (KV backend+wire — GAP-16 TASK 6 CLOSED 2026-09-16), jobs page (SEED), print templates (WO/PO/badge/permit: nyatakan sumber CANON)
 - [x] DEAD-END refs inventory: `TRF-2026-0044`/`ADJ-2026-0019` (MOV_SEED) + `ADJ-2026-Q1` (SKU detail TXN-811) DICABUT — GAP-16 TASK 2 CLOSED 2026-09-16; rute `/inventory/transfers|adjustments` out-of-scope eksplisit (tanpa backend transfer). Sisa DEAD-END: `/field/runs` (F18 ber-badge honest, menunggu keputusan)
-- [ ] OrgHub provision: daftar roster masih SEED meski POST nyata → refetch setelah provision (PARTIAL → END-TO-END)
+- [x] OrgHub provision: daftar roster masih SEED meski POST nyata → refetch setelah provision (PARTIAL → END-TO-END) — RE-VERIFIED 2026-09-17 (SDD T0-3 PASS): POST /api/organization/users → roster 6→7; OrgHub provision() re-fetch GET /api/organization/users + RFID re-attach (fallback lokal berlabel jujur bila refetch gagal)
 
 ## Audit non-E2E 32 fitur — remediation order (detail: `docs/audit-non-e2e-remediation-map.md`)
 
@@ -264,7 +264,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Aturan: tiap item aktif diverifikasi runtime via Chrome CDP :9227 (screenshot + console + network + runtime state) dengan verdict PASS/PARTIAL/FAIL/BLOCKED. TASK-27+ terkunci sampai runtime verification Wave 3–4 selesai.
 > Status implementasi file-level (cek 2026-09-16 — BUKAN verdict runtime): TASK-01..03, 05..21, 23..26 ada file + wiring; TASK-04, 22, 27, 28, 29, 30, FONT belum.
 
-1. [ ] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah
+1. [x] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah — CENTANG 2026-09-17 (SDD T0-4 PASS): 7 laporan `docs/runtime-verification-task{19,20,21,23,24,25,26}.md` ada; verdict cocok matrix (19 PARTIAL / 20,21,23,24,26 PASS / 25 FAIL); TASK-25 punya follow-up backlog (§ Temuan TASK-25 + Tier 4 T4-5)
 2. [ ] Test debts: Slice 5 (seed checklist canon + UI checklist DB) → tests Slice 6/7/8/10 → A.14 Playwright E2E (harness untuk semua uji browser/CDP)
 3. [ ] TASK-27 web push (opt-in P1) → TASK-28 passkeys (role-terbatas) → TASK-29 worker CSV (gated bukti RUM longtask) → TASK-30 save-as picker → TASK-FONT (butuh aset woff2) → TASK-22 CSP enforce (butuh ≥1 siklus report bersih)
 4. [ ] A.16 aktivasi CI (dependensi maintainer) · D.4 load test (dilarang klaim throughput sebelum terukur) · Debt E.1–E.8 oportunistik per slice
@@ -273,12 +273,12 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 ### A. Phase 1 sisa — Make Core Journey Reliable (slice 4 → 10)
 
 **Slice 4 — Inventory & Parts (mutasi stok nyata pertama; Critical Path #3 bagian "parts issue")**
-- [ ] Skema: link part↔asset (tabel BOM/`asset_parts` atau kolom `asset_code` di `parts`) + tabel `part_movements` (append-only: issue/receive/adjust/reserve, ref WO/PO, aktor, qty, idempotency)
-- [ ] Service `inventory-service.ts`: issue part ke WO (transaksional: stok −qty + movement + event WO; guard stok < 0 → 422), receive dari PO, adjust (reason wajib), reserve/release
-- [ ] API: GET `/api/parts` (+stok per bin), POST `/api/parts/movements` (Idempotency-Key)
-- [ ] UI `/inventory` live: stok nyata, ledger pergerakan, dialog issue-from-WO (guardrail kanon: SKU CRITICAL unit-terakhir vs WO-2026-0894), KPI dari DB; buang angka fiktif
-- [ ] Seed: stok awal konsisten kanon (PART-SEAL-8821 Pack-of-2 di CRIB-B/Bay 01, ledger $1,765 = 1.450+195+2×120)
-- [ ] Test: issue/receive/adjust + guard stok negatif + idempotency + isolasi tenant
+- [ ] Skema: link part↔asset (tabel BOM/`asset_parts` atau kolom `asset_code` di `parts`) + tabel `part_movements` (append-only: issue/receive/adjust/reserve, ref WO/PO, aktor, qty, idempotency) — **TIDAK SESUAI SPEK, dipromosikan → Tier 4 T4-15** (SDD T0-5 2026-09-17): kini ledger mutasi tercatat sebagai auditEvents `PART_*` (append-only via audit), `parts` belum punya link asset & tidak ada tabel part_movements
+- [x] Service `inventory-service.ts`: issue part ke WO (transaksional: stok −qty + movement + event WO; guard stok < 0 → 422), receive dari PO, adjust (reason wajib), reserve/release — VERIFIED 2026-09-17 (SDD T0-5): mutateStock ISSUE/RECEIVE/ADJUST/RESERVE/RELEASE + guard INSUFFICIENT_STOCK 422 + REASON_REQUIRED 400 + idempotency + step-up TOTP (ledger via auditEvents — T4-15 menangani pemisahan tabel)
+- [x] API: GET `/api/parts` (+stok per bin), POST `/api/parts/movements` (Idempotency-Key) — VERIFIED 2026-09-17: GET live (stok per bin) + POST step-up wajib (kode salah → STEP_UP_INVALID, tanpa kode → VALIDATION_ERROR)
+- [x] UI `/inventory` live: stok nyata, ledger pergerakan, dialog issue-from-WO (guardrail kanon: SKU CRITICAL unit-terakhir vs WO-2026-0894), KPI dari DB; buang angka fiktif — VERIFIED 2026-09-17: InventoryLedger merge GET /api/parts + feed GET /api/parts/movements (fallback demo berlabel), mutasi via POST step-up
+- [x] Seed: stok awal konsisten kanon (PART-SEAL-8821 Pack-of-2 di CRIB-B/Bay 01, ledger $1,765 = 1.450+195+2×120) — VERIFIED 2026-09-17: PART-SEAL-8821 onHand 2 di CRIB-B / Bay 01
+- [ ] Test: issue/receive/adjust + guard stok negatif + idempotency + isolasi tenant — **SEBAGIAN, dipromosikan → Tier 4 T4-15** (SDD T0-5 2026-09-17): ada step-up 403×2 + persist/idempoten/over-issue 422; kurang coverage ADJUST eksplisit + isolasi tenant inventory
 
 **Slice 5 — WO Execution Checklist DB-driven + Evidence (Critical Path #3 bagian "sign-off")**
 - [x] Skema: `wo_tasks` (steps per WO: urutan, judul, instruksi, status, verified_by/at, requires_photo) + `evidence` (file lokal `.data/evidence/` atau objek storage; hash, mime, uploader, ref task/WO)

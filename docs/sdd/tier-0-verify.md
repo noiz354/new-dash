@@ -36,3 +36,15 @@
 - Klaim: semua 6 checkbox Slice 4 `[x]` (skema, service, API, UI, seed, test).
 - Verifikasi: `rg 'n( \[ \])' TODO.md` pada blok Slice 4 → nol; spot-check `/inventory` receive+mutasi persist + step-up TOTP (pola runtime GAP-3).
 - Output: tidak ada aksi bila bersih (sudah `[x]` semua); catat verdict di PROGRESS.
+
+---
+
+## Verdict (dieksekusi 2026-09-17, pre-flight: tsc hijau · dev :3157 UP · db:setup · login seed+TOTP OK)
+
+| Unit | Verdict | Bukti |
+|---|---|---|
+| T0-1 G1 deactivate | **PASS** | self-deact → 403 `USER_SELF_DEACTIVATE`; deactivate Kowalski → `isActive:false` + login → `INVALID_CREDENTIALS`; reactivate → login OK; UI `ConfirmDialog` → `setActive` → PATCH → `setPeople` (tanpa reload). TODO P0 G1 ✓ |
+| T0-2 G4/G5 | **PASS** | PR-2026-0316 create→APPROVE; GRN butuh PO (409 `WRONG_DOCUMENT_KIND` jujur); GRN PO-2026-0302 → stok 6→8, replay key idempoten; enqueue → run_cycle `{1,1,0}` → COMPLETED attempts 1; guard GAP-18 nol fiksi di jobs page (auditHash di vendors/contracts = scope T4-2). TODO P1 G4/G5 ✓ |
+| T0-3 provision refetch | **PASS** | POST provision → roster 6→7; `OrgHub.provision()` re-fetch GET users + RFID re-attach; fallback lokal berlabel jujur. TODO OrgHub ✓ |
+| T0-4 matrix Wave 3–4 | **PASS** | 7 laporan ada; verdict cocok (19 PARTIAL, 20/21/23/24/26 PASS, 25 FAIL); follow-up TASK-25 ada (TODO §Temuan + T4-5). TODO §0 item 1 ✓ |
+| T0-5 Slice 4 | **PARTIAL** | Runtime spot-check PASS (RECEIVE 2→3 persist, step-up wajib: salah→`STEP_UP_INVALID`, kosong→400). Checkbox: Service/API/UI/Seed ✓ dicentang; **Skema + Test TIDAK sesuai spek → promosi Tier 4 T4-15** (tidak ada tabel `part_movements`/link part↔asset — ledger via auditEvents; kurang test ADJUST + isolasi tenant) |
