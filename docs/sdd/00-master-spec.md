@@ -21,7 +21,7 @@
 | Tier | Spec | Unit | Status |
 |---|---|---|---|
 | 0 — Verifikasi + centang | `tier-0-verify.md` | 5 | ✅ 4 PASS + 1 PARTIAL (2026-09-17; T0-5 Skema/Test → T4-15) |
-| 1 — Kecil & jelas | `tier-1-small.md` | 11 | ⬜ |
+| 1 — Kecil & jelas | `tier-1-small.md` | 11 | ✅ 6 PASS · T1-6 deferred (stlh batch Tier 3+) · T1-8..11 BLOCKED-ON-USER (2026-09-17) |
 | 2 — GAP-17 KEEP batch | `tier-2-keep-batch.md` | 6 | ⬜ |
 | 3 — Test debts | `tier-3-test-debts.md` | 7 | ⬜ |
 | 4 — Fitur medium | `tier-4-medium.md` | 14 | ⬜ |

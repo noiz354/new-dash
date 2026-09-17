@@ -424,3 +424,14 @@ Pre-flight hijau: `npx tsc --noEmit` exit 0 · dev :3157 UP (`/api/health` OK) �
 - **T0-5 (Slice 4) — PARTIAL**: runtime spot-check PASS — RECEIVE PART-SEAL-8821 2→3 persist (reload tahan); step-up TOTP wajib (kode salah → 403 `STEP_UP_INVALID`, kosong → 400 VALIDATION_ERROR). Checkbox Service/API/UI/Seed terverifikasi → dicentang. **Skema + Test TIDAK sesuai spek**: tidak ada tabel `part_movements` (ledger via `auditEvents` `PART_*`, qty implisit diff), `parts` tanpa `asset_code`/BOM, test kurang ADJUST + isolasi tenant → **dipromosikan ke Tier 4 sebagai T4-15** (spec lengkap di `docs/sdd/tier-4-medium.md`).
 - Buku di-update: TODO.md (5 baris + Slice 4), tier-0-verify.md (tabel verdict), 00-master-spec.md (Tier 0 ✅), tier-4-medium.md (+T4-15).
 NEXT: Tier 1 (11 unit) dimulai T1-1.
+
+## SDD Tier 1 — Kecil & Jelas (7/11 unit selesai; T1-6 menunggu batch Tier 3+; T1-8..11 BLOCKED-ON-USER) (2026-09-17)
+
+- **T1-1 F-A11Y — PASS**: 6 form-field NotificationsHub kini punya `id`+`name` (`ntf-q`, `ntf-sev`, `bk-tech`, `po-pin`, `rej-r`, `re-tech`; sebelumnya 2 tanpa keduanya + 4 tanpa `name`). tsc + test hijau.
+- **T1-2 F-COPY — PASS**: grep `WS-PUSH|Live Sync Active|Telemetry Bus` di app/components/lib → nol (widget sidenav kini "Telemetry (demo)" + "Broker: not configured" + STANDBY — statusnya sudah jujur, labelnya diluruskan); guard-test absence baru (SDD T1-2) di `tests/audit-truthfulness.test.ts`. `/notifications` SSE intact (TASK-26 tetap PASS). npm test 167/167.
+- **T1-3 malformed handover id — PASS**: repro `POST /api/shifts/handovers/not-a-uuid` → 500 INTERNAL → fix guard `UUID_RE` di `decideHandover` (service layer, melindungi semua pemanggil): malformed → 400 `VALIDATION_ERROR`, unknown uuid → 404 `HANDOVER_NOT_FOUND` (tetap), valid flow → ACCEPTED + terminal 409 (tetap). Test baru (integration) + runtime curl: 400/404 terverifikasi. npm test 168/168.
+- **T1-4 E.2 zod v4 — PASS**: 5 sisa `.string().uuid()/.email()` → `z.uuid()/z.email()` (auth/mfa, auth/passkeys/login, auth/signup, organization/users, wo transitions); grep → nol; tsc + test hijau.
+- **T1-5 E.3 next-env churn — PASS**: `next-env.d.ts` terbukti match HEAD saat dev berjalan (status bersih); hook `ci/git-hooks/pre-commit` (revert churn otomatis) + `git config core.hooksPath ci/git-hooks` + dokumentasi di AGENTS.md §6.11 (aktifkan per clone).
+- **T1-7 E.7 secrets hygiene — PASS**: `git log --all -- .env` kosong; tidak ada file `.env`; seed secrets via env (`SEED_USER_PASSWORD`/`SEED_TOTP_SECRET`, devHint mati otomatis di production); `.env.example` lengkap; dokumentasi deployment baru di README §Secrets & Deployment.
+- **T1-6 E.4 — DEFERRED**: selesai setelah 1 batch Tier 3+ membuktikan kepatuhan prosedur banner/README (per spec tier-1).
+- **T1-8..T1-11 — BLOCKED-ON-USER**: 4 keputusan stack Fase 1 diajukan ke user via pertanyaan terstruktur (2026-09-17); status eksplisit, tidak menggantung diam-diam.

@@ -1776,3 +1776,33 @@ test('handovers (GAP-22/F27): accept → terminal 409 · reject needs reason 400
   const canonAfter = await listHandovers(db, admin);
   assert.ok(!canonAfter.some((r) => r.leadFrom === 'Decoy One'), 'no decoy bleed into canon list');
 });
+
+// ---------------------------------------------------------------------------
+// SDD T1-3: malformed handover id must fail honestly (400), not 500 INTERNAL.
+// Guard lives in decideHandover (service layer) so every caller is protected.
+// ---------------------------------------------------------------------------
+test('handovers (SDD T1-3): malformed id → 400 VALIDATION_ERROR · unknown uuid → 404 · valid decide flow intact', async () => {
+  // malformed (non-uuid): honest 400 before any DB lookup (was: 500 INTERNAL)
+  await expectDomainError(
+    () => decideHandover(db, admin, 'not-a-uuid', { action: 'accept' }),
+    400, 'VALIDATION_ERROR',
+  );
+  // syntactically valid but unknown: 404 HANDOVER_NOT_FOUND unchanged
+  await expectDomainError(
+    () => decideHandover(db, admin, '00000000-0000-4000-8000-000000000000', { action: 'accept' }),
+    404, 'HANDOVER_NOT_FOUND',
+  );
+  // valid flow end-to-end: create → accept → terminal guard still enforced
+  const h = await createHandover(db, admin, {
+    shiftFrom: 'Shift A (Day)', shiftTo: 'Shift B (Evening)',
+    leadFrom: 'Elena Voronova', leadTo: 'David Chen',
+    woRef: 'WO-2026-0894', items: 'T1-3 validation probe', notes: 'none',
+  }, { idempotencyKey: 'hnd-t13-uuid', requestId: 'it-hnd-t13' });
+  const accepted = await decideHandover(db, admin, h.id, { action: 'accept' });
+  assert.equal(accepted.status, 'ACCEPTED');
+  assert.equal(accepted.decidedBy, 'Marcus Vance');
+  await expectDomainError(
+    () => decideHandover(db, admin, h.id, { action: 'reject', reason: 'too late' }),
+    409, 'HANDOVER_TERMINAL',
+  );
+});

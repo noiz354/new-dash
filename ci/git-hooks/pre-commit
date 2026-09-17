@@ -1,0 +1,13 @@
+#!/bin/sh
+# SDD T1-5 (E.3): `next dev` rewrites next-env.d.ts whenever the Next.js
+# version or generated route types change, which dirties `git status` with a
+# file that is not part of any real change. Restore it from HEAD before the
+# commit so commits stay clean. (The generated file is tracked because tsc
+# needs it in a fresh clone; if it intentionally changes with a Next upgrade,
+# stage it explicitly: `git add next-env.d.ts`.)
+CHURN="next-env.d.ts"
+if ! git diff --quiet -- "$CHURN" 2>/dev/null; then
+  echo "pre-commit: reverting dev-server churn in $CHURN (stage explicitly to keep an intentional change)"
+  git checkout HEAD -- "$CHURN" || true
+fi
+exit 0

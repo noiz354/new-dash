@@ -6,7 +6,7 @@ import { COOKIE_NAME, sessionCookieOptions } from '@/lib/auth/session';
 import { getDb } from '@/db/client';
 
 const MfaSchema = z.object({
-  challengeId: z.string().uuid(),
+  challengeId: z.uuid(),
   code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
 });
 

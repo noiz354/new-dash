@@ -7,7 +7,7 @@ import { provisionOrganization } from '@/lib/services/onboarding-service';
 
 const SignupSchema = z.object({
   orgName: z.string().min(3).max(100),
-  adminEmail: z.string().email(),
+  adminEmail: z.email(),
   adminName: z.string().min(2).max(100),
   adminPassword: z.string().min(8).max(100),
   adminTitle: z.string().max(100).optional(),

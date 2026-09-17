@@ -275,9 +275,9 @@ export function NotificationsHub() {
             </div>
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[180px]">
-                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter alerts… (⌘/)" aria-label="Filter alerts" />
+                <Input id="ntf-q" name="ntf-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter alerts… (⌘/)" aria-label="Filter alerts" />
               </div>
-              <select value={sev} onChange={(e) => setSev(e.target.value)} aria-label="Severity filter" className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
+              <select id="ntf-sev" name="ntf-sev" value={sev} onChange={(e) => setSev(e.target.value)} aria-label="Severity filter" className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
                 {['All Levels', 'P1', 'P2', 'P3'].map((s) => <option key={s}>{s === 'All Levels' ? 'Severity: All Levels' : s === 'P1' ? 'P1 Critical Alert' : s === 'P2' ? 'P2 Urgent Warning' : 'P3 Operational Info'}</option>)}
               </select>
             </div>
@@ -311,7 +311,7 @@ export function NotificationsHub() {
                           <DialogTitle id="bk-h">Dispatch Backup Tech</DialogTitle>
                           <DialogDescription>Pages a backup tech to Plant Room B-204.</DialogDescription>
                           <label className="text-xs font-semibold" htmlFor="bk-tech">Backup technician</label>
-                          <select id="bk-tech" value={backup} onChange={(e) => setBackup(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
+                          <select id="bk-tech" name="bk-tech" value={backup} onChange={(e) => setBackup(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
                             {TECHS.map((t) => <option key={t}>{t}</option>)}
                           </select>
                           <div className="flex justify-end gap-2">
@@ -334,7 +334,7 @@ export function NotificationsHub() {
                           <DialogTitle id="po-h">Authorize PR-2026-0314 · $2,900.00</DialogTitle>
                           <DialogDescription>Final VP authorization — approver PIN required.</DialogDescription>
                           <label className="text-xs font-semibold" htmlFor="po-pin">Approver PIN — M. Vance (demo: 2468)</label>
-                          <Input id="po-pin" type="password" inputMode="numeric" autoComplete="off" value={poPin} onChange={(e) => setPoPin(e.target.value)} invalid={poTouched && poPin.trim() !== '2468'} />
+                          <Input id="po-pin" name="po-pin" type="password" inputMode="numeric" autoComplete="off" value={poPin} onChange={(e) => setPoPin(e.target.value)} invalid={poTouched && poPin.trim() !== '2468'} />
                           {poTouched && poPin.trim() !== '2468' && <p className="text-[11px] font-semibold text-fail">Approver PIN 2468 required.</p>}
                           <div className="flex justify-end gap-2">
                             <Button variant="secondary" onClick={() => setPoOpen(false)}>Cancel</Button>
@@ -365,7 +365,7 @@ export function NotificationsHub() {
                           <DialogTitle id="rej-h">Reject PR-2026-0314</DialogTitle>
                           <DialogDescription>Returns the requisition to Plant Engineering.</DialogDescription>
                           <label className="text-xs font-semibold" htmlFor="rej-r">Justification (min 10 chars)</label>
-                          <textarea id="rej-r" rows={2} value={rejReason} onChange={(e) => setRejReason(e.target.value)} className="w-full p-3 border border-border-strong rounded text-[13px] outline-none focus:border-cobalt" />
+                          <textarea id="rej-r" name="rej-r" rows={2} value={rejReason} onChange={(e) => setRejReason(e.target.value)} className="w-full p-3 border border-border-strong rounded text-[13px] outline-none focus:border-cobalt" />
                           {rejTouched && rejReason.trim().length < 10 && <p className="text-[11px] font-semibold text-fail">Min 10 chars required.</p>}
                           <div className="flex justify-end gap-2">
                             <Button variant="secondary" onClick={() => setRejOpen(false)}>Cancel</Button>
@@ -412,7 +412,7 @@ export function NotificationsHub() {
                           <DialogTitle id="re-h">Reassign WO-2026-0898</DialogTitle>
                           <DialogDescription>Hands the calibration window to another lead.</DialogDescription>
                           <label className="text-xs font-semibold" htmlFor="re-tech">Lead technician</label>
-                          <select id="re-tech" value={lead} onChange={(e) => setLead(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
+                          <select id="re-tech" name="re-tech" value={lead} onChange={(e) => setLead(e.target.value)} className="h-9 px-2 border border-border-strong rounded text-[13px] bg-card">
                             {TECHS.map((t) => <option key={t}>{t}</option>)}
                           </select>
                           <div className="flex justify-end gap-2">

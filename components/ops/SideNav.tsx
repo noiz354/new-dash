@@ -115,7 +115,7 @@ export function SideNav({ active }: { active: string }) {
       <div className="p-4">
         <div className="p-2 rounded-lg bg-[#DCE9FF]/10 flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="apex-label-caps text-[#BEC6E0]">Telemetry Bus</span>
+            <span className="apex-label-caps text-[#BEC6E0]">Telemetry (demo)</span>
             <span className="apex-id text-[#BEC6E0]">Broker: not configured</span>
           </div>
           <span className="apex-id px-1.5 py-0.5 rounded bg-[#3A4356] text-[#BEC6E0] font-semibold">STANDBY</span>

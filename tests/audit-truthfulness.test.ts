@@ -373,3 +373,37 @@ test('GAP-16 gerbang sweep: era-GAP-16 fiction strings stay absent on every comp
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// SDD T1-2 (F-COPY): fictional sync/telemetry labels stay absent.
+// `WS-PUSH: 12ms` debugger chip and `Live Sync Active` were removed; the
+// sidenav telemetry widget is labeled "Telemetry (demo)" with an honest
+// "Broker: not configured" state.
+// ---------------------------------------------------------------------------
+test('SDD T1-2 F-COPY: WS-PUSH / Live Sync Active / Telemetry Bus stay absent in app+components+lib', () => {
+  const fs = require('node:fs') as typeof import('node:fs');
+  const path = require('node:path') as typeof import('node:path');
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p2 = path.join(dir, e.name);
+      return e.isDirectory() ? walk(p2) : /\.(tsx?|jsx?)$/.test(e.name) ? [p2] : [];
+    });
+  const banned = ['WS-PUSH', 'Live Sync Active', 'Telemetry Bus'];
+  for (const dir of ['../components', '../app', '../lib']) {
+    const root = new URL(dir, import.meta.url).pathname;
+    for (const file of walk(root)) {
+      const body = fs.readFileSync(file, 'utf8');
+      for (const s of banned) {
+        assert.ok(!body.includes(s), `${path.basename(file)} still fabricates sync label: "${s}"`);
+      }
+    }
+  }
+  const sidenav = fs.readFileSync(
+    new URL('../components/ops/SideNav.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(
+    sidenav.includes('Telemetry (demo)') && sidenav.includes('Broker: not configured'),
+    'sidenav telemetry widget must stay honestly labeled as demo/not configured',
+  );
+});

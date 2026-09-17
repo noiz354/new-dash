@@ -17,6 +17,9 @@ import type { AuthContext } from '../auth/session';
 import { DomainError } from '../domain/errors';
 import { requestHash, withIdempotency } from './idempotency';
 
+/** RFC-4122 uuid (any version) — used to reject malformed ids with an honest 400. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export interface HandoverRow {
   id: string;
   shiftFrom: string;
@@ -139,6 +142,12 @@ export async function decideHandover(
   input: DecideInput,
   opts: { idempotencyKey?: string | null; requestId?: string } = {},
 ): Promise<HandoverRow> {
+  // SDD T1-3: a malformed (non-uuid) id must fail honestly with 400 before it
+  // can reach the DB (an unparseable uuid in the lookup used to surface as a
+  // 500 INTERNAL). Valid-but-unknown ids keep the service-level 404 below.
+  if (!UUID_RE.test(id)) {
+    throw new DomainError(400, 'VALIDATION_ERROR', 'handover id must be a uuid');
+  }
   const exec = async (tx: Tx): Promise<HandoverRow> => {
     const reason = input.reason?.trim() ?? '';
     if (input.action === 'reject' && reason.length < 3) {

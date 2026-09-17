@@ -15,6 +15,8 @@ const DecideSchema = z.object({
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRoute({ op: 'handover.decide', method: 'POST', permission: 'shifts.manage' }, req, async (ctx, requestId) => {
     const { id } = await params;
+    // SDD T1-3: malformed (non-uuid) ids are rejected with an honest 400 by the
+    // service (UUID_RE guard) before any DB lookup — no more 500 INTERNAL.
     const body = await req.json();
     const input = DecideSchema.parse(body);
     const idem = req.headers.get('idempotency-key');
