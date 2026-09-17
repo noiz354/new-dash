@@ -460,10 +460,10 @@ NEXT: Tier 3 (test debts, 7 unit).
 - npm test **173/173** (+6 test baru) · tsc 0 error. Buku: TODO (7 baris + §0 item 2), tier-3 verdicts, master-spec Tier 3 ✅, +T4-16.
 NEXT: Tier 4 Batch C+D (scope user-approved 2026-09-17) — T4-5 ✅, T4-14 ✅, lanjut T4-15.
 
-## SDD Tier 4 — Fitur Medium, Batch C+D (2/14 PASS; T4-15/16 NEXT) (2026-09-17, sesi new-dash, branch `arena/tier4-cd-new-dash`)
+## SDD Tier 4 — Fitur Medium, Batch C+D (3/14 PASS; T4-16 NEXT) (2026-09-17, sesi new-dash, branch `arena/tier4-cd-new-dash`)
 
 - **T4-5 server persist background sync — PASS**: TASK-25/GAP-1 (persist POST/GET) sudah fixed; forensik runtime probe offline→online menemukan 2 bug nyata — (a) redirect `router.push` pasca-submit saat offline → chrome-error (fix: guard `if (!navigator.onLine) return` di `FindingCapture.tsx:212`); (b) `requestHash({...input, requestId})` (`inspection-service.ts:375`) mencampur requestId unik → 2 flush konkuren (FieldShell global + SyncStatus page-level) = 201 `FND-2026-0190`-class + 422 IDEMPOTENCY_KEY_REUSED → entry FAILED (fix: `requestHash(input)` + regression test `integration.test.ts:554` "same key + same body with different requestId replays instead of 422"). Bukti ulang probe #2: offline→QUEUED→online→SYNCED `FND-2026-0190`, server total 2→3, console nol, flush fired dari halaman form (bukan cuma tab Sync). Entry lama ber-key pra-fix tetap FAILED (jujur).
 - **T4-14 F-418 hydration /login + pemicu auto-flush — PASS**: repro dev /login — `has.webAuthn()` (`capability.ts:42`, false SSR → true klien) me-branch tombol Passkey (`LoginForm:163`), satu-satunya pola render-branch capability di `components/`; fix gate `mounted && has.webAuthn()`; 3x reload NOL console error, tombol Passkey tetap ada pasca-mount. Pemicu auto-flush 3 lapis terdokumentasi (FieldShell global semua `/field/*`, SyncStatus page-level + toast, SwRegister SW-message) + TERBUKTI via probe T4-5 #2.
 - npm test **174/174** (+1 regression test) · tsc 0 error. Buku: tier-4-medium verdicts, master-spec Tier 4 🔶, TODO §0, bagian ini.
 - Temuan minor (pre-existing, bukan scope): `/favicon.ico` 404.
-NEXT: T4-15 (`part_movements` + link part↔asset + tests), lalu T4-16 (3-way match engine nyata).
+NEXT: T4-16 (3-way match engine nyata) — T4-15 ✅ PASS 2026-09-17 (migrasi 0008 part_movements + asset_code soft-ref; feed dari DB; 177/177; runtime RECEIVE→feed→reload tahan). Insiden: decoy-login ke-9 sebabkan 429 di test lain — pakai gap14Decoy() cached.

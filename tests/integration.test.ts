@@ -26,7 +26,7 @@ import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-ser
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { convertFindingToWo, createFinding, createInspection, dismissFinding, forceDispatchInspection, getFinding, getInspection, listFindings, listInspections, updateInspectionProgress } from '../lib/services/inspection-service';
 import { addWoTask, listWoTasks, updateWoTask } from '../lib/services/task-service';
-import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
+import { getPart, listMovements, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
 import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '../lib/services/pm-service';
@@ -773,6 +773,85 @@ test('inventory (GAP-3): RECEIVE + ISSUE with step-up persist, audited with step
   assert.ok(recv, 'PART_RECEIVE audited');
   assert.ok((recv.after as { stepUpAt?: string })?.stepUpAt, 'step-up approval timestamp recorded');
   assert.ok(ledger.rows.some((e) => e.action === 'PART_ISSUE' && e.entityId === sku), 'PART_ISSUE audited');
+});
+
+// ---------------------------------------------------------------------------
+// Inventory ledger (T4-15: part_movements table — mutateStock writes a ledger
+// row in the same tx; GET /api/parts/movements reads DB rows, not audit)
+// ---------------------------------------------------------------------------
+test('inventory (T4-15): ADJUST sets absolute stock, reason mandatory, ledger row exact', async () => {
+  const sku = 'PART-FLTR-401';
+  const start = await getPart(db, admin, sku);
+
+  // No reason → refused, stock untouched, no ledger row.
+  const rowsBefore = (await listMovements(db, admin, { sku })).length;
+  await expectDomainError(
+    () => mutateStock(db, admin, { sku, type: 'ADJUST', qty: start.onHand }, {}),
+    400, 'REASON_REQUIRED',
+  );
+  assert.equal((await getPart(db, admin, sku)).onHand, start.onHand);
+  assert.equal((await listMovements(db, admin, { sku })).length, rowsBefore);
+
+  const target = start.onHand + 5;
+  const adjusted = await mutateStock(
+    db, admin,
+    { sku, type: 'ADJUST', qty: target, refNumber: 'CYCLE-COUNT-01', reason: 'T4-15 cycle count' },
+    { stepUpAt: await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET)) },
+  );
+  assert.equal(adjusted.onHand, target, 'ADJUST sets absolute on-hand, not a delta');
+
+  const rows = await listMovements(db, admin, { sku });
+  assert.equal(rows.length, rowsBefore + 1, 'exactly one ledger row per mutation');
+  const row = rows[0];
+  assert.equal(row.type, 'ADJUST');
+  assert.equal(row.qty, target);
+  assert.equal(row.beforeOnHand, start.onHand);
+  assert.equal(row.afterOnHand, target);
+  assert.equal(row.refNumber, 'CYCLE-COUNT-01');
+  assert.equal(row.reason, 'T4-15 cycle count');
+  assert.ok(row.actorName, 'actor recorded on ledger row');
+});
+
+test('inventory (T4-15): decoy tenant blind — no canon ledger rows, canon sku → 404', async () => {
+  // gap14Decoy(): cached session, zero extra logins — the login rate limiter
+  // (8/email/10min) is already saturated by the 8 direct decoy sessionFor
+  // calls across the suite; a 9th login would 429 unrelated tests.
+  const { ctx: decoy } = await gap14Decoy();
+  assert.equal(decoy.orgId, 'APX-GL-9021');
+  assert.equal((await listMovements(db, decoy)).length, 0, 'decoy sees none of canon ledger');
+  await expectDomainError(
+    () => mutateStock(db, decoy, { sku: 'PART-BRG-6205', type: 'ISSUE', qty: 1 }, {}),
+    404, 'PART_NOT_FOUND',
+  );
+});
+
+test('inventory (T4-15): movement row count == mutation count; idempotent replay adds no row', async () => {
+  const sku = 'PART-BRG-6204';
+  const key = `t415-${Date.now()}`;
+  const before = (await listMovements(db, admin, { sku })).length;
+  const stepUp = () => verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+
+  await mutateStock(
+    db, admin,
+    { sku, type: 'RECEIVE', qty: 2, reason: 'T4-15 count probe' },
+    { idempotencyKey: key, stepUpAt: await stepUp() },
+  );
+  // Same key + same payload (fresh step-up approval, not part of the hash) → replay.
+  await mutateStock(
+    db, admin,
+    { sku, type: 'RECEIVE', qty: 2, reason: 'T4-15 count probe' },
+    { idempotencyKey: key, stepUpAt: await stepUp() },
+  );
+  await mutateStock(
+    db, admin,
+    { sku, type: 'ISSUE', qty: 1, refNumber: 'WO-2026-0894', reason: 'T4-15 count probe' },
+    { stepUpAt: await stepUp() },
+  );
+
+  const rows = await listMovements(db, admin, { sku });
+  assert.equal(rows.length, before + 2, 'two mutations → two rows; replay writes nothing');
+  assert.equal(rows[0].type, 'ISSUE', 'newest-first ordering');
+  assert.equal(rows[0].refNumber, 'WO-2026-0894');
 });
 
 // ---------------------------------------------------------------------------

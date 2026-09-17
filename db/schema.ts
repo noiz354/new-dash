@@ -181,11 +181,54 @@ export const parts = pgTable(
     onHand: integer('on_hand').notNull().default(0),
     reserved: integer('reserved').notNull().default(0),
     minStock: integer('min_stock').notNull().default(0),
+    // T4-15: soft ref to assets.code (same org) — same pattern as workOrders.assetCode.
+    // Nullable: unassigned spares (crib stock) have no asset link.
+    assetCode: text('asset_code'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.organizationId, t.sku] }),
     check('parts_qty_ck', sql`${t.onHand} >= 0 AND ${t.reserved} >= 0 AND ${t.minStock} >= 0`),
+  ],
+);
+
+/**
+ * T4-15: append-only stock-movement ledger. Every mutateStock writes one row
+ * here INSIDE the same transaction as the parts update + audit event
+ * (idempotent replay writes nothing — the row lives inside the idempotent
+ * callback, so movement count == mutation count).
+ *
+ * sku is a LOGICAL ref to parts (same org), not a DB FK: parts is keyed by
+ * the composite (organization_id, sku) which plain references() cannot target.
+ * before/after on-hand snapshots let the feed render byte-identical deltas to
+ * the old audit-derived feed without re-reading parts.
+ */
+export const partMovements = pgTable(
+  'part_movements',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    sku: text('sku').notNull(),
+    type: text('type').notNull(), // ISSUE | RECEIVE | ADJUST | RESERVE | RELEASE
+    qty: integer('qty').notNull(),
+    refNumber: text('ref_number'),
+    reason: text('reason'),
+    actorUserId: uuid('actor_user_id'),
+    actorName: text('actor_name').notNull().default('system'),
+    stepUpAt: timestamp('step_up_at', { withTimezone: true }),
+    requestId: text('request_id'),
+    // Hash of the domain input (requestHash) — same value the idempotency
+    // layer stores; lets forensics join ledger rows to idempotency records.
+    idemHash: text('idem_hash'),
+    beforeOnHand: integer('before_on_hand').notNull(),
+    afterOnHand: integer('after_on_hand').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('part_movements_type_ck', sql`${t.type} IN ('ISSUE','RECEIVE','ADJUST','RESERVE','RELEASE')`),
+    check('part_movements_qty_ck', sql`${t.qty} > 0`),
+    index('part_movements_org_ts_idx').on(t.organizationId, t.createdAt),
+    index('part_movements_org_sku_idx').on(t.organizationId, t.sku),
   ],
 );
 

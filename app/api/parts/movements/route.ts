@@ -1,10 +1,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
-import { and, desc, eq, like } from 'drizzle-orm';
 import { withRoute } from '@/lib/api/http';
 import { getDb } from '@/db/client';
-import { auditEvents } from '@/db/schema';
-import { mutateStock, verifyStepUpCode } from '@/lib/services/inventory-service';
+import { listMovements, mutateStock, verifyStepUpCode } from '@/lib/services/inventory-service';
 import type { AuthContext } from '@/lib/auth/session';
 
 const MutateStockSchema = z.object({
@@ -54,36 +52,34 @@ export interface MovementFeedItem {
 }
 
 const ACTION_KIND: Record<string, MovementFeedItem['kind']> = {
-  PART_RECEIVE: 'IN',
-  PART_ISSUE: 'OUT',
-  PART_ADJUST: 'ADJ',
-  PART_RESERVE: 'ADJ',
-  PART_RELEASE: 'ADJ',
+  RECEIVE: 'IN',
+  ISSUE: 'OUT',
+  ADJUST: 'ADJ',
+  RESERVE: 'ADJ',
+  RELEASE: 'ADJ',
 };
 
-/** GET /api/parts/movements — recent stock movements derived from PART_* audit events (no separate ledger table). */
+/**
+ * GET /api/parts/movements — T4-15: recent stock movements read from the
+ * part_movements ledger table (tenant-scoped, newest first). Contract
+ * unchanged: the UI merges these rows the same way as the old audit-derived
+ * feed (kind/delta/doc/ts/part/detail).
+ */
 export async function GET(req: NextRequest) {
   return withRoute({ op: 'inventory.movements', method: 'GET', permission: 'inventory.read' }, req, async (ctx) => {
     const { searchParams } = new URL(req.url);
     const rawLimit = parseInt(searchParams.get('limit') ?? '50', 10);
     const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 50;
-    const rows = await getDb()
-      .select()
-      .from(auditEvents)
-      .where(and(eq(auditEvents.organizationId, ctx!.orgId), like(auditEvents.action, 'PART\\_%')))
-      .orderBy(desc(auditEvents.ts), desc(auditEvents.id))
-      .limit(limit);
+    const rows = await listMovements(getDb(), ctx!, { limit });
     const movements: MovementFeedItem[] = rows.map((r) => {
-      const before = (r.before ?? {}) as { onHand?: number };
-      const after = (r.after ?? {}) as { onHand?: number; ref?: string | null; reason?: string | null };
-      const diff = (after.onHand ?? 0) - (before.onHand ?? 0);
+      const diff = r.afterOnHand - r.beforeOnHand;
       return {
-        kind: ACTION_KIND[r.action] ?? 'ADJ',
+        kind: ACTION_KIND[r.type] ?? 'ADJ',
         delta: `${diff >= 0 ? '+' : '−'}${Math.abs(diff)} ea`,
-        doc: after.ref ?? r.entityId ?? r.action,
-        ts: r.ts instanceof Date ? r.ts.toISOString() : String(r.ts),
-        part: r.entityId ?? '',
-        detail: [after.reason, `by ${r.actorName}`].filter(Boolean).join(' · '),
+        doc: r.refNumber ?? r.sku,
+        ts: r.createdAt,
+        part: r.sku,
+        detail: [r.reason, `by ${r.actorName}`].filter(Boolean).join(' · '),
       };
     });
     return { data: { movements } };

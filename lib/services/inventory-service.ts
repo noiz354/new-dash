@@ -3,9 +3,9 @@
  * Every query is tenant-scoped via ctx.orgId. Stock changes are transactional:
  * on-hand / reserved adjustments + audit trail commit together.
  */
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Db, Tx } from '../../db/client';
-import { auditEvents, parts, users, workOrders } from '../../db/schema';
+import { auditEvents, partMovements, parts, users, workOrders } from '../../db/schema';
 import type { AuthContext } from '../auth/session';
 import { DomainError, forbiddenOp, notFound } from '../domain/errors';
 import { verifyTotp } from '../auth/totp';
@@ -92,6 +92,62 @@ export interface StockMutationInput {
   qty: number;
   refNumber?: string | null; // e.g. WO-2026-0894 or PO-2026-0298
   reason?: string | null;
+}
+
+export interface MovementRow {
+  id: string;
+  sku: string;
+  type: string;
+  qty: number;
+  refNumber: string | null;
+  reason: string | null;
+  actorName: string;
+  stepUpAt: string | null;
+  requestId: string | null;
+  beforeOnHand: number;
+  afterOnHand: number;
+  createdAt: string;
+}
+
+export interface ListMovementsOpts {
+  limit?: number;
+  sku?: string;
+}
+
+/**
+ * T4-15: read the append-only movement ledger (tenant-scoped, newest first).
+ * Backs GET /api/parts/movements — the feed reads DB rows, never JSX consts.
+ */
+export async function listMovements(
+  db: Db,
+  ctx: AuthContext,
+  opts: ListMovementsOpts = {},
+): Promise<MovementRow[]> {
+  const conditions = [eq(partMovements.organizationId, ctx.orgId)];
+  if (opts.sku) {
+    conditions.push(eq(partMovements.sku, opts.sku));
+  }
+  const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
+  const rows = await db
+    .select()
+    .from(partMovements)
+    .where(and(...conditions))
+    .orderBy(desc(partMovements.createdAt), desc(partMovements.id))
+    .limit(limit);
+  return rows.map((r) => ({
+    id: r.id,
+    sku: r.sku,
+    type: r.type,
+    qty: r.qty,
+    refNumber: r.refNumber,
+    reason: r.reason,
+    actorName: r.actorName,
+    stepUpAt: r.stepUpAt ? r.stepUpAt.toISOString() : null,
+    requestId: r.requestId,
+    beforeOnHand: r.beforeOnHand,
+    afterOnHand: r.afterOnHand,
+    createdAt: r.createdAt.toISOString(),
+  }));
 }
 
 /**
@@ -207,6 +263,26 @@ export async function mutateStock(
         reason: input.reason ?? null,
         stepUpAt: opts.stepUpAt ?? null,
       },
+    });
+
+    // T4-15: append-only movement ledger row, SAME transaction as the parts
+    // update + audit event above (audit and ledger are two separate streams —
+    // keep both). Inside the idempotent callback, so a replayed key writes
+    // nothing: movement count == mutation count.
+    await tx.insert(partMovements).values({
+      organizationId: ctx.orgId,
+      sku: input.sku,
+      type: input.type,
+      qty: input.qty,
+      refNumber: input.refNumber ?? null,
+      reason: input.reason ?? null,
+      actorUserId: ctx.userId,
+      actorName: ctx.name,
+      stepUpAt: opts.stepUpAt ? new Date(opts.stepUpAt) : null,
+      requestId: opts.requestId ?? null,
+      idemHash: requestHash(input),
+      beforeOnHand: current.onHand,
+      afterOnHand: newOnHand,
     });
 
     return toPartDto(updated[0]);

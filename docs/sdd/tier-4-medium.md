@@ -77,6 +77,7 @@
   6. Guard-test: absence feed-fabrikasi (feed harus dari DB rows, bukan const JSX).
 - Verifikasi: `npm run db:setup` (migrasi idempotent, server STOP) → test hijau → runtime curl: RECEIVE → row muncul di feed + audit tetap ada → reload tahan.
 - Estimasi: medium (migrasi + service + feed + test). Kaitan: T3-1 (seed checklist), T4-1 (KPI inventory jujur).
+- Verdict **PASS** (2026-09-17): migrasi 0008 `part_movements` (append-only, check type/qty, idx org+ts/org+sku) + `parts.asset_code` nullable; `mutateStock` tulis 1 row ledger DALAM tx yang sama (audit `PART_*` tetap ditulis — dua aliran); `GET /api/parts/movements` baca `part_movements` (kontrak UI identik). Keputusan AC#3: kolom `asset_code` soft-ref (pola `workOrders.assetCode`), BUKAN tabel BOM — kebutuhan relasi kuantitatif part↔asset belum ada; `sku` di ledger logical-ref (parts PK komposit tak bisa jadi target FK); +2 kolom snapshot before/after_on_hand agar delta feed identik byte-per-byte. Test baru 3 (ADJUST absolut+REASON_REQUIRED, decoy blind via gap14Decoy + PART_NOT_FOUND, count==mutations & replay tulis nol) — suite 177/177, tsc bersih. Runtime: POST RECEIVE 200 → feed row dari DB + audit PART_RECEIVE tetap ada → reload tahan. Insiden: test decoy awal pakai sessionFor ke-9 → 429 RATE_LIMITED di test lain; fix pakai gap14Decoy() cached (tanpa login).
 
 ## T4-16 — 3-way match engine nyata (PROMOSI dari T3-4, 2026-09-17)
 
