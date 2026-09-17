@@ -5,7 +5,7 @@ import { getDb } from '@/db/client';
 import { ROLES6, createUser, listUsers } from '@/lib/services/org-service';
 
 const CreateUserSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   name: z.string().min(2).max(100),
   title: z.string().max(100).optional(),
   role: z.enum(ROLES6),

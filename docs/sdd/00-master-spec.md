@@ -20,10 +20,10 @@
 
 | Tier | Spec | Unit | Status |
 |---|---|---|---|
-| 0 — Verifikasi + centang | `tier-0-verify.md` | 5 | ⬜ |
-| 1 — Kecil & jelas | `tier-1-small.md` | 11 | ⬜ |
-| 2 — GAP-17 KEEP batch | `tier-2-keep-batch.md` | 6 | ⬜ |
-| 3 — Test debts | `tier-3-test-debts.md` | 7 | ⬜ |
+| 0 — Verifikasi + centang | `tier-0-verify.md` | 5 | ✅ 4 PASS + 1 PARTIAL (2026-09-17; T0-5 Skema/Test → T4-15) |
+| 1 — Kecil & jelas | `tier-1-small.md` | 11 | ✅ 6 PASS · T1-6 deferred (stlh batch Tier 3+) · T1-8..11 BLOCKED-ON-USER (2026-09-17) |
+| 2 — GAP-17 KEEP batch | `tier-2-keep-batch.md` | 6 | ✅ 6/6 PASS + 5 label fix (2026-09-17) |
+| 3 — Test debts | `tier-3-test-debts.md` | 7 | ✅ 6 PASS + 1 PARTIAL (T3-4→T4-16); e2e exec BLOCKED-BY-ENV (2026-09-17) |
 | 4 — Fitur medium | `tier-4-medium.md` | 14 | ⬜ |
 | 5 — Susah / terkunci | `tier-5-hard-blocked.md` | 8 | ⬜ |
 | 6 — Backlog Batch 1 Operasi | `tier-6-batch-1.md` | 44 PROMOTE | ⬜ |

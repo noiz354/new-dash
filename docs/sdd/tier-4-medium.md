@@ -62,3 +62,23 @@
 
 - F-418: reproduksi clean-load → root-cause → fix → 3× reload bersih + tidak regresi di route lain.
 - F-FINDINGS sisa: pemicu auto-flush SyncStatus diselidiki + terdokumentasi (persist-nya sudah GAP-1; yang kurang kejelasan pemicu — terkait T4-5).
+
+## T4-15 — Slice 4 skema: tabel `part_movements` + link part↔asset + test coverage (PROMOSI dari T0-5, 2026-09-17)
+
+- Fakta (verdict T0-5 PARTIAL): ledger mutasi stok kini tercatat sebagai `auditEvents` `PART_*` (append-only via audit, qty implisit dari before/after diff); `parts` TIDAK punya kolom `asset_code` dan TIDAK ada tabel `part_movements`; test inventory belum mencakup ADJUST eksplisit + isolasi tenant.
+- AC:
+  1. Migrasi baru: tabel `part_movements` append-only (org, id uuid, sku FK parts, type ISSUE/RECEIVE/ADJUST/RESERVE/RELEASE, qty, refNumber, reason, actorUserId/Name, stepUpAt, requestId, idempotency-key hash, createdAt).
+  2. `mutateStock` menulis row `part_movements` DALAM transaksi yang sama (tetap tulis audit event — audit dan ledger adalah dua aliran berbeda; jangan hilangkan salah satu).
+  3. Link part↔asset: kolom `asset_code` di `parts` (soft ref, pola `workOrders.assetCode`) ATAU tabel `asset_parts` (BOM) — pilih satu, dokumentasikan keputusan di file ini.
+  4. Feed `GET /api/parts/movements` membaca dari `part_movements` (bukan audit) — UI InventoryLedger tetap hidup tanpa perubahan kontrak.
+  5. Test baru: ADJUST (reason wajib + set absolut) + isolasi tenant (decoy APX-GL-9021 blind) + movement row count == mutation count (replay idempoten tidak menambah row).
+  6. Guard-test: absence feed-fabrikasi (feed harus dari DB rows, bukan const JSX).
+- Verifikasi: `npm run db:setup` (migrasi idempotent, server STOP) → test hijau → runtime curl: RECEIVE → row muncul di feed + audit tetap ada → reload tahan.
+- Estimasi: medium (migrasi + service + feed + test). Kaitan: T3-1 (seed checklist), T4-1 (KPI inventory jujur).
+
+## T4-16 — 3-way match engine nyata (PROMOSI dari T3-4, 2026-09-17)
+
+- Fakta: dossier `/purchasing/invoices/[id]` masih data demo statis (label sudah jujur: "DEMO DOSSIER", placeholder audit ID `EVT-MATCH-*` sudah dihapus dari tombol Audit Trail).
+- AC: engine hitung per baris dari `po_line_items` vs `goods_receipt_notes` (qty/price) + invoice nyata bila ada; mismatch → flag + payment-hold state; feed ke dossier (endpoint atau RSC fetch); test mismatch→flag + matched→ok + tenant-scope; hapus `INVOICES` const statis.
+- Verifikasi: runtime — GRN qty ≠ PO qty → dossier EXCEPTION_DISPUTED nyata + audit row; reload tahan.
+- Estimasi: medium. Kaitan: T4-3 (expose/lock reports/aggregates).

@@ -26,6 +26,15 @@ Login demo: `m.vance@apexops.io` / `demo-pass-4821` (sudah pre-filled) → **Con
 kode MFA 6 digit ditampilkan sebagai *dev hint* di layar (TOTP RFC 6238 nyata; hint mati
 otomatis di production build). Sesi persisten di database — refresh/restart tidak me-reset.
 
+## Secrets & Deployment (SDD T1-7)
+
+- Jangan pernah commit file `.env` (sudah di-`.gitignore`; `git log -- .env` harus selalu kosong).
+- `SEED_USER_PASSWORD`, `SEED_TOTP_SECRET`, `DEMO_MFA_HINT` adalah env **deployment**:
+  di production wajib diset via environment (nilai default di `db/seed.ts` hanya untuk
+  dev lokal; `DEMO_MFA_HINT` otomatis mati saat `NODE_ENV=production`).
+- Template lengkap: [`.env.example`](.env.example). Billing Stripe (`STRIPE_*`) fail-closed
+  503 bila tidak diset — memang by design, lihat komentar di file.
+
 ## Struktur Repo
 
 | Path | Keterangan |

@@ -36,3 +36,18 @@
 ## Verdict batch
 
 Semua 6 PASS → centang `GAP-17` di TODO + baris PROGRESS. Satu pun FAIL → spec perbaikan Tier 4 baru untuk item itu.
+
+---
+
+## Verdict batch (dieksekusi 2026-09-17 — semua 6 PASS, dengan perbaikan label saat verifikasi)
+
+| Item | Verdict | Bukti |
+|---|---|---|
+| T2-1 F1 SSO | **PASS** (+label fix) | `/login` SSO disabled jujur ("not configured (Phase 1b)"); dialog OrgHub SSO kini jujur: "No IdP is connected (Phase 1b)", Okta CONNECTED→PLANNED, SCIM Instant(<50ms)→PLANNED; MFA ENFORCED benar (TOTP dienforce app + passkeys FIDO2 nyata — routes + PasskeySettings) |
+| T2-2 F4 clone-policy | **PASS** (+stamp fix) | clone = draft lokal jujur ("drafted · deploy to activate"); deploy berlabel simulated + kini stamp waktu lokal nyata (timestamp fiksi '14 Sep 2026 14:05 WIB' dihapus) + "not persisted" eksplisit; backend deploy tetap Tier 6 batch 3 |
+| T2-3 F7 print | **PASS** | 4 print view 200 (WO/PO/badge RFID-*/permit PTW-*) dengan PrintButton → window.print() (murni JS, CSP-safe); QR dekoratif jujur; CDP click-through tidak tersedia di sandbox (console browser) — bukti level kode+HTTP, dicatat jujur |
+| T2-4 F9 ledger-fallback | **PASS** | MOV_SEED hanya saat feed tak terjangkau (movLive gate); badge "Demo offline — server unreachable"; export berlabel live vs demo; guard GAP-3 ada; live path terbukti di T0-5 |
+| T2-5 F22 telemetry | **PASS** (+3 label fix) | 3 klaim palsu diluruskan: "zone tree synced"→"demo (staged, not synced)"; "100% Synced"→"Sync: demo KPI (not connected)"; "Modbus Active/SCADA STREAMING"→"demo — not connected/DEMO — NOT STREAMING"; sisa kata synced = state outbox nyata (SYNCED via dedup server) | 
+| T2-6 F28 import-defer | **PASS** | nol entry point import di UI (grep nol) — keputusan DEFER terdokumentasi (audit map §19 F28); tak ada tombol mati/404 diam-diam |
+
+Guard-test baru: `SDD T2-5 telemetry claims stay honest` (+T2-1/T2-2 assertions) — npm test 169/169.

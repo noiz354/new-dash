@@ -179,14 +179,43 @@ export function CancelDialog({ number, status, enabled }: TransitionProps) {
   );
 }
 
-/** WOD-06 sign-off — photo gate still simulated (storage lands in slice #2); the COMPLETE transition is real. */
+/** WOD-06 sign-off — photo gate is REAL (SDD T3-2): the photo uploads through
+ *  POST /api/work-orders/[id]/evidence/upload (multipart, magic-byte sniffed,
+ *  SHA-256 server-side) and the COMPLETE transition is real. */
 export function SignoffDialog({ number, status, enabled }: TransitionProps) {
-  const [photo, setPhoto] = useState(false);
   const [open, setOpen] = useState(false);
+  const [uploaded, setUploaded] = useState<{ fileName: string; sha256Hash: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const { busy, error, done, post, reset } = useTransition(number);
   const blocked = !enabled || status !== 'IN_PROGRESS' || isTerminal(status);
+
+  const onFile = async (file: File | null) => {
+    if (!file || uploading) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const ev = await fetch(`/api/work-orders/${encodeURIComponent(number)}/evidence/upload`, {
+        method: 'POST',
+        body: form,
+      });
+      const env = (await ev.json()) as { ok: boolean; data?: { fileName: string; sha256Hash: string }; error?: { message?: string } };
+      if (!ev.ok || !env.ok || !env.data) {
+        setUploadError(env.error?.message ?? `Upload failed (HTTP ${ev.status})`);
+      } else {
+        setUploaded({ fileName: env.data.fileName, sha256Hash: env.data.sha256Hash });
+      }
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed — try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setPhoto(false); } }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { reset(); setUploaded(null); setUploadError(null); } }}>
       <DialogTrigger asChild>
         <Button disabled={blocked} title={blocked ? `Sign-off requires IN PROGRESS (current: ${status})` : undefined}>Mark Task Complete</Button>
       </DialogTrigger>
@@ -196,22 +225,42 @@ export function SignoffDialog({ number, status, enabled }: TransitionProps) {
         <ul className="text-sm flex flex-col gap-2">
           <li className="flex items-center gap-2"><Badge variant="pass">✓</Badge> Step 05 prerequisites reviewed</li>
           <li className="flex items-center gap-2"><Badge variant="pass">✓</Badge> LOTO verified · Padlock {CANON.lotoPadlock} @ {CANON.lotoPoint}</li>
-          <li className="flex items-center gap-2">
-            <Badge variant={photo ? 'pass' : 'warn'}>{photo ? '✓' : '!'}</Badge>
-            Step 04 verification photo attached <span className="text-[10px] text-muted">(simulated — evidence storage ships in slice #2)</span>
-            {!photo && <Button variant="secondary" onClick={() => setPhoto(true)}>Attach Photo (simulated)</Button>}
+          <li className="flex items-start gap-2 flex-col">
+            <span className="flex items-center gap-2">
+              <Badge variant={uploaded ? 'pass' : 'warn'}>{uploaded ? '✓' : '!'}</Badge>
+              Step 04 verification photo {uploaded ? 'uploaded' : 'required'} — stored server-side with SHA-256 integrity hash
+            </span>
+            <input
+              id="signoff-photo"
+              name="signoffPhoto"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Attach verification photo (JPEG/PNG/WEBP, max 10MB)"
+              disabled={uploading}
+              className="text-[12px] file:mr-2 file:h-7 file:px-2 file:rounded file:border file:border-border-strong file:bg-card file:text-[12px]"
+              onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
+            />
+            {uploading && <span className="text-[11px] text-muted">Uploading &amp; hashing…</span>}
+            {uploadError && (
+              <span className="text-[11px] font-semibold text-fail" role="alert">{uploadError}</span>
+            )}
+            {uploaded && (
+              <span className="text-[11px] text-muted apex-id">
+                {uploaded.fileName} · sha256:{uploaded.sha256Hash.slice(0, 12)}… — attached to evidence ledger
+              </span>
+            )}
           </li>
         </ul>
         <div className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface p-3">
           <span className="w-10 h-10 rounded-full bg-cobalt-tint text-cobalt-deep text-sm font-bold flex items-center justify-center">MB</span>
           <div><p className="text-sm font-semibold">Smart Badge sign-off</p><p className="apex-id text-muted">Tap badge RFID-7714 · {CANON.engineer}</p></div>
         </div>
-        {!photo && <p className="text-[11px] font-semibold text-warn">Attach the Step 04 verification photo to enable sign-off.</p>}
+        {!uploaded && <p className="text-[11px] font-semibold text-warn">Attach the Step 04 verification photo to enable sign-off.</p>}
         <ErrorLine error={error} />
         {done && <Badge variant="pass">{done} — persisted</Badge>}
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button disabled={!photo || busy} onClick={async () => { if (await post('complete')) setTimeout(() => setOpen(false), 600); }}>
+          <Button disabled={!uploaded || busy} onClick={async () => { if (await post('complete')) setTimeout(() => setOpen(false), 600); }}>
             {busy && <LoaderCircle size={16} className="animate-spin" />} Sign &amp; Complete
           </Button>
         </div>

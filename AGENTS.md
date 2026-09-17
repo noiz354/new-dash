@@ -141,6 +141,11 @@ aplikasi produksi (mis. Next.js + Tailwind + shadcn) dengan Stitch HTML sebagai
 9. Dilarang menambahkan dependensi/backend tanpa persetujuan user. Tanyakan dulu
    pilihan stack (lihat TODO Fase 0) bila belum diputuskan.
 10. Setelah `git pull` / perubahan besar: `codegraph sync` supaya §0 tidak basi.
+11. **Git hooks (SDD T1-5)**: repo menyediakan `ci/git-hooks/` (pre-commit me-revert
+    churn `next-env.d.ts` dari `next dev`). Aktifkan sekali per clone:
+    `git config core.hooksPath ci/git-hooks`.
+    Bila perubahan `next-env.d.ts` memang disengaja (upgrade Next.js), stage
+    eksplisit: `git add next-env.d.ts`.
 
 ## 7. Cara Preview Cepat
 

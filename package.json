@@ -9,6 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/unit.test.ts tests/integration.test.ts tests/audit-truthfulness.test.ts tests/windowing.test.ts",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:setup": "tsx db/setup.ts",
     "db:reset": "tsx db/reset.ts"
@@ -32,6 +33,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20.16.10",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",

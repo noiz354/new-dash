@@ -25,7 +25,7 @@ import {
 import { listAuditEvents, verifyAuditHashChain } from '../lib/services/audit-service';
 import { findSrByConvertedWo, getAssetDossier, listAssets } from '../lib/services/asset-service';
 import { convertFindingToWo, createFinding, createInspection, dismissFinding, forceDispatchInspection, getFinding, getInspection, listFindings, listInspections, updateInspectionProgress } from '../lib/services/inspection-service';
-import { listWoTasks, updateWoTask } from '../lib/services/task-service';
+import { addWoTask, listWoTasks, updateWoTask } from '../lib/services/task-service';
 import { getPart, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
 import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
@@ -1775,4 +1775,161 @@ test('handovers (GAP-22/F27): accept → terminal 409 · reject needs reason 400
   assert.equal((await listHandovers(db, decoy)).length, 1, 'decoy creates in its own org');
   const canonAfter = await listHandovers(db, admin);
   assert.ok(!canonAfter.some((r) => r.leadFrom === 'Decoy One'), 'no decoy bleed into canon list');
+});
+
+// ---------------------------------------------------------------------------
+// SDD T1-3: malformed handover id must fail honestly (400), not 500 INTERNAL.
+// Guard lives in decideHandover (service layer) so every caller is protected.
+// ---------------------------------------------------------------------------
+test('handovers (SDD T1-3): malformed id → 400 VALIDATION_ERROR · unknown uuid → 404 · valid decide flow intact', async () => {
+  // malformed (non-uuid): honest 400 before any DB lookup (was: 500 INTERNAL)
+  await expectDomainError(
+    () => decideHandover(db, admin, 'not-a-uuid', { action: 'accept' }),
+    400, 'VALIDATION_ERROR',
+  );
+  // syntactically valid but unknown: 404 HANDOVER_NOT_FOUND unchanged
+  await expectDomainError(
+    () => decideHandover(db, admin, '00000000-0000-4000-8000-000000000000', { action: 'accept' }),
+    404, 'HANDOVER_NOT_FOUND',
+  );
+  // valid flow end-to-end: create → accept → terminal guard still enforced
+  const h = await createHandover(db, admin, {
+    shiftFrom: 'Shift A (Day)', shiftTo: 'Shift B (Evening)',
+    leadFrom: 'Elena Voronova', leadTo: 'David Chen',
+    woRef: 'WO-2026-0894', items: 'T1-3 validation probe', notes: 'none',
+  }, { idempotencyKey: 'hnd-t13-uuid', requestId: 'it-hnd-t13' });
+  const accepted = await decideHandover(db, admin, h.id, { action: 'accept' });
+  assert.equal(accepted.status, 'ACCEPTED');
+  assert.equal(accepted.decidedBy, 'Marcus Vance');
+  await expectDomainError(
+    () => decideHandover(db, admin, h.id, { action: 'reject', reason: 'too late' }),
+    409, 'HANDOVER_TERMINAL',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SDD T3-2: generic dossiers get a fillable checklist (addWoTask)
+// ---------------------------------------------------------------------------
+test('wo-tasks (SDD T3-2): addWoTask appends step max+1, validates, audits WO_TASK_ADD; sequence gate still applies', async () => {
+  const woNo = 'WO-2026-0912';
+  await db.insert((await import('../db/schema')).workOrders).values({
+    organizationId: admin.orgId, number: woNo, title: 'Generic dossier probe', assetCode: null,
+    location: 'Probe Bay', priority: 'P3', status: 'IN_PROGRESS', holdReason: null,
+    slaDueAt: new Date(Date.now() + 3600_000), assignedTo: null,
+  }).onConflictDoNothing();
+  assert.equal((await listWoTasks(db, admin, woNo)).length, 0, 'generic WO ships with an empty checklist');
+
+  const t1 = await addWoTask(db, admin, { woNumber: woNo, title: 'Inspect dock hydraulic lines', requiresPhoto: false });
+  assert.equal(t1.stepOrder, 1);
+  const t2 = await addWoTask(db, admin, { woNumber: woNo, title: 'Replace worn hose', instruction: 'Torque to spec', requiresPhoto: true });
+  assert.equal(t2.stepOrder, 2, 'step order = max(existing)+1');
+  assert.equal(t2.status, 'PENDING');
+
+  // completing step 2 first violates the sequence gate (same rules as canon WO)
+  await expectDomainError(
+    () => updateWoTask(db, admin, { taskId: t2.id, woNumber: woNo, status: 'DONE' }),
+    422, 'SEQUENCE_VIOLATION',
+  );
+
+  // photo-gated step refuses completion without evidence
+  await updateWoTask(db, admin, { taskId: t1.id, woNumber: woNo, status: 'DONE' });
+  await expectDomainError(
+    () => updateWoTask(db, admin, { taskId: t2.id, woNumber: woNo, status: 'DONE' }),
+    422, 'PHOTO_REQUIRED',
+  );
+
+  // validation + tenant scope
+  await expectDomainError(() => addWoTask(db, admin, { woNumber: woNo, title: 'ab' }), 400, 'VALIDATION_ERROR');
+  await expectDomainError(() => addWoTask(db, admin, { woNumber: 'WO-2099-0001', title: 'Ghost step' }), 404, 'WORK_ORDER_NOT_FOUND');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'work_order_task' });
+  assert.ok(ledger.rows.some((e) => e.action === 'WO_TASK_ADD' && e.entityId === t2.id), 'WO_TASK_ADD audited');
+
+  const reloaded = await listWoTasks(db, admin, woNo);
+  assert.equal(reloaded.length, 2, 'added steps persist (reload-proof)');
+  assert.equal(reloaded.find((t) => t.id === t2.id)!.status, 'PENDING');
+});
+
+// ---------------------------------------------------------------------------
+// SDD Tier 3 test debts (T3-3 / T3-5 / T3-6)
+// ---------------------------------------------------------------------------
+test('inspections (SDD T3-3): PASS-OVERRIDE verdict lands in audit as INSPECTION_PASS_OVERRIDE', async () => {
+  const probe = await createInspection(db, admin, { title: 'T3-3 override probe', auditorName: 'Marcus Vance' });
+  const probeNumber = probe.number;
+
+  const before = (await listAuditEvents(db, admin, { entityType: 'inspection', limit: 500 }))
+    .rows.filter((e) => e.action === 'INSPECTION_PASS_OVERRIDE').length;
+
+  const row = await updateInspectionProgress(db, admin, probeNumber, 100, 'COMPLETED', { verdict: 'PASS-OVERRIDE' });
+  assert.equal(row.status, 'COMPLETED');
+
+  const rows = (await listAuditEvents(db, admin, { entityType: 'inspection', limit: 500 })).rows;
+  const overrideRows = rows.filter((e) => e.action === 'INSPECTION_PASS_OVERRIDE');
+  assert.equal(overrideRows.length, before + 1, 'exactly one PASS_OVERRIDE audit row added');
+  const latest = overrideRows[overrideRows.length - 1];
+  assert.equal((latest.after as { verdict?: string })?.verdict, 'PASS-OVERRIDE');
+  assert.match(String((latest.after as { countersign?: string })?.countersign ?? ''), /self-assessed/, 'countersign disclosure honest');
+
+  // plain progress (no verdict) must NOT write an override row
+  await updateInspectionProgress(db, admin, probeNumber, 100, 'COMPLETED');
+  const after2 = (await listAuditEvents(db, admin, { entityType: 'inspection', limit: 500 }))
+    .rows.filter((e) => e.action === 'INSPECTION_PASS_OVERRIDE').length;
+  assert.equal(after2, before + 1, 'no extra override row without a verdict');
+});
+
+test('pm (SDD T3-5): pause stops generation (422 RULE_PAUSED); resume continues; idempotence per period intact', async () => {
+  const rule = await createPmRule(db, admin, {
+    title: 'T3-5 pause probe', assetCode: CANON.assetSeal, intervalDays: 7, priority: 'P3',
+  });
+
+  const gen1 = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: 't35-gen-1' });
+  assert.equal(gen1.rule.status, 'ACTIVE', 'active rule generates');
+  const replay = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: 't35-gen-1' });
+  assert.equal(replay.wo.number, gen1.wo.number, 'same idempotency key → same WO (no double generation)');
+
+  await togglePmRule(db, admin, rule.id, 'PAUSED');
+  await expectDomainError(
+    () => generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: 't35-gen-2' }),
+    422, 'RULE_PAUSED',
+  );
+
+  await togglePmRule(db, admin, rule.id, 'ACTIVE');
+  const gen2 = await generatePmWorkOrder(db, admin, rule.id, { idempotencyKey: 't35-gen-2' });
+  assert.notEqual(gen2.wo.number, gen1.wo.number, 'resumed rule generates a NEW work order');
+});
+
+test('audit + purchasing (SDD T3-6): paging disjoint & stable; entityType + date filters work; decoy tenant blind', async () => {
+  // hand-built decoy context (same shape the session service issues) — avoids
+  // tripping the login rate limiter, which is itself under test elsewhere.
+  const decoyAdmin: AuthContext = {
+    userId: 'decoy-probe-user', orgId: 'APX-GL-9021', orgName: 'Apex Global',
+    role: 'Enterprise Admin', name: 'Decoy Probe', initials: 'DP',
+    title: 'Probe', email: 'decoy-probe@apexgl.io',
+  };
+  // paging: limit/offset windows are disjoint and ordered (newest first)
+  const page1 = await listAuditEvents(db, admin, { limit: 25, offset: 0 });
+  const page2 = await listAuditEvents(db, admin, { limit: 25, offset: 25 });
+  assert.equal(page1.rows.length, 25);
+  const p1ids = new Set(page1.rows.map((r) => r.id));
+  const p2ids = new Set(page2.rows.map((r) => r.id));
+  for (const id of p1ids) assert.ok(!p2ids.has(id), 'page 1 and 2 must be disjoint');
+  // stable across requests
+  const page1again = await listAuditEvents(db, admin, { limit: 25, offset: 0 });
+  assert.deepEqual(page1.rows.map((r) => r.id), page1again.rows.map((r) => r.id), 'same window returns identical rows');
+
+  // entityType filter
+  const taskOnly = await listAuditEvents(db, admin, { entityType: 'work_order_task', limit: 500 });
+  assert.ok(taskOnly.rows.length > 0, 'entityType filter finds the T3-2 rows');
+  assert.ok(taskOnly.rows.every((r) => r.entityType === 'work_order_task'), 'all rows match the filter');
+
+  // date filter: from=now excludes everything older
+  const future = await listAuditEvents(db, admin, { from: new Date(Date.now() + 3600_000), limit: 500 });
+  assert.equal(future.rows.length, 0, 'from-in-the-future excludes all rows');
+  const recent = await listAuditEvents(db, admin, { from: new Date(Date.now() - 60_000), limit: 500 });
+  assert.ok(recent.rows.length > 0, 'recent window includes just-written rows');
+
+  // tenant scope: decoy admin sees none of the canon rows
+  const decoyPage = await listAuditEvents(db, decoyAdmin, { limit: 500 });
+  const canonIds = new Set((await listAuditEvents(db, admin, { limit: 500 })).rows.map((r) => r.id));
+  for (const r of decoyPage.rows) assert.ok(!canonIds.has(r.id), 'no canon row leaks into decoy ledger');
 });

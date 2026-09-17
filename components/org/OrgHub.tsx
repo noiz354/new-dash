@@ -353,8 +353,11 @@ export function OrgHub() {
   };
 
   const deploy = () => {
-    setDeployed((d) => ({ ...d, [role]: '14 Sep 2026 14:05 WIB' }));
-    push(true, 'Rules deployed', `${role}: ${counts.granted} grants live · simulated push · snapshot stamped.`);
+    // SDD T2-2: stamp with the real local time (was a hardcoded fictional
+    // date); the push itself stays honestly labeled as a simulated demo push.
+    const stamp = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' WIB';
+    setDeployed((d) => ({ ...d, [role]: stamp }));
+    push(true, 'Rules deployed (demo)', `${role}: ${counts.granted} grants · simulated push, local only — not persisted to a policy backend.`);
   };
 
   const cloneRole = () => {
@@ -392,12 +395,12 @@ export function OrgHub() {
               </DialogTrigger>
               <DialogContent aria-labelledby="sso-h">
                 <DialogTitle id="sso-h">Single Sign-On &amp; SCIM Configuration</DialogTitle>
-                <DialogDescription>Read-only policy viewer — changes via Okta admin console.</DialogDescription>
+                <DialogDescription>Read-only policy viewer — demo reference values. No IdP is connected in this environment (Phase 1b); MFA enforcement below is enforced by this app, not by an IdP.</DialogDescription>
                 <ul className="text-[13px] flex flex-col gap-2">
-                  <li className="flex justify-between gap-2"><span>Identity Provider · Okta SAML 2.0 / SCIM API endpoint</span><Badge variant="pass">CONNECTED</Badge></li>
-                  <li className="flex justify-between gap-2"><span>MFA Policy · FIDO2 WebAuthn or TOTP on all devices</span><Badge variant="pass">ENFORCED (100%)</Badge></li>
-                  <li className="flex justify-between gap-2"><span>Session Timeout · tablets 30 min, desktop 120 min</span><Badge variant="info">30 / 120 MIN</Badge></li>
-                  <li className="flex justify-between gap-2"><span>SCIM Sync · webhook push on create/terminate</span><Badge variant="pass">Instant (&lt;50ms)</Badge></li>
+                  <li className="flex justify-between gap-2"><span>Identity Provider · Okta SAML 2.0 / SCIM API endpoint</span><Badge variant="info">PLANNED (no IdP connected)</Badge></li>
+                  <li className="flex justify-between gap-2"><span>MFA Policy · FIDO2 WebAuthn (passkeys) or TOTP — enforced by this app</span><Badge variant="pass">ENFORCED</Badge></li>
+                  <li className="flex justify-between gap-2"><span>Session Timeout · tablets 30 min, desktop 120 min</span><Badge variant="info">30 / 120 MIN (reference)</Badge></li>
+                  <li className="flex justify-between gap-2"><span>SCIM Sync · webhook push on create/terminate</span><Badge variant="info">PLANNED (local directory only)</Badge></li>
                 </ul>
                 <div className="flex justify-end"><Button variant="secondary" onClick={() => setSsoOpen(false)}>Close Policy Viewer</Button></div>
               </DialogContent>

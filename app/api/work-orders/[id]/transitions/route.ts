@@ -7,7 +7,7 @@ import { transitionWorkOrder } from '@/lib/services/wo-service';
 const TransitionSchema = z.object({
   action: z.enum(['hold', 'escalate', 'resume', 'start', 'complete', 'cancel', 'assign']),
   reason: z.string().max(500).nullish(),
-  assigneeEmail: z.string().email().nullish(),
+  assigneeEmail: z.email().nullish(),
 });
 
 /**

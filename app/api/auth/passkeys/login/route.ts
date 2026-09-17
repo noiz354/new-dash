@@ -6,7 +6,7 @@ import { COOKIE_NAME, sessionCookieOptions } from '@/lib/auth/session';
 
 const PostBody = z.object({
   orgId: z.string().min(1),
-  email: z.string().email(),
+  email: z.email(),
 });
 
 const VerifyBody = z.object({

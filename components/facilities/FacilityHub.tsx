@@ -326,7 +326,7 @@ export function FacilityHub() {
           <div className="rounded-lg border border-border-subtle bg-surface p-3 flex flex-col gap-0.5">
             <span className="apex-label-caps text-muted">Monitored Zones</span>
             <span className="text-xl font-semibold tabular-nums">68 Active</span>
-            <span className="text-[11px] text-muted">Nusantara-CUP-B2 in scope · zone tree synced</span>
+            <span className="text-[11px] text-muted">Nusantara-CUP-B2 in scope · zone tree demo (staged, not synced)</span>
           </div>
         </div>
 

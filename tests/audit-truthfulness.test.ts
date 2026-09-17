@@ -373,3 +373,82 @@ test('GAP-16 gerbang sweep: era-GAP-16 fiction strings stay absent on every comp
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// SDD T1-2 (F-COPY): fictional sync/telemetry labels stay absent.
+// `WS-PUSH: 12ms` debugger chip and `Live Sync Active` were removed; the
+// sidenav telemetry widget is labeled "Telemetry (demo)" with an honest
+// "Broker: not configured" state.
+// ---------------------------------------------------------------------------
+test('SDD T1-2 F-COPY: WS-PUSH / Live Sync Active / Telemetry Bus stay absent in app+components+lib', () => {
+  const fs = require('node:fs') as typeof import('node:fs');
+  const path = require('node:path') as typeof import('node:path');
+  const walk = (dir: string): string[] =>
+    fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const p2 = path.join(dir, e.name);
+      return e.isDirectory() ? walk(p2) : /\.(tsx?|jsx?)$/.test(e.name) ? [p2] : [];
+    });
+  const banned = ['WS-PUSH', 'Live Sync Active', 'Telemetry Bus'];
+  for (const dir of ['../components', '../app', '../lib']) {
+    const root = new URL(dir, import.meta.url).pathname;
+    for (const file of walk(root)) {
+      const body = fs.readFileSync(file, 'utf8');
+      for (const s of banned) {
+        assert.ok(!body.includes(s), `${path.basename(file)} still fabricates sync label: "${s}"`);
+      }
+    }
+  }
+  const sidenav = fs.readFileSync(
+    new URL('../components/ops/SideNav.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(
+    sidenav.includes('Telemetry (demo)') && sidenav.includes('Broker: not configured'),
+    'sidenav telemetry widget must stay honestly labeled as demo/not configured',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SDD Tier 2 (GAP-17 KEEP batch): telemetry/sync fiction stays absent.
+// T2-5 fixed: FacilityHub "zone tree synced" -> "demo (staged, not synced)";
+// FieldInspectionsHub "100% Synced" -> "Sync: demo KPI (not connected)";
+// "Modbus TCP/IP: Active" + "SCADA STREAMING" -> explicit demo/not-connected.
+// ---------------------------------------------------------------------------
+test('SDD T2-5 telemetry claims stay honest (no fake synced/streaming)', () => {
+  const facilityHub = readFileSync(
+    new URL('../components/facilities/FacilityHub.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!facilityHub.includes('zone tree synced'), 'FacilityHub still claims zone tree synced');
+  assert.ok(
+    facilityHub.includes('zone tree demo (staged, not synced)'),
+    'FacilityHub zone tree must stay labeled staged/not synced',
+  );
+
+  const inspections = readFileSync(
+    new URL('../components/field/FieldInspectionsHub.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!inspections.includes('100% Synced'), 'FieldInspectionsHub still fabricates 100% Synced');
+  assert.ok(!inspections.includes('SCADA STREAMING'), 'FieldInspectionsHub still fabricates SCADA STREAMING');
+  assert.ok(!inspections.includes('Modbus TCP/IP: Active'), 'FieldInspectionsHub still claims live Modbus');
+  assert.ok(
+    inspections.includes('demo — not connected') && inspections.includes('DEMO — NOT STREAMING'),
+    'IoT link must keep explicit demo/not-connected labels',
+  );
+
+  // T2-1: OrgHub SSO dialog must not assert a live IdP/SCIM link
+  const orgHub = readFileSync(
+    new URL('../components/org/OrgHub.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!/CONNECTED<\/Badge>/.test(orgHub), 'OrgHub SSO dialog still asserts CONNECTED');
+  assert.ok(
+    orgHub.includes('No IdP is connected in this environment'),
+    'OrgHub SSO dialog must disclose that no IdP is connected',
+  );
+  assert.ok(
+    !orgHub.includes('14 Sep 2026 14:05 WIB'),
+    'OrgHub deploy still stamps a hardcoded fictional timestamp',
+  );
+});

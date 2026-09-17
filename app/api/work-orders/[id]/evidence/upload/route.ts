@@ -2,10 +2,12 @@ import type { NextRequest } from 'next/server';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
+import { and, eq } from 'drizzle-orm';
 import { withRoute } from '@/lib/api/http';
 import { getDb } from '@/db/client';
+import { workOrders } from '@/db/schema';
 import { addEvidence } from '@/lib/services/task-service';
-import { DomainError } from '@/lib/domain/errors';
+import { DomainError, notFound } from '@/lib/domain/errors';
 
 /**
  * POST /api/work-orders/[id]/evidence/upload — upload evidence biner nyata (FP-11).
@@ -57,6 +59,16 @@ export async function POST(
     }
     const taskIdRaw = form.get('taskId');
     const taskId = typeof taskIdRaw === 'string' && taskIdRaw.trim() ? taskIdRaw.trim() : null;
+
+    // SDD T3-2 integrity: never attach evidence to a ghost work order — the
+    // target WO must exist in the caller's org (was unverified, letting rows
+    // point at non-existent WOs).
+    const wo = await getDb()
+      .select({ number: workOrders.number })
+      .from(workOrders)
+      .where(and(eq(workOrders.organizationId, ctx!.orgId), eq(workOrders.number, id)))
+      .limit(1);
+    if (!wo[0]) throw notFound('WORK_ORDER', id);
 
     const buf = Buffer.from(await file.arrayBuffer());
     if (buf.length === 0) throw new DomainError(400, 'VALIDATION_ERROR', 'Empty file');

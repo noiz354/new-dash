@@ -536,7 +536,7 @@ export function FieldInspectionsHub() {
           <div className="flex items-center justify-between text-[11px] pt-1 text-muted border-t border-border-subtle">
             <span>Shift A: <strong className="text-body font-mono">9</strong> | B: <strong className="text-body font-mono">5</strong></span>
             <span className="text-pass-ink font-semibold flex items-center gap-1">
-              <CloudCog size={12} /> 100% Synced
+              <CloudCog size={12} /> Sync: demo KPI (not connected)
             </span>
           </div>
         </div>
@@ -841,12 +841,12 @@ export function FieldInspectionsHub() {
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-ink">Substation IoT Gateway Link</span>
                 <span className="text-[11px] font-mono text-muted">
-                  Modbus TCP/IP: Active · Auto-validating AST-ELEC-01 Bus Bar Temp (42.4°C Nom)
+                  Modbus TCP/IP (demo — not connected) · reference AST-ELEC-01 Bus Bar Temp (42.4°C Nom)
                 </span>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded-full bg-pass-bg border border-pass/30 text-pass-ink font-mono text-[10px] font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-pass animate-ping" /> SCADA STREAMING
+            <span className="px-2 py-0.5 rounded-full bg-border-subtle border border-border-strong text-muted font-mono text-[10px] font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-muted" /> DEMO — NOT STREAMING
             </span>
           </div>
         </div>

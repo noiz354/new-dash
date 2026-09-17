@@ -122,7 +122,7 @@ export async function updateInspectionProgress(
   number: string,
   progressPct: number,
   status?: string,
-  opts: { requestId?: string } = {},
+  opts: { requestId?: string; verdict?: 'FAIL' | 'PASS-OVERRIDE' | null } = {},
 ): Promise<InspectionRow> {
   const validatedProgress = Math.max(0, Math.min(100, Math.round(progressPct)));
   const nextStatus = status ?? (validatedProgress === 100 ? 'COMPLETED' : 'IN_PROGRESS');
@@ -145,6 +145,23 @@ export async function updateInspectionProgress(
       .where(and(eq(inspections.organizationId, ctx.orgId), eq(inspections.number, number)))
       .returning();
 
+    // SDD T3-3: a PASS-OVERRIDE verdict (field tech self-assesses a pass where
+    // the reading failed the limit) MUST land in the audit ledger — it is a
+    // compliance-sensitive override, not a UI-only flourish.
+    if (opts.verdict === 'PASS-OVERRIDE') {
+      await tx.insert(auditEvents).values({
+        organizationId: ctx.orgId,
+        actorUserId: ctx.userId,
+        actorName: ctx.name,
+        action: 'INSPECTION_PASS_OVERRIDE',
+        entityType: 'inspection',
+        entityId: number,
+        before: { progressPct: before[0].progressPct, status: before[0].status },
+        after: { progressPct: updated.progressPct, status: updated.status, verdict: 'PASS-OVERRIDE', countersign: 'none — self-assessed (supervisor PIN retired with GAP-3 step-up)' },
+        requestId: opts.requestId ?? null,
+      });
+    }
+
     await tx.insert(auditEvents).values({
       organizationId: ctx.orgId,
       actorUserId: ctx.userId,
@@ -153,7 +170,7 @@ export async function updateInspectionProgress(
       entityType: 'inspection',
       entityId: number,
       before: { progressPct: before[0].progressPct, status: before[0].status },
-      after: { progressPct: updated.progressPct, status: updated.status },
+      after: { progressPct: updated.progressPct, status: updated.status, ...(opts.verdict ? { verdict: opts.verdict } : {}) },
       requestId: opts.requestId ?? null,
     });
 
