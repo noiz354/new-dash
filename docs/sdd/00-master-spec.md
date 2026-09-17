@@ -24,7 +24,7 @@
 | 1 — Kecil & jelas | `tier-1-small.md` | 11 | ✅ 10/11 PASS (T1-8..11 user-approved 2026-09-17) · T1-6 deferred (stlh batch Tier 3+) |
 | 2 — GAP-17 KEEP batch | `tier-2-keep-batch.md` | 6 | ✅ 6/6 PASS + 5 label fix (2026-09-17) |
 | 3 — Test debts | `tier-3-test-debts.md` | 7 | ✅ 6 PASS + 1 PARTIAL (T3-4→T4-16); e2e exec BLOCKED-BY-ENV (2026-09-17) |
-| 4 — Fitur medium | `tier-4-medium.md` | 14 | 🔶 3/14 PASS (T4-5 + T4-14 + T4-15, 2026-09-17 — scope user-approved Batch C+D dulu; sisa 11 ⬜) |
+| 4 — Fitur medium | `tier-4-medium.md` | 14 | 🔶 4/14 PASS (T4-5 + T4-14 + T4-15 + T4-16, 2026-09-17 — scope user-approved Batch C+D dulu; sisa 10 ⬜) |
 | 5 — Susah / terkunci | `tier-5-hard-blocked.md` | 8 | ⬜ |
 | 6 — Backlog Batch 1 Operasi | `tier-6-batch-1.md` | 44 PROMOTE | ⬜ |
 | 6 — Backlog Batch 2 Aset | `tier-6-batch-2.md` | 45 PROMOTE + 11 (U) | ⬜ |

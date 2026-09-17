@@ -539,6 +539,8 @@ export const goodsReceiptNotes = pgTable(
     poNumber: text('po_number').notNull(),
     waybill: text('waybill').notNull().default(''),
     dockLocation: text('dock_location').notNull().default('Dock Bay 02'),
+    skuReceived: text('sku_received'), // T4-16: nullable — legacy GRN rows pre-date qty capture
+    qtyReceived: integer('qty_received'), // T4-16: nullable — legacy GRN rows pre-date qty capture
     status: text('status').notNull().default('RECEIVED'),
     verifiedBy: text('verified_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -547,6 +549,52 @@ export const goodsReceiptNotes = pgTable(
     primaryKey({ columns: [t.organizationId, t.number] }),
     index('grn_po_idx').on(t.organizationId, t.poNumber),
     check('grn_status_ck', sql`${t.status} IN ('RECEIVED','DISPUTED')`),
+    check('grn_qty_ck', sql`${t.qtyReceived} IS NULL OR ${t.qtyReceived} > 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// T4-16 — vendor invoices + lines (3-way match: PO lines vs GRN qty vs invoice).
+// Invoice numbers are vendor-supplied (no INV sequence entity); format guard
+// matches the dossier route regex ^INV-\d{4}-\d{4}$.
+export const invoices = pgTable(
+  'invoices',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    number: text('number').notNull(), // INV-2026-1188
+    poNumber: text('po_number').notNull(),
+    vendorSlug: text('vendor_slug').notNull().default(''),
+    invoiceDate: date('invoice_date').notNull(),
+    dueDate: date('due_date'),
+    paymentTerms: text('payment_terms').notNull().default('NET_30'),
+    status: text('status').notNull().default('PENDING'), // PENDING | MATCHED | DISPUTED
+    paymentHold: boolean('payment_hold').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.number] }),
+    index('invoices_po_idx').on(t.organizationId, t.poNumber),
+    check('inv_number_ck', sql`${t.number} ~ '^INV-[0-9]{4}-[0-9]{4}$'`),
+    check('inv_status_ck', sql`${t.status} IN ('PENDING','MATCHED','DISPUTED')`),
+  ],
+);
+
+export const invoiceLineItems = pgTable(
+  'invoice_line_items',
+  {
+    organizationId: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(), // `${invoiceNumber}-L${n}`
+    invoiceNumber: text('invoice_number').notNull(),
+    sku: text('sku').notNull(),
+    description: text('description').notNull(),
+    quantity: integer('quantity').notNull(),
+    unitPriceCents: bigint('unit_price_cents', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.id] }),
+    index('inv_lines_inv_idx').on(t.organizationId, t.invoiceNumber),
+    check('inv_line_qty_ck', sql`${t.quantity} > 0`),
   ],
 );
 

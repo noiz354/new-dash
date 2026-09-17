@@ -10,7 +10,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { createDb, type Db } from '../db/client';
-import { auditEvents, users } from '../db/schema';
+import { auditEvents, poLineItems, purchaseOrders, users } from '../db/schema';
 import { seedAll, SEED_PASSWORD, SEED_TOTP_SECRET } from '../db/seed';
 import { workOrderEvents } from '../db/schema';
 import { login, logout, verifyMfa } from '../lib/services/auth-service';
@@ -28,7 +28,7 @@ import { convertFindingToWo, createFinding, createInspection, dismissFinding, fo
 import { addWoTask, listWoTasks, updateWoTask } from '../lib/services/task-service';
 import { getPart, listMovements, listParts, mutateStock, verifyStepUpCode } from '../lib/services/inventory-service';
 import { createUser, listUsers, resetUserMfa, updateUser } from '../lib/services/org-service';
-import { createRequisition, decidePurchase, getPurchase, listPurchases, postGoodsReceipt } from '../lib/services/procurement-service';
+import { createRequisition, decidePurchase, getInvoiceDossier, getPurchase, listInvoices, listPurchases, postGoodsReceipt, registerInvoice } from '../lib/services/procurement-service';
 import { createPmRule, generatePmWorkOrder, listPmRules, togglePmRule } from '../lib/services/pm-service';
 import { addEvidence, listWoEvidence } from '../lib/services/task-service';
 import { createApiKey, listApiKeys, revokeApiKey } from '../lib/services/api-key-service';
@@ -1120,6 +1120,147 @@ test('purchasing (GAP-9): GRN posts with step-up, canon GRN number, stock loop c
   await expectDomainError(
     () => postGoodsReceipt(db, admin, { poNumber: 'PO-2026-0315', grnNumber: grn.number, waybill: 'GAP9-WB-4', skuReceived: sku, qtyReceived: 1 }, { stepUpAt }),
     409, 'DUPLICATE_RECEIPT',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 3-way match engine (T4-16: po_line_items vs GRN qty vs vendor invoice;
+// static INVOICES const is gone — dossier reads these rows)
+// ---------------------------------------------------------------------------
+async function t416SeedPo(poNumber: string, qty: number) {
+  await db.insert(purchaseOrders).values({
+    organizationId: admin.orgId,
+    number: poNumber,
+    kind: 'PO',
+    title: 'T4-16 3-way match probe',
+    vendorSlug: 'grainger-industrial-supply',
+    totalCents: qty * 145000,
+    status: 'APPROVED',
+  });
+  await db.insert(poLineItems).values({
+    organizationId: admin.orgId,
+    id: `${poNumber}-L1`,
+    documentNumber: poNumber,
+    sku: CANON.sealSku,
+    description: 'T4-16 probe seal',
+    quantity: qty,
+    unitPriceCents: 145000,
+  });
+}
+
+test('purchasing (T4-16): partial dock + full invoice → DISPUTED flag + payment hold + MATCH_DISPUTED audit', async () => {
+  await t416SeedPo('PO-2026-4101', 2);
+  const stepUpAt = await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+
+  // Dock only 1 of 2 ordered (GRN qty ≠ PO qty).
+  await postGoodsReceipt(
+    db, admin,
+    { poNumber: 'PO-2026-4101', waybill: 'T416-WB-1', skuReceived: CANON.sealSku, qtyReceived: 1 },
+    { idempotencyKey: 't416-grn-4101', stepUpAt },
+  );
+
+  const inv = await registerInvoice(db, admin, {
+    invoiceNumber: 'INV-2026-4101',
+    poNumber: 'PO-2026-4101',
+    invoiceDate: '2026-09-17',
+    lines: [{ sku: CANON.sealSku, description: 'T4-16 probe seal', quantity: 2, unitPriceCents: 145000 }],
+  }, { idempotencyKey: 't416-inv-4101', stepUpAt });
+
+  assert.equal(inv.status, 'DISPUTED', 'mismatch → flag');
+  assert.equal(inv.paymentHold, true, 'mismatch → payment hold');
+  assert.equal(inv.lines.length, 1);
+  assert.equal(inv.lines[0].matched, false);
+  assert.equal(inv.lines[0].grnQty, 1, 'live GRN qty feeds the line');
+  assert.match(inv.lines[0].variance, /pending receipt/, 'variance names the shortage');
+  assert.equal(inv.holdCents, 145000, '1 undocked unit held');
+  assert.ok(inv.auditTrailId, 'real MATCH_DISPUTED audit id, never fabricated');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'vendor_invoice' });
+  assert.ok(ledger.rows.some((e) => e.action === 'INVOICE_REGISTER' && e.entityId === 'INV-2026-4101'), 'INVOICE_REGISTER audited');
+  assert.ok(ledger.rows.some((e) => e.action === 'MATCH_DISPUTED' && e.entityId === 'INV-2026-4101'), 'MATCH_DISPUTED audited');
+
+  const dossier = await getInvoiceDossier(db, admin, 'INV-2026-4101');
+  assert.equal(dossier.status, 'DISPUTED', 'stored verdict feeds the dossier');
+  assert.equal(dossier.grnCount, 1);
+  assert.equal(dossier.auditTrailId, inv.auditTrailId);
+});
+
+test('purchasing (T4-16): full dock + exact invoice → MATCHED, no hold, MATCH_RECONCILED', async () => {
+  await t416SeedPo('PO-2026-4102', 2);
+  const stepUpAt = await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+
+  await postGoodsReceipt(
+    db, admin,
+    { poNumber: 'PO-2026-4102', waybill: 'T416-WB-2', skuReceived: CANON.sealSku, qtyReceived: 2 },
+    { idempotencyKey: 't416-grn-4102', stepUpAt },
+  );
+
+  const inv = await registerInvoice(db, admin, {
+    invoiceNumber: 'INV-2026-4102',
+    poNumber: 'PO-2026-4102',
+    invoiceDate: '2026-09-17',
+    lines: [{ sku: CANON.sealSku, description: 'T4-16 probe seal', quantity: 2, unitPriceCents: 145000 }],
+  }, { idempotencyKey: 't416-inv-4102', stepUpAt });
+
+  assert.equal(inv.status, 'MATCHED');
+  assert.equal(inv.paymentHold, false);
+  assert.equal(inv.holdCents, 0);
+  assert.equal(inv.lines[0].matched, true);
+  assert.equal(inv.lines[0].variance, '$0.00 (0.0%)');
+
+  const ledger = await listAuditEvents(db, admin, { entityType: 'vendor_invoice' });
+  assert.ok(ledger.rows.some((e) => e.action === 'MATCH_RECONCILED' && e.entityId === 'INV-2026-4102'), 'MATCH_RECONCILED audited');
+});
+
+test('purchasing (T4-16): invoices are tenant-scoped; unknown number 404s (no static fallback)', async () => {
+  const { ctx: decoy } = await gap14Decoy();
+  await expectDomainError(() => getInvoiceDossier(db, decoy, 'INV-2026-4101'), 404, 'VENDOR_INVOICE_NOT_FOUND');
+  assert.ok(!(await listInvoices(db, decoy)).some((r) => r.number === 'INV-2026-4101'), 'decoy tenant sees nothing');
+  await expectDomainError(() => getInvoiceDossier(db, admin, 'INV-2026-9999'), 404, 'VENDOR_INVOICE_NOT_FOUND');
+});
+
+test('purchasing (T4-16): idempotent replay of registerInvoice writes no second audit row', async () => {
+  const disputedCount = async () =>
+    (await listAuditEvents(db, admin, { entityType: 'vendor_invoice' })).rows
+      .filter((e) => e.action === 'MATCH_DISPUTED' && e.entityId === 'INV-2026-4101').length;
+  assert.equal(await disputedCount(), 1, 'exactly one MATCH_DISPUTED from the first registration');
+
+  const stepUpAt = await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+  const replay = await registerInvoice(db, admin, {
+    invoiceNumber: 'INV-2026-4101',
+    poNumber: 'PO-2026-4101',
+    invoiceDate: '2026-09-17',
+    lines: [{ sku: CANON.sealSku, description: 'T4-16 probe seal', quantity: 2, unitPriceCents: 145000 }],
+  }, { idempotencyKey: 't416-inv-4101', stepUpAt });
+  assert.equal(replay.status, 'DISPUTED', 'replay returns the stored verdict');
+  assert.equal(await disputedCount(), 1, 'idempotent replay writes no second MATCH_DISPUTED');
+});
+
+test('purchasing (T4-16): registerInvoice guards — step-up, number format, duplicates, PO kind', async () => {
+  const stepUpAt = await verifyStepUpCode(db, admin, totpNow(SEED_TOTP_SECRET));
+  const line = [{ sku: CANON.sealSku, description: 'T4-16 probe seal', quantity: 1, unitPriceCents: 145000 }];
+
+  await expectDomainError(
+    () => registerInvoice(db, admin, { invoiceNumber: 'INV-2026-4199', poNumber: 'PO-2026-4101', invoiceDate: '2026-09-17', lines: line }),
+    403, 'STEP_UP_REQUIRED',
+  );
+  await expectDomainError(
+    () => registerInvoice(db, admin, { invoiceNumber: 'NOPE', poNumber: 'PO-2026-4101', invoiceDate: '2026-09-17', lines: line }, { stepUpAt }),
+    422, 'INVALID_INVOICE_NUMBER',
+  );
+  await expectDomainError(
+    () => registerInvoice(db, admin, { invoiceNumber: 'INV-2026-4101', poNumber: 'PO-2026-4101', invoiceDate: '2026-09-17', lines: line }, { stepUpAt }),
+    409, 'DUPLICATE_INVOICE',
+  );
+
+  // Invoices match against POs only — a PR is refused.
+  const pr = await createRequisition(db, admin, {
+    title: 'T4-16 kind-guard probe',
+    lineItems: [{ sku: CANON.sealSku, description: 'probe', quantity: 1, unitPriceCents: 100 }],
+  });
+  await expectDomainError(
+    () => registerInvoice(db, admin, { invoiceNumber: 'INV-2026-4198', poNumber: pr.number, invoiceDate: '2026-09-17', lines: line }, { stepUpAt }),
+    422, 'WRONG_DOCUMENT_KIND',
   );
 });
 

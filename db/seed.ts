@@ -12,7 +12,7 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from './client';
 import {
-  assets, facilities, findings, inspections, organizations, parts, purchaseOrders,
+  assets, facilities, findings, inspections, organizations, parts, poLineItems, purchaseOrders,
   sequences, serviceRequests, settingsKv, users, vendors, workOrderEvents, workOrders, woTasks,
 } from './schema';
 import { CANON } from '../lib/canon';
@@ -194,5 +194,10 @@ export async function seedAll(db: Db): Promise<void> {
     { organizationId: ORG, number: 'PO-2026-0315', kind: 'PO', title: 'VAV actuator spares (AHU-02)', vendorSlug: 'siemens-building-technologies', totalCents: 640000, status: 'PENDING_APPROVAL' },
     { organizationId: ORG, number: 'PR-2026-0309', kind: 'PR', title: 'Lube restock request', vendorSlug: CANON.vendorSlug, totalCents: 195000, status: 'APPROVED' },
     { organizationId: ORG, number: 'PR-2026-0295', kind: 'PR', title: 'Non-OEM seal substitute (over VP cap)', vendorSlug: null, totalCents: 85000, status: 'REJECTED' },
+  ]).onConflictDoNothing();
+
+  // T4-16: canon PO lines (2 x seal @ $1,450 = $2,900 header total).
+  await db.insert(poLineItems).values([
+    { organizationId: ORG, id: `${CANON.purchaseOrder}-L1`, documentNumber: CANON.purchaseOrder, sku: CANON.sealSku, description: 'Silicon Carbide Shaft Seal 2.5" Kit', quantity: 2, unitPriceCents: 145000 },
   ]).onConflictDoNothing();
 }

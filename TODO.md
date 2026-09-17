@@ -295,7 +295,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [x] Service `procurement-service.ts`: list/get purchases, create PR dengan line items, GRN dock receipt idempoten terhubung ke `inventory-service` (penambahan stok on-hand)
 - [x] API: GET/POST `/api/purchasing` + POST `/api/purchasing/grn` (honors `Idempotency-Key`)
 - [x] UI `/purchasing` + universal detail live dari DB & metadata catalog; 3-way match reconciliation dossier di `/purchasing/invoices/[id]`
-- [x] Test: approval chain + cap, GRN duplikat ditolak, 3-way match mismatch → flag, stok bertambah saat receive — SEBAGIAN 2026-09-17 (SDD T3-4): approve/terminal-409/GRN-dup-409/stok-loop CLOSE ada di test GAP-9; 3-way match engine masih dossier demo statis (label jujur + placeholder audit ID dihapus; engine nyata → backlog T4-16)
+- [x] Test: approval chain + cap, GRN duplikat ditolak, 3-way match mismatch → flag, stok bertambah saat receive — SEBAGIAN 2026-09-17 (SDD T3-4): approve/terminal-409/GRN-dup-409/stok-loop CLOSE ada di test GAP-9; 3-way match engine masih dossier demo statis (label jujur + placeholder audit ID dihapus; engine nyata SELESAI — SDD T4-16 PASS 2026-09-17: migrasi 0009 invoices+lines+GRN qty, registerInvoice idempoten + auto-match, dossier RSC live, 182/182)
 
 **Slice 8 — Preventive Maintenance (PM) nyata**
 - [x] Skema: `pm_rules` terdefinisi di schema database

@@ -1,169 +1,43 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, AlertTriangle, FileText, ShieldCheck, Scale, ExternalLink } from 'lucide-react';
+import { notFound, redirect } from 'next/navigation';
+import { ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Scale, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CANON } from '@/lib/canon';
+import { getDb } from '@/db/client';
+import { getSessionContext } from '@/lib/auth/context';
+import { DomainError } from '@/lib/domain/errors';
+import { getInvoiceDossier } from '@/lib/services/procurement-service';
 
-export function generateStaticParams() {
-  return [
-    { id: 'INV-2026-1188' },
-    { id: 'INV-2026-0302' },
-    { id: 'INV-2026-0285' },
-  ];
-}
+const usd = (cents: number): string =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 
-interface InvoiceRecord {
-  id: string;
-  poNumber: string;
-  grnNumber: string;
-  vendor: string;
-  vendorSlug: string;
-  invoiceDate: string;
-  dueDate: string;
-  totalAmount: string;
-  currency: string;
-  status: 'RECONCILED' | 'EXCEPTION_DISPUTED' | 'PENDING_UPLOAD';
-  matchConfidence: string;
-  lineItems: {
-    sku: string;
-    desc: string;
-    poQty: number;
-    grnQty: number;
-    invQty: number;
-    poPrice: string;
-    invPrice: string;
-    variance: string;
-    status: 'MATCHED' | 'MISMATCH';
-  }[];
-  paymentTerms: string;
-  auditTrailId: string;
-}
-
-const INVOICES: Record<string, InvoiceRecord> = {
-  'INV-2026-1188': {
-    id: 'INV-2026-1188',
-    poNumber: CANON.purchaseOrder,
-    grnNumber: 'GRN-9941',
-    vendor: 'Trane Supply Co',
-    vendorSlug: CANON.vendorSlug,
-    invoiceDate: '2026-05-24',
-    dueDate: '2026-06-23 (Net 30)',
-    totalAmount: '$2,900.00',
-    currency: 'USD',
-    status: 'RECONCILED',
-    matchConfidence: '100.0% (Zero Tolerance)',
-    lineItems: [
-      {
-        sku: CANON.sealSku,
-        desc: 'Silicon Carbide Shaft Seal 2.5" Kit',
-        poQty: 2,
-        grnQty: 2,
-        invQty: 2,
-        poPrice: '$1,450.00',
-        invPrice: '$1,450.00',
-        variance: '$0.00 (0.0%)',
-        status: 'MATCHED',
-      },
-    ],
-    paymentTerms: 'ACH Direct / Corporate Wire · Pre-approved Capex Q1',
-    auditTrailId: 'EVT-MATCH-994101',
-  },
-  'INV-2026-0302': {
-    id: 'INV-2026-0302',
-    poNumber: 'PO-2026-0302',
-    grnNumber: 'GRN-9938',
-    vendor: 'Mobil Aero Fluids',
-    vendorSlug: 'mobil-aero-fluids',
-    invoiceDate: '2026-05-22',
-    dueDate: '2026-06-21 (Net 30)',
-    totalAmount: '$1,950.00',
-    currency: 'USD',
-    status: 'RECONCILED',
-    matchConfidence: '100.0%',
-    lineItems: [
-      {
-        sku: 'PART-LUB-09',
-        desc: 'POE Synthetic Lubricant ISO 68 5-Gal Pail',
-        poQty: 10,
-        grnQty: 10,
-        invQty: 10,
-        poPrice: '$195.00',
-        invPrice: '$195.00',
-        variance: '$0.00 (0.0%)',
-        status: 'MATCHED',
-      },
-    ],
-    paymentTerms: 'Corporate Purchasing Card · Discretionary Maintenance',
-    auditTrailId: 'EVT-MATCH-993812',
-  },
-  'INV-2026-0285': {
-    id: 'INV-2026-0285',
-    poNumber: 'PO-2026-0285',
-    grnNumber: 'GRN-9915',
-    vendor: 'ABB Grid Power Services',
-    vendorSlug: 'abb-grid-power-automation',
-    invoiceDate: '2026-05-20',
-    dueDate: '2026-06-19 (Net 30)',
-    totalAmount: '$14,200.00',
-    currency: 'USD',
-    status: 'EXCEPTION_DISPUTED',
-    matchConfidence: 'Partial Match (Quantity Variance)',
-    lineItems: [
-      {
-        sku: 'PART-BSH-2000',
-        desc: '2000kVA Bushing Kits · ELEC-TR-880',
-        poQty: 4,
-        grnQty: 2,
-        invQty: 4,
-        poPrice: '$7,100.00',
-        invPrice: '$7,100.00',
-        variance: '2 pcs pending receipt ($14,200.00 hold)',
-        status: 'MISMATCH',
-      },
-    ],
-    paymentTerms: 'Progress Milestone Transfer · Balance on Final Dock Acceptance',
-    auditTrailId: 'EVT-DISP-028599',
-  },
-};
-
-function resolveInvoice(id: string): InvoiceRecord {
-  if (INVOICES[id]) return INVOICES[id];
-  return {
-    id,
-    poNumber: 'PO-2026-0298',
-    grnNumber: 'GRN-9941',
-    vendor: 'General Industrial Supply',
-    vendorSlug: 'grainger-industrial-supply',
-    invoiceDate: '2026-05-24',
-    dueDate: '2026-06-23 (Net 30)',
-    totalAmount: '$1,250.00',
-    currency: 'USD',
-    status: 'RECONCILED',
-    matchConfidence: '100.0%',
-    lineItems: [
-      {
-        sku: 'PART-GEN-101',
-        desc: 'General Maintenance Components Kit',
-        poQty: 1,
-        grnQty: 1,
-        invQty: 1,
-        poPrice: '$1,250.00',
-        invPrice: '$1,250.00',
-        variance: '$0.00',
-        status: 'MATCHED',
-      },
-    ],
-    paymentTerms: 'Standard Corporate Term',
-    auditTrailId: 'EVT-MATCH-GEN01',
-  };
-}
-
+/**
+ * Invoice Reconciliation Dossier — LIVE (T4-16).
+ * Status/payment-hold is the persisted 3-way-match engine verdict; line rows
+ * are recomputed from current GRN rows on every render. Unknown numbers 404 —
+ * the old static INVOICES fallback was fabrication and is gone.
+ */
 export default async function InvoiceMatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   if (!/^INV-\d{4}-\d{4}$/.test(id)) notFound();
 
-  const inv = resolveInvoice(id);
+  const ctx = await getSessionContext();
+  if (!ctx) redirect('/login');
+  let inv;
+  try {
+    inv = await getInvoiceDossier(getDb(), ctx, id);
+  } catch (e) {
+    if (e instanceof DomainError && e.status === 404) notFound();
+    throw e;
+  }
+
+  const displayStatus = inv.status === 'MATCHED' ? 'RECONCILED' : inv.status === 'DISPUTED' ? 'EXCEPTION_DISPUTED' : 'MATCH_PENDING';
+  const allMatched = inv.lines.every((l) => l.matched);
+  const matchConfidence = allMatched ? '100.0% (Zero Tolerance)' : 'Partial Match (Quantity Variance)';
+  const poTotal = inv.lines.reduce((s, l) => s + l.poQty * l.unitPriceCents, 0);
+  const invTotal = inv.lines.reduce((s, l) => s + l.invQty * l.invUnitPriceCents, 0);
+  const firstMismatch = inv.lines.find((l) => !l.matched);
+  const matchAction = inv.status === 'MATCHED' ? 'MATCH_RECONCILED' : 'MATCH_DISPUTED';
 
   return (
     <>
@@ -172,7 +46,7 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
         <span className="text-muted">/</span>
         <span className="text-muted">Invoices</span>
         <span className="text-muted">/</span>
-        <span className="font-semibold apex-id">{inv.id}</span>
+        <span className="font-semibold apex-id">{inv.number}</span>
       </nav>
 
       {/* Hero Header */}
@@ -180,14 +54,14 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <Badge variant={inv.status === 'RECONCILED' ? 'pass' : 'fail'}>{inv.status}</Badge>
-              <Badge variant="info">3-WAY MATCH — DEMO DOSSIER</Badge>
-              <span className="text-xs font-mono text-muted">{inv.matchConfidence} (reference)</span>
+              <Badge variant={displayStatus === 'RECONCILED' ? 'pass' : displayStatus === 'EXCEPTION_DISPUTED' ? 'fail' : 'warn'}>{displayStatus}</Badge>
+              <Badge variant="info">3-WAY MATCH — LIVE DOSSIER</Badge>
+              <span className="text-xs font-mono text-muted">{matchConfidence} (engine)</span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight mt-1">Invoice Reconciliation Dossier {inv.id}</h1>
+            <h1 className="text-2xl font-bold tracking-tight mt-1">Invoice Reconciliation Dossier {inv.number}</h1>
             <p className="text-sm text-muted">
               Three-way matching between Purchase Order commitment, physical dock receipt (GRN), and electronic vendor invoice.
-              <span className="block text-[11px] text-muted mt-0.5">Demo reference data — this dossier is not computed from live GRN rows yet (live engine: backlog T4-16). Audit IDs shown here are placeholders, not ledger rows.</span>
+              <span className="block text-[11px] text-muted mt-0.5">Computed live from {inv.grnCount} GRN row{inv.grnCount === 1 ? '' : 's'} · engine verdict {inv.status}{inv.paymentHold ? ` · payment hold ${inv.holdFormatted}` : ''}{inv.auditTrailId != null ? ` · evidence: audit event #${inv.auditTrailId} (${matchAction})` : ''}.</span>
             </p>
           </div>
 
@@ -212,31 +86,31 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
               </Link>
               <Badge variant="pass">AUTHORIZED</Badge>
             </div>
-            <p className="text-muted mt-1">Vendor: <strong className="text-ink">{inv.vendor}</strong></p>
-            <p className="text-muted">PO Total: <strong className="text-ink apex-id">{inv.totalAmount}</strong></p>
+            <p className="text-muted mt-1">Vendor: <strong className="text-ink">{inv.vendorSlug || '—'}</strong></p>
+            <p className="text-muted">PO Total: <strong className="text-ink apex-id">{usd(poTotal)}</strong></p>
           </div>
 
           {/* Pillar 2: GRN */}
           <div className="bg-surface p-4 rounded-lg border border-border-subtle flex flex-col gap-1 text-xs">
             <span className="apex-label-caps text-muted">2. Physical Dock Receipt</span>
             <div className="flex justify-between items-center mt-1">
-              <span className="apex-id font-bold text-sm">{inv.grnNumber}</span>
-              <Badge variant={inv.status === 'RECONCILED' ? 'pass' : 'warn'}>
-                {inv.status === 'RECONCILED' ? '100% RECEIVED' : 'PARTIAL DOCK'}
+              <span className="apex-id font-bold text-sm">{inv.grnCount} GRN row{inv.grnCount === 1 ? '' : 's'}</span>
+              <Badge variant={allMatched ? 'pass' : 'warn'}>
+                {allMatched ? '100% RECEIVED' : 'PARTIAL DOCK'}
               </Badge>
             </div>
-            <p className="text-muted mt-1">Dock Location: <strong className="text-ink">Dock Bay 02</strong></p>
-            <p className="text-muted">Barcode Scan: <strong className="text-ink">Idempotent Verified</strong></p>
+            <p className="text-muted mt-1">Payment hold: <strong className="text-ink">{inv.paymentHold ? `ACTIVE · ${inv.holdFormatted}` : 'none'}</strong></p>
+            <p className="text-muted">Receipts: <strong className="text-ink">Idempotent Verified</strong></p>
           </div>
 
           {/* Pillar 3: Invoice */}
           <div className="bg-surface p-4 rounded-lg border border-border-subtle flex flex-col gap-1 text-xs">
             <span className="apex-label-caps text-muted">3. Vendor Invoice</span>
             <div className="flex justify-between items-center mt-1">
-              <span className="apex-id font-bold text-sm">{inv.id}</span>
-              <span className="apex-id font-bold text-sm text-pass">{inv.totalAmount}</span>
+              <span className="apex-id font-bold text-sm">{inv.number}</span>
+              <span className="apex-id font-bold text-sm text-pass">{usd(invTotal)}</span>
             </div>
-            <p className="text-muted mt-1">Date: <span className="apex-id">{inv.invoiceDate}</span> · Due: <span className="apex-id">{inv.dueDate}</span></p>
+            <p className="text-muted mt-1">Date: <span className="apex-id">{inv.invoiceDate}</span> · Due: <span className="apex-id">{inv.dueDate ? `${inv.dueDate} (${inv.paymentTerms})` : '—'}</span></p>
             <p className="text-muted">Payment: <strong className="text-ink">{inv.paymentTerms}</strong></p>
           </div>
         </div>
@@ -266,29 +140,29 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle">
-              {inv.lineItems.map((item, idx) => (
+              {inv.lines.map((item, idx) => (
                 <tr key={idx} className="hover:bg-surface-subtle">
                   <td className="p-3">
                     <Link href={`/inventory/${item.sku}`} className="apex-id font-bold text-cobalt hover:underline block">
                       {item.sku}
                     </Link>
-                    <span className="text-[11px] text-muted">{item.desc}</span>
+                    <span className="text-[11px] text-muted">{item.description}</span>
                   </td>
                   <td className="p-3 font-mono">{item.poQty}</td>
                   <td className="p-3 font-mono font-bold text-pass">{item.grnQty}</td>
                   <td className="p-3 font-mono font-bold">{item.invQty}</td>
-                  <td className="p-3 font-mono">{item.poPrice}</td>
-                  <td className="p-3 font-mono">{item.invPrice}</td>
+                  <td className="p-3 font-mono">{usd(item.unitPriceCents)}</td>
+                  <td className="p-3 font-mono">{usd(item.invUnitPriceCents)}</td>
                   <td className="p-3 font-mono font-semibold">
-                    {item.status === 'MATCHED' ? (
+                    {item.matched ? (
                       <span className="text-pass">{item.variance}</span>
                     ) : (
                       <span className="text-fail font-bold">{item.variance}</span>
                     )}
                   </td>
                   <td className="p-3 text-right">
-                    <Badge variant={item.status === 'MATCHED' ? 'pass' : 'fail'}>
-                      {item.status}
+                    <Badge variant={item.matched ? 'pass' : 'fail'}>
+                      {item.matched ? 'MATCHED' : 'MISMATCH'}
                     </Badge>
                   </td>
                 </tr>
@@ -298,23 +172,35 @@ export default async function InvoiceMatchPage({ params }: { params: Promise<{ i
         </div>
 
         {/* Dispute / Exception Banner */}
-        {inv.status === 'EXCEPTION_DISPUTED' ? (
+        {displayStatus === 'EXCEPTION_DISPUTED' && firstMismatch ? (
           <div className="bg-fail-bg border border-fail rounded-lg p-4 text-fail-ink flex items-start gap-3 text-xs">
             <AlertTriangle size={20} className="shrink-0 text-fail" />
             <div>
               <p className="font-bold">Quantity Discrepancy Exception Logged</p>
               <p className="mt-0.5">
-                Vendor invoiced for 4 units, but Dock Bay 02 verified delivery of only 2 units. Automated payment hold applied. Vendor liaison (Elena Voronova) notified.
+                Vendor invoiced {firstMismatch.invQty} × {firstMismatch.sku}, but dock verified {firstMismatch.grnQty} received against PO {firstMismatch.poQty}. Automated payment hold {inv.holdFormatted} applied.
+                {inv.auditTrailId != null ? ` Match evidence: audit event #${inv.auditTrailId} (MATCH_DISPUTED) — append-only ledger.` : ''}
               </p>
             </div>
           </div>
-        ) : (
+        ) : displayStatus === 'RECONCILED' ? (
           <div className="bg-pass-bg border border-pass rounded-lg p-4 text-pass-ink flex items-center gap-3 text-xs">
             <CheckCircle2 size={20} className="shrink-0 text-pass" />
             <div>
               <p className="font-bold">Automated 3-Way Match Reconciled Successfully</p>
               <p className="mt-0.5">
                 Quantities, price cards, and tax allocations match within 0.00% variance. Payment voucher scheduled for automated batch release.
+                {inv.auditTrailId != null ? ` Evidence: audit event #${inv.auditTrailId} (MATCH_RECONCILED).` : ''}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-warn-bg border border-warn rounded-lg p-4 text-warn-ink flex items-center gap-3 text-xs">
+            <Clock size={20} className="shrink-0 text-warn" />
+            <div>
+              <p className="font-bold">Match Verdict Pending</p>
+              <p className="mt-0.5">
+                The engine has not issued a verdict for this invoice yet — payment stays on hold until reconciliation runs.
               </p>
             </div>
           </div>
