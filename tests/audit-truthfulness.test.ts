@@ -407,3 +407,48 @@ test('SDD T1-2 F-COPY: WS-PUSH / Live Sync Active / Telemetry Bus stay absent in
     'sidenav telemetry widget must stay honestly labeled as demo/not configured',
   );
 });
+
+// ---------------------------------------------------------------------------
+// SDD Tier 2 (GAP-17 KEEP batch): telemetry/sync fiction stays absent.
+// T2-5 fixed: FacilityHub "zone tree synced" -> "demo (staged, not synced)";
+// FieldInspectionsHub "100% Synced" -> "Sync: demo KPI (not connected)";
+// "Modbus TCP/IP: Active" + "SCADA STREAMING" -> explicit demo/not-connected.
+// ---------------------------------------------------------------------------
+test('SDD T2-5 telemetry claims stay honest (no fake synced/streaming)', () => {
+  const facilityHub = readFileSync(
+    new URL('../components/facilities/FacilityHub.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!facilityHub.includes('zone tree synced'), 'FacilityHub still claims zone tree synced');
+  assert.ok(
+    facilityHub.includes('zone tree demo (staged, not synced)'),
+    'FacilityHub zone tree must stay labeled staged/not synced',
+  );
+
+  const inspections = readFileSync(
+    new URL('../components/field/FieldInspectionsHub.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!inspections.includes('100% Synced'), 'FieldInspectionsHub still fabricates 100% Synced');
+  assert.ok(!inspections.includes('SCADA STREAMING'), 'FieldInspectionsHub still fabricates SCADA STREAMING');
+  assert.ok(!inspections.includes('Modbus TCP/IP: Active'), 'FieldInspectionsHub still claims live Modbus');
+  assert.ok(
+    inspections.includes('demo — not connected') && inspections.includes('DEMO — NOT STREAMING'),
+    'IoT link must keep explicit demo/not-connected labels',
+  );
+
+  // T2-1: OrgHub SSO dialog must not assert a live IdP/SCIM link
+  const orgHub = readFileSync(
+    new URL('../components/org/OrgHub.tsx', import.meta.url).pathname,
+    'utf8',
+  );
+  assert.ok(!/CONNECTED<\/Badge>/.test(orgHub), 'OrgHub SSO dialog still asserts CONNECTED');
+  assert.ok(
+    orgHub.includes('No IdP is connected in this environment'),
+    'OrgHub SSO dialog must disclose that no IdP is connected',
+  );
+  assert.ok(
+    !orgHub.includes('14 Sep 2026 14:05 WIB'),
+    'OrgHub deploy still stamps a hardcoded fictional timestamp',
+  );
+});

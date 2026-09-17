@@ -435,3 +435,15 @@ NEXT: Tier 1 (11 unit) dimulai T1-1.
 - **T1-7 E.7 secrets hygiene — PASS**: `git log --all -- .env` kosong; tidak ada file `.env`; seed secrets via env (`SEED_USER_PASSWORD`/`SEED_TOTP_SECRET`, devHint mati otomatis di production); `.env.example` lengkap; dokumentasi deployment baru di README §Secrets & Deployment.
 - **T1-6 E.4 — DEFERRED**: selesai setelah 1 batch Tier 3+ membuktikan kepatuhan prosedur banner/README (per spec tier-1).
 - **T1-8..T1-11 — BLOCKED-ON-USER**: 4 keputusan stack Fase 1 diajukan ke user via pertanyaan terstruktur (2026-09-17); status eksplisit, tidak menggantung diam-diam.
+
+## SDD Tier 2 — GAP-17 KEEP Batch (6/6 PASS) (2026-09-17)
+
+- **T2-1 F1 SSO — PASS (+label fix)**: `/login` SSO disabled jujur; temuan: dialog OrgHub "SSO & SCIM" memasang badge fiksi (Okta CONNECTED, SCIM Instant <50ms) tanpa backend → diluruskan: "PLANNED (no IdP connected)" + disclosure "No IdP is connected in this environment (Phase 1b)"; klaim MFA dipertahankan karena benar (TOTP enforced app-wide + passkeys FIDO2 nyata: routes register/login + PasskeySettings).
+- **T2-2 F4 clone-policy — PASS (+stamp fix)**: clone draft lokal jujur; deploy toast kini "simulated push, local only — not persisted" + stamp waktu lokal nyata (menggantikan timestamp hardcode fiksi '14 Sep 2026 14:05 WIB'). Backend rules deploy tetap di Tier 6 batch 3.
+- **T2-3 F7 print — PASS**: /work-orders/[id]/print, /purchasing/[id]/print, /badges/RFID-*/print, /permits/PTW-*/print semuanya 200 dengan PrintButton → window.print() nyata; catatan jujur: CDP click-through tak tersedia di sandbox (bukti level kode + HTTP 200).
+- **T2-4 F9 ledger-fallback — PASS**: fallback MOV_SEED hanya saat feed server tak terjangkau (gate movLive), badge "Demo offline — server unreachable", export berlabel live/demo; live path terbukti runtime di T0-5.
+- **T2-5 F22 telemetry — PASS (+3 label fix)**: "zone tree synced" → "zone tree demo (staged, not synced)"; KPI "100% Synced" → "Sync: demo KPI (not connected)"; "Modbus TCP/IP: Active · … SCADA STREAMING" → "Modbus TCP/IP (demo — not connected)" + badge "DEMO — NOT STREAMING" (pola GAP-11). Sisa kemunculan kata synced = state outbox nyata (dedup server 409 = SYNCED) — jujur.
+- **T2-6 F28 import-defer — PASS**: nol entry point import di UI (grep nol), keputusan DEFER terdokumentasi; tak ada tombol mati.
+- Guard-test baru `SDD T2-5 telemetry claims stay honest` (mencakup assertion T2-1/T2-2). npm test 169/169 · tsc 0 error.
+- Buku: TODO GAP-17 ✓; verdict tabel di docs/sdd/tier-2-keep-batch.md; 00-master-spec Tier 2 ✅.
+NEXT: Tier 3 (test debts, 7 unit).
