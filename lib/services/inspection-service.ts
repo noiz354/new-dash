@@ -372,7 +372,11 @@ export async function createFinding(
     return db.transaction(exec);
   }
 
-  const hash = requestHash({ ...input, requestId: opts.requestId ?? null });
+  // T4-5: hash idempotensi HANYA dari domain input — requestId unik per HTTP
+  // request (withRoute) tidak boleh ikut: retry/replay konkuren key-sama +
+  // body-sama wajib replay, bukan 422 IDEMPOTENCY_KEY_REUSED. Pola ini sama
+  // dengan semua service lain (wo/sr/procurement/inventory/dst: requestHash(input)).
+  const hash = requestHash(input);
   return db.transaction(async (tx) => {
     const res = await withIdempotency(tx, ctx.orgId, opts.idempotencyKey, 'finding.create', hash, async () => {
       const body = await exec(tx);

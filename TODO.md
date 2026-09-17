@@ -124,15 +124,12 @@
 - [x] C14: Elena Moreno — persona terpisah [ASUMSI-OTOMATIS]
 - [x] Amandemen C3 (tetap $1,450; ledger H1 $1,765) + C4 (tetap Trane) + klausa CANON §5 final
 
-## Fase 1 — Keputusan Stack ⬜ (butuh jawaban user)
+## Fase 1 — Keputusan Stack ✅ (diputuskan user 2026-09-17, T1-8..11 PASS)
 
-- [ ] Pilih stack produksi. Opsi default yang diusulkan:
-  - **A (disarankan): Next.js 14 + Tailwind + shadcn/ui** — untuk app multi-layar, routing, state.
-  - B: Vite + React + Tailwind — lebih ringan, tanpa SSR.
-  - C: Pertahankan HTML statis + build Tailwind CLI — tercepat, tapi tanpa komponen.
-- [ ] Tentukan Design System yang dipakai per layar (A desktop vs B field — lihat AGENTS.md §5)
-- [ ] Tentukan folder kode produksi (`app/` atau `web/`), inisialisasi proyek + Tailwind config dari token DESIGN.md
-- [ ] Setup font (Inter, JetBrains Mono, Space Grotesk) + ikon (Material Symbols / Lucide) secara lokal, tanpa CDN
+- [x] Pilih stack produksi → **A diformalkan: Next.js + Tailwind (+ shadcn-style)** — de facto sudah berjalan, tanpa perubahan stack.
+- [x] Design System per layar → **split A/B**: A untuk layar desktop, B untuk layar field/mobile (lihat AGENTS.md §5).
+- [x] Folder kode produksi → **`app/`** (yang sudah ada) + token `DESIGN.md` sebagai sumber kebenaran styling.
+- [x] Font & ikon → **interim OK**: system-stack berlabel jujur sampai file woff2 tersedia (T5-5 tetap BLOCKED).
 
 ## Fase Multi-Page Readiness ✅ Selesai — audit dokumen dulu (tanpa generate)
 
@@ -264,7 +261,7 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 > Aturan: tiap item aktif diverifikasi runtime via Chrome CDP :9227 (screenshot + console + network + runtime state) dengan verdict PASS/PARTIAL/FAIL/BLOCKED. TASK-27+ terkunci sampai runtime verification Wave 3–4 selesai.
 > Status implementasi file-level (cek 2026-09-16 — BUKAN verdict runtime): TASK-01..03, 05..21, 23..26 ada file + wiring; TASK-04, 22, 27, 28, 29, 30, FONT belum.
 
-1. [x] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah — CENTANG 2026-09-17 (SDD T0-4 PASS): 7 laporan `docs/runtime-verification-task{19,20,21,23,24,25,26}.md` ada; verdict cocok matrix (19 PARTIAL / 20,21,23,24,26 PASS / 25 FAIL); TASK-25 punya follow-up backlog (§ Temuan TASK-25 + Tier 4 T4-5)
+1. [x] Runtime verification Wave 3–4 (TASK-19/20/21/23/24/25/26 + final matrix) — lihat § Runtime Verification di bawah — CENTANG 2026-09-17 (SDD T0-4 PASS): 7 laporan `docs/runtime-verification-task{19,20,21,23,24,25,26}.md` ada; verdict cocok matrix (19 PARTIAL / 20,21,23,24,26 PASS / 25 FAIL); TASK-25 punya follow-up backlog (§ Temuan TASK-25 + Tier 4 T4-5 — T4-5 PASS 2026-09-17, forensik runtime: guard redirect offline + fix hash idempotensi requestId)
 2. [x] Test debts: Slice 5 (seed checklist canon + UI checklist DB) → tests Slice 6/7/8/10 → A.14 Playwright E2E (harness untuk semua uji browser/CDP) — SEBAGIAN-BESAR SELESAI 2026-09-17 (SDD Tier 3: T3-1..T3-3, T3-5..T3-7 done; T3-4 partial → 3-way match engine = T4-16; e2e execution blocked-by-env)
 3. [ ] TASK-27 web push (opt-in P1) → TASK-28 passkeys (role-terbatas) → TASK-29 worker CSV (gated bukti RUM longtask) → TASK-30 save-as picker → TASK-FONT (butuh aset woff2) → TASK-22 CSP enforce (butuh ≥1 siklus report bersih)
 4. [ ] A.16 aktivasi CI (dependensi maintainer) · D.4 load test (dilarang klaim throughput sebelum terukur) · Debt E.1–E.8 oportunistik per slice

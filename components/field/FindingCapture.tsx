@@ -209,7 +209,9 @@ export function FindingCapture() {
           idempotencyKey: crypto.randomUUID(),
         });
         push(true, 'Offline — Finding Queued', 'Stored on-device with its idempotency key. Replay from the Sync tab when the link returns.');
-        setTimeout(() => router.push('/field/sync'), 1200);
+        // T4-5: jangan redirect saat masih offline — navigasi pasti gagal
+        // (chrome-error) dan menutupi toast. User tetap di form + badge Sync.
+        if (navigator.onLine) setTimeout(() => router.push('/field/sync'), 1200);
       } else {
         push(false, 'Capture Rejected', err instanceof ApiError ? `${err.message} (${err.code})` : 'Unexpected failure — finding NOT recorded. Retry.');
       }

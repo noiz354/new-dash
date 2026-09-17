@@ -425,7 +425,7 @@ Pre-flight hijau: `npx tsc --noEmit` exit 0 · dev :3157 UP (`/api/health` OK) �
 - Buku di-update: TODO.md (5 baris + Slice 4), tier-0-verify.md (tabel verdict), 00-master-spec.md (Tier 0 ✅), tier-4-medium.md (+T4-15).
 NEXT: Tier 1 (11 unit) dimulai T1-1.
 
-## SDD Tier 1 — Kecil & Jelas (7/11 unit selesai; T1-6 menunggu batch Tier 3+; T1-8..11 BLOCKED-ON-USER) (2026-09-17)
+## SDD Tier 1 — Kecil & Jelas (10/11 PASS; T1-6 menunggu batch Tier 3+) (2026-09-17)
 
 - **T1-1 F-A11Y — PASS**: 6 form-field NotificationsHub kini punya `id`+`name` (`ntf-q`, `ntf-sev`, `bk-tech`, `po-pin`, `rej-r`, `re-tech`; sebelumnya 2 tanpa keduanya + 4 tanpa `name`). tsc + test hijau.
 - **T1-2 F-COPY — PASS**: grep `WS-PUSH|Live Sync Active|Telemetry Bus` di app/components/lib → nol (widget sidenav kini "Telemetry (demo)" + "Broker: not configured" + STANDBY — statusnya sudah jujur, labelnya diluruskan); guard-test absence baru (SDD T1-2) di `tests/audit-truthfulness.test.ts`. `/notifications` SSE intact (TASK-26 tetap PASS). npm test 167/167.
@@ -434,7 +434,7 @@ NEXT: Tier 1 (11 unit) dimulai T1-1.
 - **T1-5 E.3 next-env churn — PASS**: `next-env.d.ts` terbukti match HEAD saat dev berjalan (status bersih); hook `ci/git-hooks/pre-commit` (revert churn otomatis) + `git config core.hooksPath ci/git-hooks` + dokumentasi di AGENTS.md §6.11 (aktifkan per clone).
 - **T1-7 E.7 secrets hygiene — PASS**: `git log --all -- .env` kosong; tidak ada file `.env`; seed secrets via env (`SEED_USER_PASSWORD`/`SEED_TOTP_SECRET`, devHint mati otomatis di production); `.env.example` lengkap; dokumentasi deployment baru di README §Secrets & Deployment.
 - **T1-6 E.4 — DEFERRED**: selesai setelah 1 batch Tier 3+ membuktikan kepatuhan prosedur banner/README (per spec tier-1).
-- **T1-8..T1-11 — BLOCKED-ON-USER**: 4 keputusan stack Fase 1 diajukan ke user via pertanyaan terstruktur (2026-09-17); status eksplisit, tidak menggantung diam-diam.
+- **T1-8..T1-11 — PASS (keputusan user 2026-09-17)**: T1-8 default A diformalkan (Next.js + Tailwind, tanpa perubahan); T1-9 split A desktop / B field; T1-10 folder produksi `app/` + token DESIGN.md; T1-11 font interim system-stack berlabel jujur sampai woff2 ada (T5-5 tetap BLOCKED).
 
 ## SDD Tier 2 — GAP-17 KEEP Batch (6/6 PASS) (2026-09-17)
 
@@ -458,4 +458,12 @@ NEXT: Tier 3 (test debts, 7 unit).
 - **T3-6 test Slice 10 — PASS**: test baru audit paging: window limit/offset disjoint + stabil (identik antar-request), filter entityType + from (future=0, recent>0), decoy tenant blind (AuthContext manual — menghindari login rate limiter yang sendirinya sudah diuji).
 - **T3-7 A.14 Playwright E2E — PARTIAL (harness READY, eksekusi BLOCKED-BY-ENV)**: `e2e/playwright.config.ts` (webServer otomatis boot dev+health, workers=1 serial terhadap DB seed, retries=0 untuk deteksi flake 2×-hijau) + `e2e/critical-journey.spec.ts` (login UI devHint → SR create → convert → WO hold → reload assert ON_HOLD → double-convert 409) + `e2e/smoke.spec.ts` (5 layar kritis) + script `npm run test:e2e` + job CI `e2e` siap-pakai di `ci/ci.yml` (aktivasi ikut A.16). Eksekusi lokal gagal pada browser launch: CDN playwright.dev/azureedge/npmmirror tak terjangkau sandbox (ECONNRESET) + tidak ada chromium sistem — blocker identik dengan T5-5 font.
 - npm test **173/173** (+6 test baru) · tsc 0 error. Buku: TODO (7 baris + §0 item 2), tier-3 verdicts, master-spec Tier 3 ✅, +T4-16.
-NEXT: Tier 4 (fitur medium) dimulai T4-1.
+NEXT: Tier 4 Batch C+D (scope user-approved 2026-09-17) — T4-5 ✅, T4-14 ✅, lanjut T4-15.
+
+## SDD Tier 4 — Fitur Medium, Batch C+D (2/14 PASS; T4-15/16 NEXT) (2026-09-17, sesi new-dash, branch `arena/tier4-cd-new-dash`)
+
+- **T4-5 server persist background sync — PASS**: TASK-25/GAP-1 (persist POST/GET) sudah fixed; forensik runtime probe offline→online menemukan 2 bug nyata — (a) redirect `router.push` pasca-submit saat offline → chrome-error (fix: guard `if (!navigator.onLine) return` di `FindingCapture.tsx:212`); (b) `requestHash({...input, requestId})` (`inspection-service.ts:375`) mencampur requestId unik → 2 flush konkuren (FieldShell global + SyncStatus page-level) = 201 `FND-2026-0190`-class + 422 IDEMPOTENCY_KEY_REUSED → entry FAILED (fix: `requestHash(input)` + regression test `integration.test.ts:554` "same key + same body with different requestId replays instead of 422"). Bukti ulang probe #2: offline→QUEUED→online→SYNCED `FND-2026-0190`, server total 2→3, console nol, flush fired dari halaman form (bukan cuma tab Sync). Entry lama ber-key pra-fix tetap FAILED (jujur).
+- **T4-14 F-418 hydration /login + pemicu auto-flush — PASS**: repro dev /login — `has.webAuthn()` (`capability.ts:42`, false SSR → true klien) me-branch tombol Passkey (`LoginForm:163`), satu-satunya pola render-branch capability di `components/`; fix gate `mounted && has.webAuthn()`; 3x reload NOL console error, tombol Passkey tetap ada pasca-mount. Pemicu auto-flush 3 lapis terdokumentasi (FieldShell global semua `/field/*`, SyncStatus page-level + toast, SwRegister SW-message) + TERBUKTI via probe T4-5 #2.
+- npm test **174/174** (+1 regression test) · tsc 0 error. Buku: tier-4-medium verdicts, master-spec Tier 4 🔶, TODO §0, bagian ini.
+- Temuan minor (pre-existing, bukan scope): `/favicon.ico` 404.
+NEXT: T4-15 (`part_movements` + link part↔asset + tests), lalu T4-16 (3-way match engine nyata).

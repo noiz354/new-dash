@@ -45,6 +45,13 @@
 - T1-11: font lokal + ikon lokal tanpa CDN (terkait woff2 Tier 5 — bila woff2 BLOCKED, putuskan interim ber-CDN dengan label jujur).
 - AC per item: keputusan tertulis user + baris PROGRESS + centang TODO. Jika user menunda → status BLOCKED-ON-USER eksplisit, bukan dibiarkan menggantung.
 
+## Keputusan user (2026-09-17, via pertanyaan terstruktur — T1-8..11 UNBLOCKED)
+
+- **T1-8 → default A diformalkan**: Next.js + Tailwind (+ shadcn-style), de facto sudah berjalan — tanpa perubahan stack.
+- **T1-9 → split A/B**: sistem A untuk layar desktop, sistem B untuk layar field/mobile.
+- **T1-10 → folder `app/`** yang sudah ada + token `DESIGN.md` sebagai sumber kebenaran styling.
+- **T1-11 → interim OK**: system-stack berlabel jujur sampai file woff2 tersedia (T5-5 tetap BLOCKED sampai blocker hilang).
+
 ---
 
 ## Verdict (dieksekusi 2026-09-17)
@@ -58,4 +65,4 @@
 | T1-5 E.3 next-env churn | **PASS** | status bersih saat dev; hook ci/git-hooks/pre-commit + AGENTS.md §6.11 |
 | T1-6 E.4 | **DEFERRED** | selesai stlh 1 batch Tier 3+ bukti kepatuhan (per spec) |
 | T1-7 E.7 secrets | **PASS** | git log .env kosong; env-only di prod; README §Secrets & Deployment |
-| T1-8..11 | **BLOCKED-ON-USER** | 4 keputusan stack diajukan ke user 2026-09-17 |
+| T1-8..11 | **PASS** | 4 keputusan stack disetujui user 2026-09-17 (default A formal; split A/B; folder app/; font interim OK) |

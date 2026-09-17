@@ -551,6 +551,23 @@ test('findings: idempotent create replays without a second row', async () => {
   assert.equal(after.number, 'FND-2026-0191', 'sequence advanced only for real inserts');
 });
 
+test('findings (T4-5): same key + same body with a different requestId replays instead of 422', async () => {
+  // HTTP retries always carry a fresh per-request id (withRoute). Mixing it
+  // into the idempotency hash (bug pre-T4-5) turned every concurrent/sequential
+  // replay into 422 IDEMPOTENCY_KEY_REUSED and broke outbox auto-flush.
+  const key = 'finding-reqid-key-0001';
+  const before = await listFindings(db, admin);
+  const first = await createFinding(db, admin, {
+    title: 'RequestId must not poison idempotency', severity: 'MINOR', assetCode: 'AST-HVAC-003',
+  }, { idempotencyKey: key, requestId: 'req-aaaa-0001' });
+  const replay = await createFinding(db, admin, {
+    title: 'RequestId must not poison idempotency', severity: 'MINOR', assetCode: 'AST-HVAC-003',
+  }, { idempotencyKey: key, requestId: 'req-bbbb-0002' });
+  assert.equal(replay.number, first.number, 'replay returns the stored row despite different requestId');
+  const after = await listFindings(db, admin);
+  assert.equal(after.length, before.length + 1, 'no duplicate row from the replay');
+});
+
 // ---------------------------------------------------------------------------
 // Finding convert/dismiss (GAP #4: FindingDesk convert/dismiss + PM button
 // were setTimeout/setState fake success; now wired to real endpoints)

@@ -28,6 +28,7 @@
 - Fakta (laporan TASK-25 FAIL): outbox klien nyata, TAPI server fabrikasi — POST 201-tanpa-persist + GET hardcode; auto-flush unproven.
 - AC: POST persist ke tabel (outbox/sync-jobs) + GET baca DB + auto-flush reconnect TERBUKTI runtime (offline → online → flush → rows server); guard-test persist-vs-hardcode.
 - Verifikasi: CDP offline/online + tabel DB + reload tahan. Ini menutup verdict FAIL Wave 3–4.
+- Verdict **PASS** (2026-09-17, sesi new-dash, branch `arena/tier4-cd-new-dash`): forensik runtime menemukan 2 bug nyata — (a) redirect `router.push` saat offline → chrome-error (fix: guard `navigator.onLine`, `FindingCapture.tsx:212`); (b) `requestHash({...input, requestId})` di `inspection-service.ts:375` mencampur requestId unik-per-request ke hash → flush konkuren menghasilkan 201 + 422 IDEMPOTENCY_KEY_REUSED (fix: hash domain-input saja + regression test `integration.test.ts:554`). Bukti ulang probe #2: offline→QUEUED→online (pemicu global FieldShell, fired dari halaman form)→SYNCED `FND-2026-0190`, server total 2→3, console nol. Satu entry lama ber-key pra-fix tetap FAILED (jujur — key-nya terlanjur tersimpan dengan hash tercemar). Pemicu auto-flush (bagian T4-14) ikut terbukti via probe ini.
 
 ## T4-6 — D.4 load test jalur kritis
 
@@ -62,6 +63,7 @@
 
 - F-418: reproduksi clean-load → root-cause → fix → 3× reload bersih + tidak regresi di route lain.
 - F-FINDINGS sisa: pemicu auto-flush SyncStatus diselidiki + terdokumentasi (persist-nya sudah GAP-1; yang kurang kejelasan pemicu — terkait T4-5).
+- Verdict **PASS** (2026-09-17): F-418 — satu-satunya render-branch capability di `components/` (`has.webAuthn()` di `LoginForm:163`, false saat SSR) di-fix dengan gate `mounted` (useEffect); 3x reload /login NOL console error, tombol Passkey tetap ada pasca-mount. Pemicu auto-flush TERBUKTI (FieldShell global utk semua `/field/*` + SyncStatus page-level + SW message; probe T4-5 #2 membuktikan flush fired dari halaman form). Minor pre-existing: `/favicon.ico` 404.
 
 ## T4-15 — Slice 4 skema: tabel `part_movements` + link part↔asset + test coverage (PROMOSI dari T0-5, 2026-09-17)
 

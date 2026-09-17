@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
 import { Fingerprint } from 'lucide-react';
 import { has } from '@/lib/platform/capability';
@@ -41,6 +41,11 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
   const [code, setCode] = useState('');
   const [mfaError, setMfaError] = useState('');
   const [user, setUser] = useState<AuthContext | null>(null);
+  // F-418: capability-gated UI (WebAuthn) must not branch SSR vs first client
+  // render — has.webAuthn() is false on the server, true in capable browsers.
+  // Render the button only after mount so both trees match, then enable.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
   const passOk = pass.length >= 8;
@@ -160,7 +165,7 @@ export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
             {busy ? 'Verifying credentials…' : 'Continue'}
           </Button>
 
-          {has.webAuthn() && (
+          {mounted && has.webAuthn() && (
             <Button type="button" variant="secondary" disabled={busy || !emailOk} onClick={submitPasskey}>
               <Fingerprint size={16} /> Passkey
             </Button>
