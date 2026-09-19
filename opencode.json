@@ -7,10 +7,13 @@
         "npx",
         "-y",
         "figma-developer-mcp",
-        "--figma-api-key=PASTE_FIGMA_API_KEY_HERE",
+        "--figma-api-key={env:FIGMA_PAT}",
         "--stdio"
       ],
-      "enabled": false
+      "enabled": true,
+      "environment": {
+        "FRAMELINK_TELEMETRY": "off"
+      }
     }
   }
 }
