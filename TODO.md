@@ -462,5 +462,5 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 - [x] 24 missing-page specs → roadmap.md (§ P0–P3)
 - [x] P2 review 43 file specs/ (ref fabrikan dibersihkan; SUPERSEDED dipertahankan historis)
 - [x] SATU commit konsolidasi SDD (docs-only; tanpa push)
-- [ ] App-fix terpisah (bukan scope commit ini): kembalikan `convertedWoNumber` di `sr-service.ts:301` atau update journey test, lalu journey hijau → SR naik VERIFIED COMPLETE
+- [x] App-fix: `convertedWoNumber` dikembalikan di `sr-service.ts:301` (aditif, 1 baris; commit `4f9c3c8`) → journey 1/1 PASS + smoke 5/5 PASS (Chrome CDP 9227) → SR VERIFIED COMPLETE
 - [ ] E2E + `web-perf` 5 screen kritis (lanjutan bila diminta)

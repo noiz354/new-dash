@@ -21,13 +21,15 @@
   - `smoke.spec.ts` → **5/5 PASS** (~13 dtk): `/`, `/work-orders`, `/inventory`,
     `/organization`, `/notifications` render di Chrome nyata. Status: 🟢 TESTED
     (level render-halaman; warning CSP `eval` hanya dev-mode, prod unaffected).
-  - `critical-journey.spec.ts` → **FAIL 1 langkah**: `convert returns the new WO
+  - `critical-journey.spec.ts` → run 1 **FAIL 1 langkah**: `convert returns the new WO
     number` — `convertedWoNumber` undefined. Langkah login→SR create (201)→convert
     (200) semua lolos; konversi sukses, yang gagal hanya assertion test.
     Root cause: `lib/services/sr-service.ts:301` me-return
     `{ sr: dto, workOrder: createdWo }`, sedangkan test membaca
-    `data.convertedWoNumber` → **drift kontrak test↔API**. Fix (test atau API)
-    = commit app terpisah, bukan commit konsolidasi SDD ini.
+    `data.convertedWoNumber` → **drift kontrak test↔API**.
+  - Run 2 (pasca-fix 1 baris, Chrome sistem CDP 9227, config temp DIHAPUS
+    setelah run): **journey 1/1 PASS + smoke 5/5 PASS** (no-regresi).
+    Fix = commit app terpisah dari commit konsolidasi SDD (lihat bawah).
 - Cakupan smoke E2E (saat bisa jalan): `/`, `/work-orders`, `/inventory`,
   `/organization`, `/notifications` + critical journey login→SR→WO.
 
