@@ -499,3 +499,14 @@ NEXT: verifikasi baris-per-baris verification.md per domain; migration map 174 .
 ## 2026-09-19 — Tindak lanjut user: skills + app-fix SR + push (sesi berjalan)
 - **Skills (commit `48d7532`, amend 1x)**: skill repo-lokal `aligner-conventions` di `.agents/skills/` (ter-track; `.opencode/` di-.gitignore); OpenSpec `@fission-ai/openspec` v1.13.1 init `--tools agents` (6 workflow skill + `openspec/config.yaml` konteks Aligner; `openspec/specs/` kosong by-policy; root `AGENTS.md` tak tersentuh); Spec Kit DITOLAK (redundan); Figma `figma-developer-mcp` v0.13.2 wired di `opencode.json` (`enabled: false`, placeholder key — butuh token + file key user).
 - **App-fix SR (commit `4f9c3c8`, 1 baris)**: `sr-service.ts:301` body convert + `convertedWoNumber` (aditif). Verifikasi: journey 1/1 PASS + smoke 5/5 PASS (Chrome sistem CDP 9227, config temp dihapus, port 3157 mati), `npm test` 182/182, `tsc` bersih. SR → VERIFIED COMPLETE (`verification.md`, `test-evidence.md`, `implementation.md` updated; TODO app-fix checked).
+
+## 2026-09-19 — Aktivasi Figma MCP (FIGMA_PAT)
+- `opencode.json`: `--figma-api-key={env:FIGMA_PAT}`, `enabled: true`,
+  `FRAMELINK_TELEMETRY=off`. Token 45 char dari `~/.bashrc` (hanya termuat di
+  shell interaktif karena guard `case $-`; non-interactive source tidak memuat).
+- Verifikasi: `GET api.figma.com/v1/me` → HTTP 200 (akun terotentikasi);
+  handshake MCP stdio → `Figma MCP Server` v0.13.2 OK. Token tidak ter-commit.
+- Commit `0e454f6` (opencode.json) + docs `figma-workflow.md`; push OK ke
+  `origin arena/tier4-cd-new-dash`. Syarat runtime: opencode dijalankan dari
+  terminal interaktif + restart agar server ter-load; butuh link file/frame
+  Figma untuk pemakaian nyata.

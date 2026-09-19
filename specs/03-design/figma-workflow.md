@@ -35,9 +35,18 @@ Jangan klaim "sesuai desain" untuk route ini sampai frame-nya ada.
 Paket terverifikasi: `figma-developer-mcp` v0.13.2 (npm, MIT, Framelink —
 third-party, bukan resmi Figma; repo `github.com/GLips/Figma-Context-MCP`).
 `opencode.json` di root repo mendefinisikan server `figma` dengan
-`--figma-api-key=PASTE_FIGMA_API_KEY_HERE --stdio` dan `enabled: false`.
+`--figma-api-key={env:FIGMA_PAT} --stdio` dan `enabled: true`.
 
-Langkah aktivasi (butuh input user, belum dilakukan):
+Status aktivasi (2026-09-19, commit 0e454f6): TERHUBUNG — token `FIGMA_PAT`
+(45 char, dari `~/.bashrc`, scope baca) terverifikasi via `GET /v1/me`
+(HTTP 200) dan handshake MCP stdio (`Figma MCP Server` v0.13.2 merespons
+`initialize`). Token TIDAK ter-commit (substitusi `{env:...}` runtime);
+opencode mewarisinya dari env shell interaktif — pastikan opencode
+dijalankan dari terminal yang me-load `~/.bashrc`. Telemetri Framelink
+dimatikan (`FRAMELINK_TELEMETRY=off`). Prasyarat pakai: restart opencode
+agar server ter-load + siapkan link file/frame Figma.
+
+Langkah aktivasi (sudah dilakukan 2026-09-19; arsip historis):
 
 1. Buat Figma API access token (Figma → Account Settings → Personal access
    tokens; scope baca saja cukup untuk pull frame).
