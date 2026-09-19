@@ -468,3 +468,30 @@ NEXT: Tier 4 Batch C+D (scope user-approved 2026-09-17) — T4-5 ✅, T4-14 ✅,
 - npm test **182/182** (+5 test T4-16) · tsc 0 error. Buku: tier-4-medium verdicts, master-spec Tier 4 🔶 4/14, TODO §0, bagian ini.
 - Temuan minor (pre-existing, bukan scope): `/favicon.ico` 404.
 NEXT: Batch C+D SELESAI (T4-5 ✅, T4-14 ✅, T4-15 ✅, T4-16 ✅ 2026-09-17) — menunggu arahan user untuk batch Tier 4 berikutnya (sisa 10) atau PR.
+
+## Konsolidasi SDD pass-1 — specs/ observasi (2026-09-19, branch `arena/tier4-cd-new-dash`)
+
+- Rencana konsolidasi user disimpan ke `docs/CONSOLIDATION-PLAN-2026-09-19.md` lalu dijalankan 8 fase.
+- `specs/` baru (untracked, 38 file): README + 00-product (3) + 01-architecture (4) + 02-features/5 domain (WO/SR/findings/inventory/purchasing × spec+implementation+tasks+verification, kecuali inventory tanpa tasks/verification versi konsolidasi) + 03-design (3) + 04-quality (3) + 05-roadmap (2) + 06-history (2). Isi = observasi repo saja; klaim tak-terbukti diberi label PARTIAL/PLANNED/BLOCKED/UNVERIFIED di `specs/04-quality/known-gaps.md` (20 item).
+- Research: Spec Kit (github/spec-kit, MIT), OpenSpec (Fission-AI, MIT, npm 1.6.0), Agent Skills (SKILL.md progressive disclosure) — referensi di plan file; **tidak ada skill eksternal diinstal** (butuh otorisasi user) = blocker tercatat.
+- Temuan: `specs/02-features/inventory-parts/{tasks,verification}.md` (5 baris, gaya "From SDD/TODO", menyebut GAP-11/P1S3) muncul di worktree dari sumber tak dikenal — BUKAN tulisan sesi ini, dibiarkan apa adanya, tidak dihapus.
+- Tidak ada file tracked yang diubah; tidak ada commit/push (sesuai constraint).
+NEXT: verifikasi baris-per-baris verification.md per domain; migration map 174 .md; sisa Tier 4 (T4-17..T4-26).
+
+## Operationalization SDD — P0/P1/P2 (2026-09-19, branch `arena/tier4-cd-new-dash`)
+
+- **P0 CLOSED (verdict, bukan hapus)**: `inventory-parts/{tasks,verification}.md` = SUPERSEDED/UNVERIFIED — GAP-11 terbukti milik force-dispatch/field-queue (`docs/remediation-gap-11-spec.md`, CLOSED 2026-09-16 per remediation-map L246/293), `P1S3` nol kemunculan di `docs/`, 2 path truth-map fabrikan (yang ada: `audit-fe-be-truth-map.md`, `audit-full-app-truth-map.md`). Kedua file dikarantina di tempat (banner + isi asli verbatim + koreksi); tanpa delete sesuai constraint.
+- **Koreksi pass-1**: `inventory-parts/implementation.md` (ref fabrikan `PHASE1_SLICE3_FINDINGS_INV_PO.md` → `docs/PHASE1_SLICE3.md` L52 + catatan irrelevansi GAP-11); `screen-audits.md` (path `docs/screen-audits/` yang tidak ada → `stitch_…/screen-audits/`); `screen-inventory.md` ditulis ulang (nama modul lama → 20 folder aktual + route `app/` terverifikasi + daftar route tanpa mockup).
+- **P1 CLOSED 20-vs-21**: 20 `code.html` + 21 PNG; PNG ke-21 = avatar placeholder tanpa `code.html`; komposisi 18A+1B+2 non-layar (per `screen-audits/summary.md`). PLS = 24 missing-page specs (P0:5/P1:9/P2:7/P3:3) cocok 1:1 dengan second-pass → `specs/03-design/page-layout-specs-index.md`.
+- **P1 bukti**: `npm test` tereksekusi 2026-09-19 → **182/182 pass, 0 fail** (unit+integration+truthfulness+windowing); E2E `--list` valid 6 tests/chromium tapi BLOCKED (hanya webkit-2336 terinstal; butuh install chromium). Tier bukti: REPORTED/IMPLEMENTED UNVERIFIED/VERIFIED COMPLETE → `specs/04-quality/test-evidence.md` + `specs/TRACEABILITY.md` (19 baris requirement→desain→kode→uji→status).
+- **P2**: `specs/03-design/figma-workflow.md` (kontrak traceability per feature spec + backlog route tanpa desain); `specs/05-roadmap/skills-evaluation.md` (agen=opencode, tanpa `.opencode/`; hanya `web-perf` kandidat lanjut; tanpa instalasi).
+- File baru sesi ini (7): TRACEABILITY.md, 03-design/{page-layout-specs-index,figma-workflow}.md, 04-quality/test-evidence.md, 05-roadmap/skills-evaluation.md + 2 karantina-edit + 3 koreksi-edit. Tanpa commit/push.
+- NEXT: tautkan 20 known-gaps ke baris TRACEABILITY; verifikasi `page.tsx` per route (kolom TBD); E2E saat chromium tersedia; uji `web-perf` 5 screen kritis.
+
+## Traceability + verifikasi E2E (2026-09-19, perintah user m0087)
+
+- **P0**: 20 known-gaps → `specs/TRACEABILITY.md` (gap-map G1–G20); `page.tsx` per route terverifikasi via `find` (52 file) — nol TBD di `screen-inventory.md`. Nuansa: route-ada ≠ fully-functional (EmptyState di 3/8 halaman detail sampel). G12 dikoreksi (offline page ADA); G13 nuansa (push/subscribe wired, unverified end-to-end).
+- **P1 E2E**: Chrome sistem di CDP 9222 dipakai langsung (tanpa install chromium) — smoke 5/5 PASS Chrome nyata. Critical-journey FAIL pada `convertedWoNumber` undefined; root cause = drift kontrak test↔API (`sr-service.ts:301` return `{sr, workOrder}`, test baca `convertedWoNumber`) — konversi sendiri sukses (SR 201 + convert 200). FIX = commit app terpisah (bukan commit docs ini). Temp config Playwright sudah dihapus; `test-results/` gitignored.
+- **P1 roadmap**: 24 missing-page specs → `specs/05-roadmap/roadmap.md` (§ P0–P3 + dependensi + acceptance).
+- **P2 review**: sweep ref fabrikan — spec/implementation 5 domain ditulis ulang dari peta aktual (`find`/`ls`); `navigation-map.md` ditulis ulang (52 rute nyata); `system-architecture.md`, `shared-logic.md`, `domain-model.md`, `design-system.md`, `product-overview.md`, `existing-features.md`, `roadmap-full.md`, `screen-inventory.md` dikoreksi (TIDAK ADA: `lib/*-service.ts` top-level, `lib/validation`, `lib/api-helpers.ts`, `lib/auth.ts`, `lib/permissions.ts`, `lib/audit.ts`, `middleware.ts`, `lib/db/schema.ts`, grup `(print)`, SLICE2, endpoint `sla/approve/convert/receive/purchase-orders/grn-[id]/inspection-templates`, pages `/requests /findings /grn /shifts-root /sessions /mfa-setup /locations /field-home`). Aktual: `lib/services/*`, `lib/auth/*`, `lib/api/http.ts`, `db/schema.ts`, 61 API routes, 52 pages, `(ops)` 41 pages.
+- Commit konsolidasi SDD: SATU commit docs-only (specs/ + plan + PROGRESS/TODO); `page-layout-specs/` BUKAN dari sesi ini (dibiarkan untracked); tanpa push (sesuai constraint).

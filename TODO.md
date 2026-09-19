@@ -441,3 +441,26 @@ Dokumentasi lengkap: `docs/PHASE1_SLICE3.md`. Ringkasan deliverable:
 5. Docs: `docs/PHASE1_SLICEn.md` (atau fase bersangkutan) + baris `PROGRESS.md` + update `TODO.md` + `docs/AUDIT_SAAS_E2E.md` §K bila fase tuntas
 6. Git: commit deskriptif per unit + `git push origin <branch>`; bila push gagal → catat `PUSH-BLOCKED` di `PROGRESS.md`, lanjut kerja
 7. Definisi PASS audit §2 untuk tiap flow: user action → backend state benar → data persisten → UI merefleksikan → kegagalan terdiagnosis → business outcome
+
+### Konsolidasi SDD pass-1 (2026-09-19) — SELESAI pass observasi
+
+- [x] Rencana → `docs/CONSOLIDATION-PLAN-2026-09-19.md`; `specs/` 38 file (observasi-only + known-gaps 20 item)
+- [ ] Verifikasi baris-per-baris `specs/02-features/*/verification.md` (lanjutkan sebelum klaim penuh)
+- [ ] Migration map 174 .md (CANONICAL/HISTORICAL/SUPERSEDED/DUPLICATE/REQUIRES REVIEW — tanpa hapus)
+- [ ] Skill eksternal (Spec Kit/OpenSpec/Agent Skills) — BLOCKED, butuh otorisasi user
+- [ ] Lanjut Tier 4 sisa (T4-17..T4-26) atau PR — menunggu arahan user
+
+### Operationalization SDD P0/P1/P2 (2026-09-19) — SELESAI investigasi + koreksi
+
+- [x] P0: verdict anomali inventory-parts/{tasks,verification} = SUPERSEDED (dikarantina di tempat, tanpa hapus)
+- [x] P1: rekonsiliasi 20-vs-21 CLOSED; screen-inventory ditulis ulang dgn nama/route aktual; PLS-index 24 specs
+- [x] P1: bukti tereksekusi — `npm test` 182/182 pass; E2E 6 tests terdaftar, BLOCKED (chromium); TRACEABILITY.md 19 baris
+- [x] P2: figma-workflow.md (proposal) + skills-evaluation.md (tanpa instalasi; kandidat: web-perf)
+- [x] Tautkan 20 known-gaps → baris TRACEABILITY.md (gap-map G1–G20 di TRACEABILITY + § tautan di known-gaps)
+- [x] Verifikasi `page.tsx` per route (52 file via `find`; nol TBD; nuansa EmptyState 3/8)
+- [x] E2E Chrome nyata: smoke 5/5 PASS; journey FAIL = drift test↔API (`sr-service.ts:301`) → app-fix terpisah
+- [x] 24 missing-page specs → roadmap.md (§ P0–P3)
+- [x] P2 review 43 file specs/ (ref fabrikan dibersihkan; SUPERSEDED dipertahankan historis)
+- [x] SATU commit konsolidasi SDD (docs-only; tanpa push)
+- [ ] App-fix terpisah (bukan scope commit ini): kembalikan `convertedWoNumber` di `sr-service.ts:301` atau update journey test, lalu journey hijau → SR naik VERIFIED COMPLETE
+- [ ] E2E + `web-perf` 5 screen kritis (lanjutan bila diminta)
