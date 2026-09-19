@@ -29,3 +29,24 @@ Jangan klaim "sesuai desain" untuk route ini sampai frame-nya ada.
 
 - Audit performa/aksesibilitas: skill `web-perf` (sudah tersedia global, belum dievaluasi untuk repo ini).
 - E2E visual: Playwright screenshot assertions (terblokir env yang sama dengan E2E — chromium).
+
+## Aktivasi integrasi MCP (wired 2026-09-19, nonaktif by default)
+
+Paket terverifikasi: `figma-developer-mcp` v0.13.2 (npm, MIT, Framelink —
+third-party, bukan resmi Figma; repo `github.com/GLips/Figma-Context-MCP`).
+`opencode.json` di root repo mendefinisikan server `figma` dengan
+`--figma-api-key=PASTE_FIGMA_API_KEY_HERE --stdio` dan `enabled: false`.
+
+Langkah aktivasi (butuh input user, belum dilakukan):
+
+1. Buat Figma API access token (Figma → Account Settings → Personal access
+   tokens; scope baca saja cukup untuk pull frame).
+2. Ganti `PASTE_FIGMA_API_KEY_HERE` di `opencode.json` dengan token, set
+   `enabled: true`, restart opencode agar server ter-load.
+3. Pakai dengan link file/frame/group Figma + instruksi ("implementasikan
+   frame X mengikuti kontrak § Kontrak per feature spec di atas").
+4. Verifikasi hasil terhadap token Sistem A vs B (`design-system.md`) —
+   output MCP tidak otomatis patuh token Aligner.
+
+Catatan keamanan: token melewati paket komunitas — gunakan token ber-scope
+minimum dan revoke setelah tidak dipakai. Jangan commit token ke repo.

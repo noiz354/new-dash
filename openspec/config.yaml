@@ -1,0 +1,44 @@
+schema: spec-driven
+
+context: |
+  Aligner CMMS (Apex Ops) — facility maintenance platform. Stack: Next.js 16,
+  React 18, Tailwind, Drizzle ORM + PGlite, Zod. Code + comments in English.
+  Canonical spec catalog is specs/ (consolidated 2026-09-19, observed-only).
+  openspec/specs/ stays EMPTY by policy — no migration, no duplication.
+  Use openspec/changes only for forward change proposals.
+  Before any screen/service work, load the aligner-conventions skill
+  (.agents/skills/aligner-conventions/SKILL.md): System A (desktop) vs
+  System B (field) tokens, ConfirmDialog guards, EmptyState, append-only
+  audit trail, monospace operational IDs.
+  Never edit stitch_facility_maintenance_platform_ui/ (frozen reference).
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
