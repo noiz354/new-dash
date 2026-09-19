@@ -298,7 +298,7 @@ export async function transitionServiceRequest(
         );
 
         const dto = toSrDto(updated[0], now);
-        return { status: 200, body: createdWo ? { sr: dto, workOrder: createdWo } : { sr: dto } };
+        return { status: 200, body: createdWo ? { sr: dto, workOrder: createdWo, convertedWoNumber } : { sr: dto } };
       },
     );
     return result.body;
